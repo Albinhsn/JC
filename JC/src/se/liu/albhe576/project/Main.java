@@ -10,8 +10,7 @@ public class Main {
         String s = Files.readString(Path.of("resources/test.jc"));
         Scanner scanner = new Scanner(s);
         Parser parser = new Parser(scanner);
-        parser.parse();
-        for(Stmt stmt : parser.stmts){
+        for(Stmt stmt : parser.parse()){
             System.out.println(stmt);
         }
     }

@@ -1,7 +1,12 @@
 package se.liu.albhe576.project;
 
 public class GroupedExpr extends Expr{
-    private final Expr expr;
+    @Override
+    public String toString() {
+        return String.format("(%s)", expr);
+    }
+
+    private Expr expr;
     public GroupedExpr(Expr expr){
         this.expr = expr;
     }

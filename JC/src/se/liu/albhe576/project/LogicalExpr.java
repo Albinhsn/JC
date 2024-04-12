@@ -1,19 +1,19 @@
 package se.liu.albhe576.project;
 
-public class BinaryExpr extends Expr{
+public class LogicalExpr extends Expr{
 
     @Override
     public String toString() {
-        return String.format("(%s %s %s)", left, op.literal, right);
+        return String.format("%s %s %s", left, op.literal, right);
     }
 
     public Expr left;
     public Expr right;
     public Token op;
-
-    public BinaryExpr(Expr left, Token op, Expr right){
+    public LogicalExpr(Expr left, Expr right, Token op){
         this.left = left;
-        this.op = op;
         this.right = right;
+        this.op = op;
     }
+
 }

@@ -10,7 +10,7 @@ public class StructStmt extends Stmt{
         StringBuilder s = new StringBuilder();
         s.append(String.format("struct %s{\n", this.name));
         for(StructField f: fields){
-            s.append(String.format("\t%s\n", f));
+            s.append(String.format("\t%s;\n", f));
         }
         s.append("}\n");
         return s.toString();

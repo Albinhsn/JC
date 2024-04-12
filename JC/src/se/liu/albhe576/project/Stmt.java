@@ -1,4 +1,4 @@
 package se.liu.albhe576.project;
 
-abstract class Stmt {
+public abstract class Stmt {
 }

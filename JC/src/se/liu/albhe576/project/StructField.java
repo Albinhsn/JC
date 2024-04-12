@@ -4,7 +4,7 @@ public class StructField {
 
     @Override
     public String toString() {
-        return String.format("%s %s;", type, name);
+        return String.format("%s %s", type, name);
     }
 
     private final String name;

@@ -35,13 +35,32 @@ public class Scanner {
                 }
                 case ';':{
                 }
+                case '<':{
+                }
+                case '>':{
+                }
+                case '(':{
+                }
+                case ')':{
+                }
                 case '!':{
                 }
                 case '/':{
+                    if(this.matchNext('/')){
+                        while(!this.isOutOfBounds() && this.getCurrentChar() != '\n'){
+                            advance();
+                        }
+                        line++;
+                    }
+                    break;
                 }
                 case '.':{
                 }
                 case ',':{
+                }
+                case '&':{
+                }
+                case '|':{
                 }
                 case '[':{
                 }
@@ -84,7 +103,6 @@ public class Scanner {
         }
 
         String literal = this.input.substring(startIndex, this.index - 1);
-        advance();
         return createToken(TokenType.TOKEN_STRING, literal);
     }
     public TokenType getKeyword(String literal){
@@ -122,6 +140,7 @@ public class Scanner {
     private Token parseNumber(){
         int startIndex = this.index - 1;
         char currentChar = advance();
+        TokenType type = TokenType.TOKEN_INT_LITERAL;
         while(!isOutOfBounds() && Character.isDigit(currentChar)){
             currentChar = advance();
         }
@@ -130,9 +149,11 @@ public class Scanner {
             while(!isOutOfBounds() && Character.isDigit(currentChar)){
                 currentChar = advance();
             }
+            type = TokenType.TOKEN_FLOAT_LITERAL;
         }
-        String literal = this.input.substring(startIndex, this.index - 1);
-        return createToken(TokenType.TOKEN_NUMBER, literal);
+        this.index--;
+        String literal = this.input.substring(startIndex, this.index);
+        return createToken(type, literal);
 
     }
 
@@ -196,6 +217,18 @@ public class Scanner {
             case '.' -> this.createToken(TokenType.TOKEN_DOT, ".");
             case '(' -> this.createToken(TokenType.TOKEN_LEFT_PAREN, "(");
             case ')' -> this.createToken(TokenType.TOKEN_RIGHT_PAREN, ")");
+            case '&' -> {
+                if (matchNext('&')) {
+                    yield this.createToken(TokenType.TOKEN_AND_LOGICAL, "&&");
+                }
+                yield this.createToken(TokenType.TOKEN_AND_BIT, "&");
+            }
+            case '|' -> {
+                if (matchNext('|')) {
+                    yield this.createToken(TokenType.TOKEN_OR_LOGICAL, "||");
+                }
+                yield this.createToken(TokenType.TOKEN_OR_BIT, "|");
+            }
             case '!' -> {
                 if (matchNext('=')) {
                     yield this.createToken(TokenType.TOKEN_BANG_EQUAL, "!=");
@@ -224,7 +257,6 @@ public class Scanner {
                 if (matchNext('>')) {
                     yield this.createToken(TokenType.TOKEN_ARROW, "->");
                 } else if (matchNext('-')) {
-                    advance();
                     yield this.createToken(TokenType.TOKEN_DECREMENT, "--");
                 } else if (matchNext('=')) {
                     yield this.createToken(TokenType.TOKEN_AUGMENTED_MINUS, "+=");
@@ -233,10 +265,8 @@ public class Scanner {
             }
             case '+' -> {
                 if (matchNext('+')) {
-                    advance();
                     yield this.createToken(TokenType.TOKEN_INCREMENT, "++");
                 } else if (matchNext('=')) {
-                    advance();
                     yield this.createToken(TokenType.TOKEN_AUGMENTED_PLUS, "+=");
                 }
                 yield this.createToken(TokenType.TOKEN_PLUS, "+");
