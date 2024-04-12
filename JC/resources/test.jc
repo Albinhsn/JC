@@ -1,0 +1,6 @@
+struct foo{
+    int bar;
+    float baz;
+    int * bar2;
+    float * baz2;
+}
