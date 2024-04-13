@@ -1,6 +1,7 @@
 package se.liu.albhe576.project;
 
 public enum TokenType {
+    TOKEN_VOID,
     TOKEN_LEFT_PAREN,
     TOKEN_RIGHT_PAREN,
     TOKEN_LEFT_BRACE,

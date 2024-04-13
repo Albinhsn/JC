@@ -2,7 +2,7 @@ package se.liu.albhe576.project;
 
 import java.util.List;
 
-public class ForStmt extends Stmt{
+public class ForStmt implements  Stmt{
     @Override
     public String toString() {
         StringBuilder s= new StringBuilder(String.format("for(%s %s %s){\n", init, condition, update));
@@ -13,15 +13,45 @@ public class ForStmt extends Stmt{
         return s.toString();
     }
 
-    Stmt init;
-    Stmt condition;
-    Stmt update;
-    List<Stmt> body;
+    private final Stmt init;
+    private final Stmt condition;
+    private final Stmt update;
+    private final List<Stmt> body;
 
     public ForStmt(Stmt init, Stmt condition, Stmt update, List<Stmt> body){
         this.init = init;
         this.condition = condition;
         this.update = update;
         this.body = body;
+    }
+
+    @Override
+    public Signature getSignature() throws CompileException {
+        throw new CompileException("Can't get signature from this stmt");
+    }
+
+    @Override
+    public BasicBlock compile(List<Signature> functions, BasicBlock block, List<List<Symbol>> symbols) throws CompileException {
+        BasicBlock initBlock = new BasicBlock();
+        block.next = initBlock;
+        BasicBlock nextBlock = init.compile(functions, initBlock, symbols);
+
+        BasicBlock conditionBlock = new BasicBlock();
+        nextBlock.next = conditionBlock;
+
+        nextBlock = this.condition.compile(functions, conditionBlock, symbols);
+        BasicBlock bodyBlock = new BasicBlock();
+
+        nextBlock.next = bodyBlock;
+        for(Stmt stmt : body){
+            bodyBlock = stmt.compile(functions, bodyBlock, symbols);
+        }
+        nextBlock = update.compile(functions, bodyBlock, symbols);
+        nextBlock.createUnconditionalBranch(conditionBlock);
+
+        BasicBlock mergeBlock = new BasicBlock();
+        nextBlock.next = mergeBlock;
+
+        return mergeBlock;
     }
 }

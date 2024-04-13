@@ -8,6 +8,16 @@ public class Scanner {
     private int index;
     private int line;
 
+    public int getLine(){
+        return this.line;
+    }
+    public int getIndex(){
+        return this.index;
+    }
+    public void setIndex(int i){
+        this.index = i;
+    }
+
     private char getCurrentChar(){
         if(index >= input.length()){
             return 0;
@@ -38,6 +48,10 @@ public class Scanner {
                 }
                 case '{':{
                 }
+                case '[':{
+                }
+                case ']':{
+                }
                 case '}':{
                 }
                 case '*':{
@@ -63,10 +77,6 @@ public class Scanner {
                 case '&':{
                 }
                 case '|':{
-                }
-                case '[':{
-                }
-                case ']':{
                 }
                 case '-':{
                 }
@@ -112,7 +122,8 @@ public class Scanner {
                 Map.entry("true", TokenType.TOKEN_TRUE),
                 Map.entry("return", TokenType.TOKEN_RETURN),
                 Map.entry("int", TokenType.TOKEN_INT),
-                Map.entry("float", TokenType.TOKEN_FLOAT)
+                Map.entry("float", TokenType.TOKEN_FLOAT),
+                Map.entry("void", TokenType.TOKEN_VOID)
         );
         if(reservedWords.containsKey(literal)){
             return reservedWords.get(literal);

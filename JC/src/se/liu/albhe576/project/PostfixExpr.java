@@ -1,17 +1,22 @@
 package se.liu.albhe576.project;
 
+import java.util.List;
+
 public class PostfixExpr extends Expr{
     @Override
     public String toString() {
-        return String.format("%s%s",expr, op.literal);
+        return String.format("%s%s",literal.literal, op.literal);
     }
 
-    public Expr expr;
+    public Token literal;
     public Token op;
 
-    public PostfixExpr(Expr expr, Token op){
-        this.expr = expr;
+    public PostfixExpr(Token literal, Token op){
+        this.literal = literal;
         this.op   = op;
-
+    }
+    @Override public Value compile(List<Signature> functions, BasicBlock block, List<List<Symbol>> symbols) throws CompileException {
+        Value value = Symbol.lookupSymbol(symbols, literal);
+        return block.createPostfix(value, op);
     }
 }

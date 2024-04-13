@@ -6,12 +6,12 @@ import java.nio.file.Path;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, CompileException{
         String s = Files.readString(Path.of("resources/test.jc"));
+        System.out.println(s);
         Scanner scanner = new Scanner(s);
         Parser parser = new Parser(scanner);
-        for(Stmt stmt : parser.parse()){
-            System.out.println(stmt);
-        }
+        Compiler compiler = new Compiler(parser.parse());
+        compiler.Compile("out.jc");
     }
 }

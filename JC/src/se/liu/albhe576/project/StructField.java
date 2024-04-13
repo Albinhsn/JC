@@ -7,10 +7,10 @@ public class StructField {
         return String.format("%s %s", type, name);
     }
 
-    private final String name;
-    private final VariableType type;
+    public final String name;
+    public final SymbolType type;
 
-    public StructField(String name, VariableType type) {
+    public StructField(String name, SymbolType type) {
         this.name = name;
         this.type = type;
     }

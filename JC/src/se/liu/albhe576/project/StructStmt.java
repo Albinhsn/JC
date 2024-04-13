@@ -2,7 +2,7 @@ package se.liu.albhe576.project;
 
 import java.util.List;
 
-public class StructStmt extends Stmt{
+public class StructStmt implements Stmt{
 
 
     @Override
@@ -16,11 +16,22 @@ public class StructStmt extends Stmt{
         return s.toString();
     }
 
-    private final String name;
+    private final Token name;
     private final List<StructField> fields;
 
-    public StructStmt(String name, List<StructField> fields){
+    public StructStmt(Token name, List<StructField> fields){
         this.name = name;
         this.fields = fields;
     }
+
+    @Override
+    public Signature getSignature() throws CompileException {
+        return new Signature(SymbolType.STRUCT, name.literal, fields);
+    }
+
+    @Override
+    public BasicBlock compile(List<Signature> functions, BasicBlock block, List<List<Symbol>> symbols) throws CompileException {
+        return block;
+    }
+
 }
