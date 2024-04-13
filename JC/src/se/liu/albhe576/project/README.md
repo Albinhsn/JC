@@ -1,3 +1,3 @@
 ## ToDo
-* Make all of test file run
-* support i++ as well
+* do actual proper error handling while parsing, and figure out what to do with exceptions
+* support void?

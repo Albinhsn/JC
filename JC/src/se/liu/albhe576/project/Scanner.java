@@ -25,6 +25,15 @@ public class Scanner {
                 return;
             }
             switch(currentChar){
+                case '/':{
+                    if(this.matchNext('/')){
+                        while(!this.isOutOfBounds() && this.getCurrentChar() != '\n'){
+                            advance();
+                        }
+                        line++;
+                    }
+                    break;
+                }
                 case '\"':{
                 }
                 case '{':{
@@ -45,16 +54,9 @@ public class Scanner {
                 }
                 case '!':{
                 }
-                case '/':{
-                    if(this.matchNext('/')){
-                        while(!this.isOutOfBounds() && this.getCurrentChar() != '\n'){
-                            advance();
-                        }
-                        line++;
-                    }
-                    break;
-                }
                 case '.':{
+                }
+                case '^':{
                 }
                 case ',':{
                 }
@@ -80,13 +82,6 @@ public class Scanner {
             }
             index++;
         }
-    }
-
-    private void consume(char c) throws IllegalCharacterException{
-        if(advance() != c){
-            throw new IllegalCharacterException(String.format("Expected '%c' but got '%c' in consume", c, getCurrentChar()));
-        }
-
     }
 
     private Token parseString() throws UnterminatedStringException {
@@ -217,15 +212,27 @@ public class Scanner {
             case '.' -> this.createToken(TokenType.TOKEN_DOT, ".");
             case '(' -> this.createToken(TokenType.TOKEN_LEFT_PAREN, "(");
             case ')' -> this.createToken(TokenType.TOKEN_RIGHT_PAREN, ")");
+            case '^' -> {
+                if (matchNext('=')) {
+                    yield this.createToken(TokenType.TOKEN_AUGMENTED_XOR, "^=");
+                }
+                yield this.createToken(TokenType.TOKEN_XOR, "^");
+            }
             case '&' -> {
                 if (matchNext('&')) {
                     yield this.createToken(TokenType.TOKEN_AND_LOGICAL, "&&");
+                }
+                if (matchNext('=')) {
+                    yield this.createToken(TokenType.TOKEN_AUGMENTED_AND, "&=");
                 }
                 yield this.createToken(TokenType.TOKEN_AND_BIT, "&");
             }
             case '|' -> {
                 if (matchNext('|')) {
                     yield this.createToken(TokenType.TOKEN_OR_LOGICAL, "||");
+                }
+                if (matchNext('=')) {
+                    yield this.createToken(TokenType.TOKEN_AUGMENTED_OR, "|=");
                 }
                 yield this.createToken(TokenType.TOKEN_OR_BIT, "|");
             }

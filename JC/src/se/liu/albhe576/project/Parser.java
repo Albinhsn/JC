@@ -1,7 +1,5 @@
 package se.liu.albhe576.project;
 
-import javax.swing.*;
-import javax.swing.plaf.basic.BasicInternalFrameTitlePane;
 import java.util.*;
 
 public class Parser {
@@ -133,17 +131,20 @@ public class Parser {
         final int precedenceOrdinal = precedence.ordinal();
         final boolean canAssign =  precedenceOrdinal <= Precedence.ASSIGNMENT.ordinal();
         expr = prefix.prefixRule.prefix(expr, canAssign);
+        System.out.printf("Applied prefix: %s\n", expr);
 
         ParseFunction currentRule = this.parseFunctions.get(this.current.type);
         while(precedenceOrdinal <= currentRule.precedence.ordinal()){
             advance();
             expr = currentRule.infixRule.infix(expr, canAssign);
+            System.out.printf("Applied infix: %s\n", expr);
             currentRule = this.parseFunctions.get(this.current.type);
         }
 
         if(canAssign && matchType(TokenType.TOKEN_EQUAL)){
             error("Invalid assignment target");
         }
+        System.out.printf("Finished expr: %s\n", expr);
         return expr;
     }
 
@@ -202,15 +203,18 @@ public class Parser {
     }
     private List<StructField> parseArguments() throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException {
         List<StructField> args = new ArrayList<>();
-        do{
-            VariableType type = parseVariableType();
-            if(!matchType(TokenType.TOKEN_IDENTIFIER)){
-                throw new UnexpectedTokenException(String.format("Expected identifier as argument but got %s", this.current.type));
-            }
-            String name = this.previous.literal;
-            args.add(new StructField(name, type));
+        if(this.current.type != TokenType.TOKEN_RIGHT_PAREN){
+            do{
+                VariableType type = parseVariableType();
+                if(!matchType(TokenType.TOKEN_IDENTIFIER)){
+                    throw new UnexpectedTokenException(String.format("Expected identifier as argument but got %s", this.current.type));
+                }
+                String name = this.previous.literal;
+                args.add(new StructField(name, type));
 
-        }while(matchType(TokenType.TOKEN_COMMA));
+            }while(matchType(TokenType.TOKEN_COMMA));
+
+        }
 
         return args;
     }
@@ -261,18 +265,6 @@ public class Parser {
 
         return new IfStmt(condition, ifBody, elseBody);
     }
-    private Stmt variableStatement() throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException {
-        Token var = this.current;
-        advance();
-        if(matchType(TokenType.TOKEN_EQUAL)){
-            Expr assignValue = parseExpr(new Expr(), Precedence.ASSIGNMENT);
-            return new ExprStmt(new AssignExpr(var, assignValue));
-        }else if(matchAugmented()){
-            return new ExprStmt(new AugmentedExpr(this.previous, var, parseExpr(new Expr(), Precedence.ASSIGNMENT)));
-        }
-        error("Didn't expect to get here, this won't evaluate to anything and we don't know how to parse it yet :)");
-        return null;
-    }
     private Stmt parseStmt() throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException {
         if(matchType(TokenType.TOKEN_STRUCT)){
             return structDeclaration();
@@ -282,10 +274,6 @@ public class Parser {
             return whileStatement();
         }else if(isVariableType()){
             return variableDeclaration();
-        }else if(current.type == TokenType.TOKEN_IDENTIFIER){
-            Stmt out = variableStatement();
-            consume(TokenType.TOKEN_SEMICOLON, String.format("Expected ';' after variable Stmt %s", out));
-            return out;
         }else if(matchType(TokenType.TOKEN_IF)){
             return ifStatement();
         }else if(matchType(TokenType.TOKEN_RETURN)){
@@ -303,7 +291,6 @@ public class Parser {
             advance();
             while(!matchType(TokenType.TOKEN_EOF)){
                 this.stmts.add(parseStmt());
-                advance();
             }
         }catch(IllegalCharacterException | UnterminatedStringException | UnexpectedTokenException e){
             System.out.println(e.getMessage());
@@ -325,8 +312,17 @@ public class Parser {
         consume(TokenType.TOKEN_RIGHT_PAREN, "Expect right paren after args");
         return new CallExpr(expr, args);
     }
-    private Expr dot(Expr expr, boolean canAssign){
-        return null;
+    private Expr dot(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+        Token op = this.previous;
+
+        consume(TokenType.TOKEN_IDENTIFIER, "Expected identifier after dot");
+        Token var = this.previous;
+
+        DotExpr dotExpr = new DotExpr(expr, op, var);
+        if(matchType(TokenType.TOKEN_EQUAL)){
+            return new AssignExpr(dotExpr, parseExpr(new Expr(), Precedence.ASSIGNMENT));
+        }
+        return dotExpr;
     }
     private Expr binary(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
         Token op = this.previous;
@@ -334,6 +330,15 @@ public class Parser {
         Expr newExpr = parseExpr(new Expr(), Precedence.values()[rule.precedence.ordinal() + 1]);
         return new BinaryExpr(expr, op, newExpr);
     }
+    private Expr dereference(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+        Token op = this.previous;
+        Expr newExpr = parseExpr(new Expr(), Precedence.ASSIGNMENT);
+        return new UnaryExpr(newExpr, op);
+    }
+    private Expr postfix(Expr expr, boolean canAssign)  {
+        return new PostfixExpr(expr, this.previous);
+    }
+
     private Expr unary(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
         Token op = this.previous;
         Expr newExpr = parseExpr(new Expr(), Precedence.UNARY);
@@ -343,6 +348,10 @@ public class Parser {
         Token var = this.previous;
         if(matchType(TokenType.TOKEN_LEFT_PAREN)){
             return call(new VarExpr(var), false);
+        }else if(canAssign && matchType(TokenType.TOKEN_EQUAL)){
+            return new AssignExpr(var, parseExpr(new Expr(), Precedence.ASSIGNMENT));
+        }else if (canAssign && matchAugmented()){
+            return new AugmentedExpr(this.previous, var, parseExpr(new Expr(), Precedence.ASSIGNMENT));
         }
         return new VarExpr(var);
     }
@@ -359,6 +368,7 @@ public class Parser {
         this.parseFunctions.put(TokenType.TOKEN_RIGHT_BRACE, new ParseFunction(null, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_COMMA, new ParseFunction(null, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_DOT, new ParseFunction(null, this::dot, Precedence.CALL));
+        this.parseFunctions.put(TokenType.TOKEN_ARROW, new ParseFunction(null, this::dot, Precedence.CALL));
         this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_SLASH, new ParseFunction(null, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_STAR, new ParseFunction(null, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_MINUS, new ParseFunction(null, null, Precedence.NONE));
@@ -367,7 +377,7 @@ public class Parser {
         this.parseFunctions.put(TokenType.TOKEN_PLUS, new ParseFunction(null, this::binary, Precedence.TERM));
         this.parseFunctions.put(TokenType.TOKEN_SEMICOLON, new ParseFunction(null, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_SLASH, new ParseFunction(null, this::binary, Precedence.FACTOR));
-        this.parseFunctions.put(TokenType.TOKEN_STAR, new ParseFunction(this::unary, this::binary, Precedence.FACTOR));
+        this.parseFunctions.put(TokenType.TOKEN_STAR, new ParseFunction(this::dereference, this::binary, Precedence.FACTOR));
         this.parseFunctions.put(TokenType.TOKEN_BANG, new ParseFunction(this::unary, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_BANG_EQUAL, new ParseFunction(null, this::binary, Precedence.EQUALITY));
         this.parseFunctions.put(TokenType.TOKEN_EQUAL, new ParseFunction(null, null, Precedence.NONE));
@@ -384,12 +394,13 @@ public class Parser {
         this.parseFunctions.put(TokenType.TOKEN_AND_BIT, new ParseFunction(null, this::binary, Precedence.BITWISE));
         this.parseFunctions.put(TokenType.TOKEN_OR_LOGICAL, new ParseFunction(null, this::logical, Precedence.OR));
         this.parseFunctions.put(TokenType.TOKEN_OR_BIT, new ParseFunction(null, this::binary, Precedence.BITWISE));
+        this.parseFunctions.put(TokenType.TOKEN_XOR, new ParseFunction(null, this::binary, Precedence.BITWISE));
         this.parseFunctions.put(TokenType.TOKEN_SHIFT_LEFT, new ParseFunction(null, this::binary, Precedence.BITWISE));
         this.parseFunctions.put(TokenType.TOKEN_SHIFT_RIGHT, new ParseFunction(null, this::binary, Precedence.BITWISE));
         this.parseFunctions.put(TokenType.TOKEN_TRUE, new ParseFunction(this::literal, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_FALSE, new ParseFunction(this::literal, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_INCREMENT, new ParseFunction(this::unary, this::unary, Precedence.TERM));
-        this.parseFunctions.put(TokenType.TOKEN_DECREMENT, new ParseFunction(this::unary, this::unary, Precedence.TERM));
+        this.parseFunctions.put(TokenType.TOKEN_INCREMENT, new ParseFunction(this::unary, this::postfix, Precedence.TERM));
+        this.parseFunctions.put(TokenType.TOKEN_DECREMENT, new ParseFunction(this::unary, this::postfix, Precedence.TERM));
     }
 
     public Parser(Scanner scanner){

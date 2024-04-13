@@ -6,7 +6,7 @@ import java.nio.file.Path;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException, IllegalCharacterException, UnterminatedStringException {
+    public static void main(String[] args) throws IOException {
         String s = Files.readString(Path.of("resources/test.jc"));
         Scanner scanner = new Scanner(s);
         Parser parser = new Parser(scanner);

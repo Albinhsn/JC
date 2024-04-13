@@ -7,9 +7,9 @@ public class WhileStmt extends Stmt{
     @Override
     public String toString() {
         StringBuilder s = new StringBuilder();
-        s.append(String.format("while(%s){", condition));
+        s.append(String.format("while(%s){\n", condition));
         for(Stmt stmt : body){
-            s.append(String.format("\t%s", stmt));
+            s.append(String.format("\t%s\n", stmt));
         }
         return s.toString();
     }
