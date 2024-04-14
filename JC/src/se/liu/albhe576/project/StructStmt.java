@@ -1,6 +1,8 @@
 package se.liu.albhe576.project;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 public class StructStmt implements Stmt{
     @Override
@@ -22,4 +24,9 @@ public class StructStmt implements Stmt{
         this.fields = fields;
     }
 
+    @Override
+    public List<Quad> compile(Stack<List<Symbol>> symbolTable) {
+        symbolTable.peek().add(new StructSymbol(name.literal, fields));
+        return new ArrayList<>();
+    }
 }

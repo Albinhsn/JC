@@ -3,7 +3,7 @@ package se.liu.albhe576.project;
 import java.util.List;
 import java.util.Stack;
 
-public class LogicalExpr implements Expr{
+public class ComparisonExpr implements Expr {
 
     @Override
     public String toString() {
@@ -13,7 +13,7 @@ public class LogicalExpr implements Expr{
     public Expr left;
     public Expr right;
     public Token op;
-    public LogicalExpr(Expr left, Expr right, Token op){
+    public ComparisonExpr(Expr left, Expr right, Token op){
         this.left = left;
         this.right = right;
         this.op = op;
@@ -28,7 +28,8 @@ public class LogicalExpr implements Expr{
         Symbol rSymbol = Quad.getLastResult(r);
 
         l.addAll(r);
-        l.add(new Quad(QuadOp.fromToken(op), lSymbol, rSymbol, Compiler.generateResultSymbol()));
+        l.add(new Quad(QuadOp.CMP, lSymbol, rSymbol, null));
+        l.add(new Quad(QuadOp.fromToken(op), null, null, null));
         return l;
     }
 }

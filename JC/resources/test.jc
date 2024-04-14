@@ -1,6 +1,9 @@
 
-void main() {
+struct Foo{
+    int a;
+}
 
-    int i = 5;
-    return i;
+void main() {
+    Foo foo;
+    foo.a = 5;
 }

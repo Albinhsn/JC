@@ -1,6 +1,7 @@
 package se.liu.albhe576.project;
 
 import java.util.List;
+import java.util.Stack;
 
 public class BinaryExpr implements Expr{
 
@@ -19,5 +20,19 @@ public class BinaryExpr implements Expr{
         this.left = left;
         this.op = op;
         this.right = right;
+    }
+
+    @Override
+    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws CompileException, UnknownSymbolException {
+        List<Quad> l = left.compile(symbolTable);
+        Symbol lSymbol = Quad.getLastResult(l);
+        List<Quad> r = right.compile(symbolTable);
+        Symbol rSymbol = Quad.getLastResult(r);
+
+        l.addAll(r);
+        Symbol symbol = Compiler.generateResultSymbol();
+        symbolTable.peek().add(symbol);
+        l.add(new Quad(QuadOp.fromToken(op), lSymbol, rSymbol, symbol));
+        return l;
     }
 }

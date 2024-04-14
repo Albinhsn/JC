@@ -1,6 +1,7 @@
 package se.liu.albhe576.project;
 
 import java.util.List;
+import java.util.Stack;
 
 public class GroupedExpr implements Expr{
     @Override
@@ -13,4 +14,8 @@ public class GroupedExpr implements Expr{
         this.expr = expr;
     }
 
+    @Override
+    public List<Quad> compile(Stack<List<Symbol>> symbolTable) {
+        return null;
+    }
 }

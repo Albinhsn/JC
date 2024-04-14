@@ -272,9 +272,7 @@ public class Scanner {
                 yield this.createToken(TokenType.TOKEN_LESS, "<");
             }
             case '-' -> {
-                if (matchNext('>')) {
-                    yield this.createToken(TokenType.TOKEN_ARROW, "->");
-                } else if (matchNext('-')) {
+                if (matchNext('-')) {
                     yield this.createToken(TokenType.TOKEN_DECREMENT, "--");
                 } else if (matchNext('=')) {
                     yield this.createToken(TokenType.TOKEN_AUGMENTED_MINUS, "+=");

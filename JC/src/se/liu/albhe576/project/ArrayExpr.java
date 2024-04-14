@@ -2,6 +2,7 @@ package se.liu.albhe576.project;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 public class ArrayExpr implements Expr{
 
@@ -23,5 +24,10 @@ public class ArrayExpr implements Expr{
 
     public ArrayExpr(List<Expr> items){
         this.items = items;
+    }
+
+    @Override
+    public List<Quad> compile(Stack<List<Symbol>> symbolTable) {
+        return null;
     }
 }

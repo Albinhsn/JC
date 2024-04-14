@@ -1,5 +1,8 @@
 package se.liu.albhe576.project;
 
+import java.util.List;
+import java.util.Stack;
+
 public class VariableStmt implements Stmt{
 
     @Override
@@ -14,5 +17,22 @@ public class VariableStmt implements Stmt{
         this.type = type;
         this.name = name;
         this.value = value;
+    }
+
+    @Override
+    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+        List<Quad> val = value.compile(symbolTable);
+        // Check for 0?
+        Symbol lastSymbol = Quad.getLastResult(val);
+        Symbol variable = new VariableSymbol(type, name);
+        val.add(
+                new Quad(
+                        QuadOp.STORE,
+                        lastSymbol,
+                        null,
+                        variable
+                ));
+        symbolTable.peek().add(variable);
+        return val;
     }
 }

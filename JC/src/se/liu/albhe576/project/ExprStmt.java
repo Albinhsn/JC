@@ -1,7 +1,9 @@
 package se.liu.albhe576.project;
 
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 public class ExprStmt implements  Stmt{
 
@@ -13,5 +15,10 @@ public class ExprStmt implements  Stmt{
     private final Expr expr;
     public ExprStmt(Expr expr){
         this.expr = expr;
+    }
+
+    @Override
+    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+        return expr.compile(symbolTable);
     }
 }

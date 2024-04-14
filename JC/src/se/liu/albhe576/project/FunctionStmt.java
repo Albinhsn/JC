@@ -1,6 +1,8 @@
 package se.liu.albhe576.project;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 public class FunctionStmt implements Stmt{
 
@@ -34,5 +36,24 @@ public class FunctionStmt implements Stmt{
         this.arguments = arguments;
         this.body = body;
 
+    }
+
+    @Override
+    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+        List<Quad> out = new ArrayList<>();
+
+        symbolTable.peek().add(new FunctionSymbol(name, arguments, returnType));
+        List<Symbol> functionSymbols = new ArrayList<>();
+        for(StructField arg : arguments){
+            functionSymbols.add(new VariableSymbol(arg.type, arg.name));
+        }
+
+        symbolTable.push(functionSymbols);
+        for(Stmt stmt : body){
+            out.addAll(stmt.compile(symbolTable));
+        }
+        symbolTable.pop();
+
+        return out;
     }
 }

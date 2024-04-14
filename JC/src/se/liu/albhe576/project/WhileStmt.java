@@ -1,6 +1,8 @@
 package se.liu.albhe576.project;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 public class WhileStmt implements  Stmt{
 
@@ -21,4 +23,16 @@ public class WhileStmt implements  Stmt{
         this.body = body;
     }
 
+    @Override
+    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+        List<Quad> out = condition.compile(symbolTable);
+        // insert check and jump
+        symbolTable.push(new ArrayList<>());
+        for(Stmt stmt : body){
+            out.addAll(stmt.compile(symbolTable));
+        }
+        symbolTable.pop();
+
+        return out;
+    }
 }
