@@ -3,7 +3,7 @@ package se.liu.albhe576.project;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CallExpr extends Expr{
+public class CallExpr implements Expr{
     @Override
     public String toString() {
         StringBuilder s = new StringBuilder();
@@ -24,13 +24,5 @@ public class CallExpr extends Expr{
        this.name = name;
        this.args = args;
    }
-
-    @Override public Value compile(List<Signature> functions, BasicBlock block, List<List<Symbol>> symbols) throws CompileException {
-        List<Value> arguments = new ArrayList<>();
-        for(Expr arg : args){
-            arguments.add(arg.compile(functions, block, symbols));
-        }
-        return block.createCall(functions, name.literal, arguments);
-    }
 
 }

@@ -36,28 +36,4 @@ public class IfStmt implements Stmt{
 
     }
 
-    @Override
-    public Signature getSignature() throws CompileException {
-        throw new CompileException("Can't get signature from this stmt");
-    }
-
-    @Override
-    public BasicBlock compile(List<Signature> functions, BasicBlock block, List<List<Symbol>> symbols) throws CompileException {
-        Value condition = this.condition.compile(functions, block, symbols);
-        BasicBlock thenBlock = new BasicBlock();
-        BasicBlock elseBlock = new BasicBlock();
-        BasicBlock mergeBlock = new BasicBlock();
-        block.createConditionalBranch(condition, thenBlock, elseBlock);
-
-        for(Stmt stmt : ifBody){
-            thenBlock = stmt.compile(functions, thenBlock, symbols);
-        }
-        thenBlock.next = mergeBlock;
-        for(Stmt stmt : elseBody){
-            elseBlock = stmt.compile(functions, elseBlock, symbols);
-        }
-        elseBlock.next = mergeBlock;
-
-        return mergeBlock;
-    }
 }

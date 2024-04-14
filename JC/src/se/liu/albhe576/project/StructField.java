@@ -8,9 +8,9 @@ public class StructField {
     }
 
     public final String name;
-    public final SymbolType type;
+    public final StructType type;
 
-    public StructField(String name, SymbolType type) {
+    public StructField(String name, StructType type) {
         this.name = name;
         this.type = type;
     }

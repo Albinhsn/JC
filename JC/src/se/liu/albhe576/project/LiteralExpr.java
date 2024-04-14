@@ -2,7 +2,7 @@ package se.liu.albhe576.project;
 
 import java.util.List;
 
-public class LiteralExpr extends Expr{
+public class LiteralExpr implements Expr{
 
     @Override
     public String toString() {
@@ -16,9 +16,5 @@ public class LiteralExpr extends Expr{
         this.token = token;
 
     }
-    @Override public Value compile(List<Signature> functions, BasicBlock block, List<List<Symbol>> symbols) throws CompileException {
-        return block.createImmediate(token);
-    }
-
 }
 

@@ -1,4 +1,6 @@
 
 void main() {
-    return 5;
+
+    int i = 5;
+    return i;
 }

@@ -3,7 +3,7 @@ package se.liu.albhe576.project;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ArrayExpr extends Expr{
+public class ArrayExpr implements Expr{
 
     @Override
     public String toString() {
@@ -20,14 +20,6 @@ public class ArrayExpr extends Expr{
     }
 
     private final List<Expr> items;
-
-    @Override public Value compile(List<Signature> functions, BasicBlock block, List<List<Symbol>> symbols) throws CompileException{
-        List<Value> itemValues = new ArrayList<>();
-        for(Expr item: items){
-            Value itemValue = item.compile(functions, block, symbols);
-        }
-        return block.allocateArray(itemValues, Symbol.getSize(symbols));
-    }
 
     public ArrayExpr(List<Expr> items){
         this.items = items;

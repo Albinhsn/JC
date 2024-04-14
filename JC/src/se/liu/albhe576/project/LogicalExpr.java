@@ -2,7 +2,7 @@ package se.liu.albhe576.project;
 
 import java.util.List;
 
-public class LogicalExpr extends Expr{
+public class LogicalExpr implements Expr{
 
     @Override
     public String toString() {
@@ -16,9 +16,5 @@ public class LogicalExpr extends Expr{
         this.left = left;
         this.right = right;
         this.op = op;
-    }
-
-    @Override public Value compile(List<Signature> functions, BasicBlock block, List<List<Symbol>> symbols) throws CompileException {
-        return block.createBinary(left.compile(functions, block, symbols), op, right.compile(functions, block, symbols));
     }
 }

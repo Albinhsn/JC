@@ -6,7 +6,7 @@ import java.nio.file.Path;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException, CompileException{
+    public static void main(String[] args) throws IOException, CompileException, UnknownSymbolException {
         String s = Files.readString(Path.of("resources/test.jc"));
         System.out.println(s);
         Scanner scanner = new Scanner(s);

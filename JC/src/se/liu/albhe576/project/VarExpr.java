@@ -2,7 +2,7 @@ package se.liu.albhe576.project;
 
 import java.util.List;
 
-public class VarExpr extends Expr {
+public class VarExpr implements  Expr {
     @Override
     public String toString() {
         return token.literal;
@@ -13,7 +13,4 @@ public class VarExpr extends Expr {
         this.token = token;
     }
 
-    @Override public Value compile(List<Signature> functions, BasicBlock block, List<List<Symbol>> symbols) throws CompileException {
-        return Symbol.lookupSymbol(symbols, token);
-    }
 }

@@ -1,6 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class FunctionStmt implements Stmt{
@@ -24,32 +23,16 @@ public class FunctionStmt implements Stmt{
 
     }
 
-    private final SymbolType returnType;
+    private final StructType returnType;
     private final String name;
     private final List<StructField> arguments;
     private final List<Stmt> body;
 
-    public FunctionStmt(SymbolType returnType, String name, List<StructField> arguments, List<Stmt> body){
+    public FunctionStmt(StructType returnType, String name, List<StructField> arguments, List<Stmt> body){
         this.returnType = returnType;
         this.name = name;
         this.arguments = arguments;
         this.body = body;
 
     }
-
-    @Override
-    public Signature getSignature() throws CompileException {
-        return new Signature(returnType, this.name, arguments);
-    }
-
-    @Override
-    public BasicBlock compile(final List<Signature> functions, BasicBlock block, final List<List<Symbol>> symbols) throws CompileException {
-        block.createLabel(this.name);
-        for(Stmt stmt :body){
-            block = stmt.compile(functions, block, symbols);
-        }
-
-        return block;
-    }
-
 }

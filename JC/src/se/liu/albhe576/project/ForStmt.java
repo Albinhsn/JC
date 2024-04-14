@@ -25,33 +25,4 @@ public class ForStmt implements  Stmt{
         this.body = body;
     }
 
-    @Override
-    public Signature getSignature() throws CompileException {
-        throw new CompileException("Can't get signature from this stmt");
-    }
-
-    @Override
-    public BasicBlock compile(List<Signature> functions, BasicBlock block, List<List<Symbol>> symbols) throws CompileException {
-        BasicBlock initBlock = new BasicBlock();
-        block.next = initBlock;
-        BasicBlock nextBlock = init.compile(functions, initBlock, symbols);
-
-        BasicBlock conditionBlock = new BasicBlock();
-        nextBlock.next = conditionBlock;
-
-        nextBlock = this.condition.compile(functions, conditionBlock, symbols);
-        BasicBlock bodyBlock = new BasicBlock();
-
-        nextBlock.next = bodyBlock;
-        for(Stmt stmt : body){
-            bodyBlock = stmt.compile(functions, bodyBlock, symbols);
-        }
-        nextBlock = update.compile(functions, bodyBlock, symbols);
-        nextBlock.createUnconditionalBranch(conditionBlock);
-
-        BasicBlock mergeBlock = new BasicBlock();
-        nextBlock.next = mergeBlock;
-
-        return mergeBlock;
-    }
 }
