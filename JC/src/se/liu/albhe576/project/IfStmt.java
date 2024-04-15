@@ -56,12 +56,16 @@ public class IfStmt implements Stmt{
             elseQuad.addAll(stmt.compile(symbolTable));
             symbolTable.pop();
         }
-        int jnzSize = 2 + ifQuad.size();
-        int jmpSize = elseQuad.size();
-        out.add(new Quad(QuadOp.JNZ, new ImmediateSymbol(new Token(TokenType.TOKEN_INT_LITERAL, 0, String.valueOf(jnzSize))), null, null));
+
+        ResultSymbol elseLabel = Compiler.generateLabel();
+        ResultSymbol mergeLabel = Compiler.generateLabel();
+
+        Quad.insertJMPOnComparisonCheck(out, elseLabel, false);
         out.addAll(ifQuad);
-        out.add(new Quad(QuadOp.JMP, new ImmediateSymbol(new Token(TokenType.TOKEN_INT_LITERAL, 0, String.valueOf(jmpSize))), null, null));
+        out.add(new Quad(QuadOp.JMP, mergeLabel, null, null));
+        out.add(new Quad(QuadOp.LABEL, elseLabel, null, null));
         out.addAll(elseQuad);
+        out.add(new Quad(QuadOp.LABEL, mergeLabel, null, null));
 
         return out;
     }

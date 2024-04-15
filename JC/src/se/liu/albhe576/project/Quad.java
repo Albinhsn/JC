@@ -21,6 +21,13 @@ public class Quad {
     public static Symbol getLastResult(List<Quad> quads){
         return quads.get(quads.size() - 1).result;
     }
+    public static Symbol getLastOperand(List<Quad> quads){
+        return quads.get(quads.size() - 1).operand1;
+    }
+
+    public static Quad insertLabel(ResultSymbol label){
+        return new Quad(QuadOp.LABEL, label, null, null);
+    }
 
     public Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result){
         this.op = op;
@@ -30,7 +37,25 @@ public class Quad {
 
     }
 
-    public String emit(QuadOp prevOp, Map<String, Integer> stackVariables, List<FunctionSymbol> functions){
+    public static void insertJMPOnComparisonCheck(List<Quad> quads, ResultSymbol jmpLocation, boolean jumpIfTrue){
+        String immLiteral;
+        if(jumpIfTrue){
+            immLiteral = "1";
+        }else{
+            immLiteral = "0";
+        }
+        ImmediateSymbol immediateSymbol = new ImmediateSymbol(new Token(TokenType.TOKEN_INT_LITERAL, 0, immLiteral));
+        ResultSymbol immLoadResult = Compiler.generateResultSymbol();
+        quads.add(new Quad(QuadOp.PUSH, null, null, null));
+        quads.add(new Quad(QuadOp.LOAD_IMM, immediateSymbol, null, immLoadResult));
+        quads.add(new Quad(QuadOp.MOV_REG_CA, null, null, null));
+        quads.add(new Quad(QuadOp.POP, null, null, null));
+        quads.add(new Quad(QuadOp.CMP, null, null,null));
+        quads.add(new Quad(QuadOp.JE, jmpLocation, null, null));
+
+    }
+
+    public String emit(QuadOp prevOp, Map<String, Integer> stackVariables, FunctionSymbol currentFunction){
         switch(this.op){
             case INDEX -> {}
             case LOAD_IMM -> {
@@ -59,7 +84,7 @@ public class Quad {
                 return "div rcx";
             }
             case LOAD ->{
-                int offset = 8 * (stackVariables.size() - stackVariables.get(operand1.name));
+                int offset = 8 * (stackVariables.size() - stackVariables.get(operand1.name) - 1);
                 if(prevOp == QuadOp.LOAD_IMM || prevOp == QuadOp.LOAD){
                     if(offset == 0){
                         return "mov rcx, [rsp]";
@@ -72,13 +97,36 @@ public class Quad {
 
             }
             case STORE -> {
-                stackVariables.put(result.name, stackVariables.size());
-                return "push rax";
+                if(stackVariables.containsKey(result.name)){
+                    int offset = 8 * (stackVariables.size() - stackVariables.get(result.name) - 1);
+                    if(offset == 0){
+                        return "mov [rsp], rax";
+                    }
+                   return String.format("mov [rsp + %d], rax", offset);
+                }else{
+                    stackVariables.put(result.name, stackVariables.size());
+                    return "push rax";
+                }
             }
-            case CMP -> {}
-            case JMP ->{}
-            case JNZ ->{}
+            case CMP -> {
+                return "cmp rax, rcx";
+            }
+            case JMP ->{
+                return String.format("jmp %s", operand1.name);
+            }
+            case JNZ ->{
+                return String.format("jnz %s", operand1.name);
+            }
+            case JE->{
+                return String.format("je %s", operand1.name);
+            }
+            case LABEL ->{
+                return operand1.name + ":";
+            }
             case JZ -> {}
+            case SETE -> {
+                return "sete al\nmovzx rax, al";
+            }
             case AND -> {}
             case OR -> {}
             case XOR -> {}
@@ -97,17 +145,17 @@ public class Quad {
                 return "mov rax, rcx";
             }
             case CALL ->{
-                int argSize = 0;
-                for(FunctionSymbol functionSymbol :functions){
-                    if(functionSymbol.name.equals(operand1.name)){
-                        argSize = 8 * functionSymbol.arguments.size();
-                    }
-                }
+                int argSize = 8 * currentFunction.arguments.size();
                 return String.format("call %s\nadd rsp, %d", operand1.name, argSize);
             }
             case GET_FIELD -> {}
             case SET_FIELD ->{}
             case RET ->{
+                int localVariables = stackVariables.size() - currentFunction.arguments.size();
+
+                if(localVariables > 0){
+                    return String.format("add rsp, %d\nret", localVariables * 8);
+                }
                 return "ret";
             }
             case SHL ->{}

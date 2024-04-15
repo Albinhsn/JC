@@ -24,13 +24,14 @@ public class AugmentedExpr implements  Expr{
     @Override
     public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws CompileException, UnknownSymbolException {
         List<Quad> targetQuads = target.compile(symbolTable);
-        Symbol targetSymbol = targetQuads.get(targetQuads.size() - 1).result;
+        Symbol targetSymbol = Quad.getLastOperand(targetQuads);
         List<Quad> valueQuads = value.compile(symbolTable);
-        Symbol valueSymbol = valueQuads.get(valueQuads.size() - 1).result;
+        Symbol valueSymbol = Quad.getLastResult(valueQuads);
 
 
         targetQuads.addAll(valueQuads);
         targetQuads.add(new Quad(QuadOp.fromToken(op), valueSymbol, null, targetSymbol));
+        targetQuads.add(new Quad(QuadOp.STORE, null, null, targetSymbol));
 
         return targetQuads;
     }

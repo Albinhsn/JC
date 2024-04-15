@@ -12,8 +12,12 @@ public class Compiler {
     private final Stack<List<Symbol>> symbolTable;
 
     private static int resultCount;
+    private static int labelCount;
     public static ResultSymbol generateResultSymbol(){
         return new ResultSymbol("T" + resultCount++);
+    }
+    public static ResultSymbol generateLabel(){
+        return new ResultSymbol(String.format("label%d", labelCount++));
     }
     public void Compile(String out) throws CompileException, IOException, UnknownSymbolException {
         Compiler.resultCount = 0;
@@ -62,7 +66,6 @@ public class Compiler {
         fileWriter.write(header.toString());
 
         List<FunctionSymbol> functionSymbols = new ArrayList<>();
-
         for(int i = 0; i < functions.size(); i++){
             Symbol symbol = functions.get(i);
             if(symbol instanceof StructSymbol){
@@ -85,7 +88,7 @@ public class Compiler {
             }
 
             for (Quad intermediate : intermediates) {
-                fileWriter.write(intermediate.emit(prevOp, stackVariables, functionSymbols) + "\n");
+                fileWriter.write(intermediate.emit(prevOp, stackVariables, functionSymbol) + "\n");
                 prevOp = intermediate.op;
             }
         }

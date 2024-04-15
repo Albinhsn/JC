@@ -33,26 +33,25 @@ public class ForStmt implements  Stmt{
 
         List<Quad> quads = new ArrayList<>(init.compile(symbolTable));
 
+        ResultSymbol conditionLabel = Compiler.generateLabel();
+        ResultSymbol mergeLabel = Compiler.generateLabel();
+
         // Compile condition
-        int conditionPoint = quads.size();
+        quads.add(Quad.insertLabel(conditionLabel));
         quads.addAll(condition.compile(symbolTable));
 
+        // check if we jump
+        Quad.insertJMPOnComparisonCheck(quads, mergeLabel, true);
         // Compile body
-        int bodyStart = quads.size();
-        Quad condJmp = quads.get(bodyStart - 1);
         for(Stmt stmt : body){
             quads.addAll(stmt.compile(symbolTable));
         }
 
         // Compile update and jumps
         quads.addAll(update.compile(symbolTable));
-        int jmpSize = quads.size() - conditionPoint;
-        ImmediateSymbol jmpImmediate = new ImmediateSymbol(new Token(TokenType.TOKEN_INT_LITERAL, 0, String.valueOf(-jmpSize)));
-        quads.add(new Quad(QuadOp.JMP, jmpImmediate,null, null));
+        quads.add(new Quad(QuadOp.JMP, conditionLabel,null, null));
+        quads.add(Quad.insertLabel(mergeLabel));
 
-        // Patch jump here which is kinda bad?
-        int jumpOver = quads.size() - bodyStart + 1;
-        condJmp.operand1 = new ImmediateSymbol(new Token(TokenType.TOKEN_INT_LITERAL, 0, String.valueOf(jumpOver)));
 
         symbolTable.pop();
         return quads;

@@ -29,7 +29,7 @@ public class ComparisonExpr implements Expr {
 
         l.addAll(r);
         l.add(new Quad(QuadOp.CMP, lSymbol, rSymbol, null));
-        l.add(new Quad(QuadOp.fromToken(op), null, null, null));
+        l.add(new Quad(QuadOp.fromToken(op), null, null, Compiler.generateResultSymbol()));
         return l;
     }
 }

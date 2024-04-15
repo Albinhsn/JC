@@ -1,7 +1,7 @@
 package se.liu.albhe576.project;
 
 public enum QuadOp {
-    INDEX, POP, LOAD_IMM, INC, ADD, JG, JGE, JL, SUB, MUL, DIV, LOAD, STORE, CMP, JMP, JNZ, JZ, AND, OR, XOR, PUSH, CALL, GET_FIELD, SET_FIELD, MOV_REG_AC, MOV_REG_CA, RET, SHL, SHR;
+    SETE, LABEL, INDEX, POP, LOAD_IMM, INC, ADD, JG,JE, JGE, JL, SUB, MUL, DIV, LOAD, STORE, CMP, JMP, JNZ, JZ, AND, OR, XOR, PUSH, CALL, GET_FIELD, SET_FIELD, MOV_REG_AC, MOV_REG_CA, RET, SHL, SHR;
 
     public static QuadOp fromToken(Token token) throws CompileException {
         switch(token.type){
@@ -25,6 +25,9 @@ public enum QuadOp {
             }
             case TOKEN_GREATER-> {
                 return JG;
+            }
+            case TOKEN_EQUAL_EQUAL-> {
+                return SETE;
             }
             case TOKEN_GREATER_EQUAL-> {
                 return JGE;
