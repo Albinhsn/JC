@@ -19,10 +19,21 @@ public class UnaryExpr implements Expr{
 
     @Override
     public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+        System.out.println(expr);
         List<Quad> quads = expr.compile(symbolTable);
-        Symbol symbol =Quad.getLastResult(quads);
+        Symbol symbol = Quad.getLastResult(quads);
 
-        quads.add(new Quad(QuadOp.fromToken(op), symbol, null, Compiler.generateResultSymbol()));
+        QuadOp quadOp;
+        switch(op.type){
+            case TOKEN_MINUS:{
+               quadOp = QuadOp.NOT;
+               break;
+            }
+            default:{
+                quadOp = QuadOp.fromToken(op);
+            }
+        }
+        quads.add(new Quad(quadOp, symbol, null, Compiler.generateResultSymbol()));
         return quads;
     }
 }

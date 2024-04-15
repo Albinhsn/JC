@@ -1,7 +1,7 @@
 package se.liu.albhe576.project;
 
 public enum StructType {
-    INT, FLOAT, BYTE, INT_POINTER, FLOAT_POINTER, BYTE_POINTER, STRUCT, STRUCT_POINTER, VOID, FUNCTION;
+    INT, FLOAT, BYTE, INT_POINTER, FLOAT_POINTER, BYTE_POINTER, STRUCT, STRUCT_POINTER, VOID;
 
     public static StructType getPointerType(StructType type) throws UnexpectedTokenException {
         switch(type){

@@ -28,27 +28,27 @@ public class ForStmt implements  Stmt{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
         symbolTable.push(new ArrayList<>());
 
-        List<Quad> quads = new ArrayList<>(init.compile(symbolTable));
+        List<Quad> quads = new ArrayList<>(init.compile(structTable, symbolTable));
 
         ResultSymbol conditionLabel = Compiler.generateLabel();
         ResultSymbol mergeLabel = Compiler.generateLabel();
 
         // Compile condition
         quads.add(Quad.insertLabel(conditionLabel));
-        quads.addAll(condition.compile(symbolTable));
+        quads.addAll(condition.compile(structTable, symbolTable));
 
         // check if we jump
         Quad.insertJMPOnComparisonCheck(quads, mergeLabel, true);
         // Compile body
         for(Stmt stmt : body){
-            quads.addAll(stmt.compile(symbolTable));
+            quads.addAll(stmt.compile(structTable, symbolTable));
         }
 
         // Compile update and jumps
-        quads.addAll(update.compile(symbolTable));
+        quads.addAll(update.compile(structTable, symbolTable));
         quads.add(new Quad(QuadOp.JMP, conditionLabel,null, null));
         quads.add(Quad.insertLabel(mergeLabel));
 

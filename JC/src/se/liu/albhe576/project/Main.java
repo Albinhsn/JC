@@ -12,6 +12,6 @@ public class Main {
         Scanner scanner = new Scanner(s);
         Parser parser = new Parser(scanner);
         Compiler compiler = new Compiler(parser.parse());
-        compiler.Compile("out.jc");
+        compiler.Compile("out.asm");
     }
 }

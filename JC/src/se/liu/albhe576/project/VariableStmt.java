@@ -7,24 +7,24 @@ public class VariableStmt implements Stmt{
 
     @Override
     public String toString() {
-        return String.format("%s %s = %s;", type, name, value);
+        return String.format("%s %s = %s;", structName, name, value);
     }
 
-    private final StructType type;
+    private final String structName;
     private final String name;
     private final Expr value;
-    public VariableStmt(StructType type, String name, Expr value){
-        this.type = type;
+    public VariableStmt(String structName, String name, Expr value){
         this.name = name;
+        this.structName = structName;
         this.value = value;
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
         List<Quad> val = value.compile(symbolTable);
         // Check for 0?
         Symbol lastSymbol = Quad.getLastResult(val);
-        Symbol variable = new VariableSymbol(type, name);
+        Symbol variable = new VariableSymbol(Compiler.lookupStruct(structTable, structName), name);
         val.add(
                 new Quad(
                         QuadOp.STORE,

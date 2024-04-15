@@ -25,8 +25,8 @@ public class StructStmt implements Stmt{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) {
-        symbolTable.peek().add(new StructSymbol(name.literal, fields));
+    public List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) {
+        structTable.add(new StructSymbol(name.literal, fields));
         return new ArrayList<>();
     }
 }

@@ -1,7 +1,7 @@
 package se.liu.albhe576.project;
 
 public enum QuadOp {
-    SETE, LABEL, INDEX, POP, LOAD_IMM, INC, ADD, JG,JE, JGE, JL, SUB, MUL, DIV, LOAD, STORE, CMP, JMP, JNZ, JZ, AND, OR, XOR, PUSH, CALL, GET_FIELD, SET_FIELD, MOV_REG_AC, MOV_REG_CA, RET, SHL, SHR;
+    NOT, LOGICAL_NOT, SETNE, SETLE, SETL, SETG, SETGE, SETE, LABEL, INDEX, POP, LOAD_POINTER, LOAD_IMM, INC,DEC, ADD, JG,JE, JGE, JL, SUB, MUL, DIV, LOAD, STORE, CMP, JMP, JNZ, JZ, AND, OR, XOR, PUSH,CALL, GET_FIELD, SET_FIELD, MOV_REG_AC, MOV_REG_CA, RET, SHL, SHR;
 
     public static QuadOp fromToken(Token token) throws CompileException {
         switch(token.type){
@@ -20,20 +20,35 @@ public enum QuadOp {
             case TOKEN_SHIFT_LEFT-> {
                 return SHL;
             }
+            case TOKEN_SHIFT_RIGHT-> {
+                return SHR;
+            }
+            case TOKEN_INCREMENT-> {
+                return INC;
+            }
+            case TOKEN_DECREMENT-> {
+                return DEC;
+            }
+            case TOKEN_BANG-> {
+                return LOGICAL_NOT;
+            }
+            case TOKEN_BANG_EQUAL-> {
+                return SETNE;
+            }
             case TOKEN_LESS-> {
-                return JL;
+                return SETL;
+            }
+            case TOKEN_LESS_EQUAL-> {
+                return SETLE;
             }
             case TOKEN_GREATER-> {
-                return JG;
+                return SETG;
             }
             case TOKEN_EQUAL_EQUAL-> {
                 return SETE;
             }
             case TOKEN_GREATER_EQUAL-> {
-                return JGE;
-            }
-            case TOKEN_SHIFT_RIGHT-> {
-                return SHR;
+                return SETGE;
             }
             case TOKEN_AUGMENTED_AND, TOKEN_AND_BIT -> {
                 return AND;

@@ -24,7 +24,7 @@ public class AugmentedExpr implements  Expr{
     @Override
     public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws CompileException, UnknownSymbolException {
         List<Quad> targetQuads = target.compile(symbolTable);
-        Symbol targetSymbol = Quad.getLastOperand(targetQuads);
+        Symbol targetSymbol = Quad.getLastOperand1(targetQuads);
         List<Quad> valueQuads = value.compile(symbolTable);
         Symbol valueSymbol = Quad.getLastResult(valueQuads);
 

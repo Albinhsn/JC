@@ -16,6 +16,7 @@ public abstract class Symbol {
         return this.name;
     }
 
+
     public static Symbol findSymbol(Stack<List<Symbol>> symbolTable, String name) throws UnknownSymbolException {
 
         for(List<Symbol> table : symbolTable){

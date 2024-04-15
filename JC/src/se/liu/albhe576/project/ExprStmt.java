@@ -18,7 +18,7 @@ public class ExprStmt implements  Stmt{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
         return expr.compile(symbolTable);
     }
 }

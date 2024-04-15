@@ -86,7 +86,7 @@ public class Parser {
             if(!matchType(TokenType.TOKEN_SEMICOLON)){
                 throw new UnexpectedTokenException(String.format("Expected semicolon after struct field but got %s", this.current.type));
             }
-            fields.add(new StructField(fieldName, StructType.getStructTypeFromToken(fieldType)));
+            fields.add(new StructField(fieldName, StructType.getStructTypeFromToken(fieldType), fieldType.literal));
         }
         return new StructStmt(name, fields);
     }
@@ -145,20 +145,19 @@ public class Parser {
             if(matchType(TokenType.TOKEN_IDENTIFIER)){
                 Token name = this.previous;
                 if(this.current.type == TokenType.TOKEN_SEMICOLON){
-                    return new VariableStmt(StructType.getStructTypeFromToken(type), name.literal,new LiteralExpr(new Token(TokenType.TOKEN_INT_LITERAL,this.scanner.getLine(), "0")));
+                    return new VariableStmt(type.literal, name.literal,new LiteralExpr(new Token(TokenType.TOKEN_INT_LITERAL,this.scanner.getLine(), "0")));
                 }
                 consume(TokenType.TOKEN_EQUAL, "Expected '=' or ';' after x2 ident?");
-                return new VariableStmt(StructType.getStructTypeFromToken(type), name.literal,parseExpr(new EmptyExpr(), Precedence.ASSIGNMENT));
+                return new VariableStmt(type.literal, name.literal,parseExpr(new EmptyExpr(), Precedence.ASSIGNMENT));
 
             }else if(matchType(TokenType.TOKEN_STAR)){
                 if(matchType(TokenType.TOKEN_IDENTIFIER)){
                     Token name = this.previous;
-                    StructType structType = StructType.getStructTypeFromToken(type);
                     if(this.current.type == TokenType.TOKEN_SEMICOLON){
-                        return new VariableStmt(StructType.getPointerType(structType), name.literal,new LiteralExpr(new Token(TokenType.TOKEN_INT_LITERAL,this.scanner.getLine(), "0")));
+                        return new VariableStmt(type.literal, name.literal,new LiteralExpr(new Token(TokenType.TOKEN_INT_LITERAL,this.scanner.getLine(), "0")));
                     }
                     consume(TokenType.TOKEN_EQUAL, "Expected '=' or ';' after 'foo * bar'?");
-                    return new VariableStmt(structType, name.literal,parseExpr(new EmptyExpr(), Precedence.ASSIGNMENT));
+                    return new VariableStmt(type.literal, name.literal,parseExpr(new EmptyExpr(), Precedence.ASSIGNMENT));
                 }
             }else if(matchType(TokenType.TOKEN_DOT)){
                 consume(TokenType.TOKEN_IDENTIFIER, "Expected identifier after foo.");
@@ -233,7 +232,7 @@ public class Parser {
                     throw new UnexpectedTokenException(String.format("Expected identifier as argument but got %s", this.current.type));
                 }
                 String name = this.previous.literal;
-                args.add(new StructField(name, StructType.getStructTypeFromToken(type)));
+                args.add(new StructField(name, StructType.getStructTypeFromToken(type), type.literal));
 
             }while(matchType(TokenType.TOKEN_COMMA));
         }
@@ -241,6 +240,7 @@ public class Parser {
         return args;
     }
     private Stmt variableDeclaration() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+        String typeName = this.current.literal;
         StructType type = StructType.getStructTypeFromToken(this.current);
         advance();
         if(matchType(TokenType.TOKEN_STAR)){
@@ -258,7 +258,7 @@ public class Parser {
 
             Expr value = parseExpr(new EmptyExpr(), Precedence.ASSIGNMENT);
             consume(TokenType.TOKEN_SEMICOLON, String.format("expected semicolon after assign expr but got %s", this.current.type));
-            return new VariableStmt(type, name,value);
+            return new VariableStmt(typeName, name,value);
 
         }else if(matchType(TokenType.TOKEN_LEFT_PAREN)){
             List<StructField> args = this.parseArguments();
@@ -272,7 +272,7 @@ public class Parser {
             List<Stmt> body = this.parseBody();
             return new FunctionStmt(type, name,args, body);
         }else if(matchType(TokenType.TOKEN_SEMICOLON)){
-            return new VariableStmt(type, name, null);
+            return new VariableStmt(typeName, name, null);
         }
 
         throw new UnexpectedTokenException(String.format("Expected '=' or '(' after variable but got %s", this.current.type));
@@ -446,7 +446,7 @@ public class Parser {
         this.parseFunctions.put(TokenType.TOKEN_INT_LITERAL, new ParseFunction(this::literal, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_FLOAT_LITERAL, new ParseFunction(this::literal, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_AND_LOGICAL, new ParseFunction(null, this::logical, Precedence.AND));
-        this.parseFunctions.put(TokenType.TOKEN_AND_BIT, new ParseFunction(this::unary, this::binary, Precedence.BITWISE));
+        this.parseFunctions.put(TokenType.TOKEN_AND_BIT, new ParseFunction(null, this::binary, Precedence.BITWISE));
         this.parseFunctions.put(TokenType.TOKEN_OR_LOGICAL, new ParseFunction(null, this::logical, Precedence.OR));
         this.parseFunctions.put(TokenType.TOKEN_OR_BIT, new ParseFunction(null, this::binary, Precedence.BITWISE));
         this.parseFunctions.put(TokenType.TOKEN_XOR, new ParseFunction(null, this::binary, Precedence.BITWISE));

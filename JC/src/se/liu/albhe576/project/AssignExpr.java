@@ -21,6 +21,19 @@ public class AssignExpr implements  Expr{
         List<Quad> val = value.compile(symbolTable);
         List<Quad> targetVariable = variable.compile(symbolTable);
 
+
+        if(variable instanceof DotExpr dotExpr){
+            targetVariable.remove(targetVariable.size() - 1);
+            Symbol result = Quad.getLastOperand1(targetVariable);
+            targetVariable.add(new Quad(QuadOp.PUSH, null, null, null));
+            targetVariable.addAll(val);
+            targetVariable.add(new Quad(QuadOp.MOV_REG_CA, null, null, null));
+            targetVariable.add(new Quad(QuadOp.POP, null, null, null));
+            targetVariable.add(new Quad(QuadOp.SET_FIELD, null, new ResultSymbol(dotExpr.member.literal), result));
+            return targetVariable;
+
+        }
+
         // Figure out if legal?
         Symbol res = Quad.getLastResult(val);
         val.addAll(targetVariable);

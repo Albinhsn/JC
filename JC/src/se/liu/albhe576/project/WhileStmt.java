@@ -24,13 +24,21 @@ public class WhileStmt implements  Stmt{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
-        List<Quad> out = condition.compile(symbolTable);
-        // insert check and jump
+    public List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+        List<Quad> out  = new ArrayList<>();
+        ResultSymbol condLabel = Compiler.generateLabel();
+        out.add(Quad.insertLabel(condLabel));
+        out.addAll(condition.compile(symbolTable));
+
+        ResultSymbol mergeLabel = Compiler.generateLabel();
+        Quad.insertJMPOnComparisonCheck(out, mergeLabel, false);
+
         symbolTable.push(new ArrayList<>());
         for(Stmt stmt : body){
-            out.addAll(stmt.compile(symbolTable));
+            out.addAll(stmt.compile(structTable, symbolTable));
         }
+        out.add(new Quad(QuadOp.JMP, condLabel, null, null));
+        out.add(Quad.insertLabel(mergeLabel));
         symbolTable.pop();
 
         return out;

@@ -15,7 +15,7 @@ public class GroupedExpr implements Expr{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) {
-        return null;
+    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+        return expr.compile(symbolTable);
     }
 }

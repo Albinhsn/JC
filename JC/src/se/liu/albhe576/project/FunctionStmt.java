@@ -39,18 +39,18 @@ public class FunctionStmt implements Stmt{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
         List<Quad> out = new ArrayList<>();
 
         symbolTable.peek().add(new FunctionSymbol(name, arguments, returnType));
         List<Symbol> functionSymbols = new ArrayList<>();
         for(StructField arg : arguments){
-            functionSymbols.add(new VariableSymbol(arg.type, arg.name));
+            functionSymbols.add(new VariableSymbol(Compiler.lookupStruct(structTable, arg.structName), arg.name));
         }
 
         symbolTable.push(functionSymbols);
         for(Stmt stmt : body){
-            out.addAll(stmt.compile(symbolTable));
+            out.addAll(stmt.compile(structTable, symbolTable));
         }
         symbolTable.pop();
 

@@ -38,14 +38,14 @@ public class IfStmt implements Stmt{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
         List<Quad> out = new ArrayList<>(condition.compile(symbolTable));
 
         // insert conditional check
         List<Quad> ifQuad = new ArrayList<>();
         for(Stmt stmt : ifBody){
             symbolTable.push(new ArrayList<>());
-            ifQuad.addAll(stmt.compile(symbolTable));
+            ifQuad.addAll(stmt.compile(structTable, symbolTable));
             symbolTable.pop();
         }
 
@@ -53,7 +53,7 @@ public class IfStmt implements Stmt{
         List<Quad> elseQuad = new ArrayList<>();
         for(Stmt stmt : elseBody){
             symbolTable.push(new ArrayList<>());
-            elseQuad.addAll(stmt.compile(symbolTable));
+            elseQuad.addAll(stmt.compile(structTable, symbolTable));
             symbolTable.pop();
         }
 

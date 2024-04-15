@@ -9,9 +9,11 @@ public class StructField {
 
     public final String name;
     public final StructType type;
+    public final String structName;
 
-    public StructField(String name, StructType type) {
+    public StructField(String name, StructType type, String structName) {
         this.name = name;
         this.type = type;
+        this.structName = structName;
     }
 }
