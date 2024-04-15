@@ -27,6 +27,10 @@ public abstract class Symbol {
         }
         throw new UnknownSymbolException(String.format("Can't find symbol %s in the table",name));
     }
+
+    public static int calculateStackOffset(List<Symbol> symbols, String variable){
+        return 0;
+    }
     public Symbol(String name){
         this.name = name;
 

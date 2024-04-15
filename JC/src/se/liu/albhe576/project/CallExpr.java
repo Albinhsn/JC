@@ -29,6 +29,7 @@ public class CallExpr implements Expr{
     @Override
     public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws CompileException, UnknownSymbolException {
         List<Quad> quads = new ArrayList<>();
+
         for(Expr arg : args){
             List<Quad> argQuad = arg.compile(symbolTable);
             Symbol argSymbol = Quad.getLastResult(argQuad);
