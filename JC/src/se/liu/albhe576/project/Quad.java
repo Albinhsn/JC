@@ -143,6 +143,12 @@ public class Quad {
             case MOV_REG_AC ->{
                 return "mov rax, rcx";
             }
+            case MOV_REG_DA ->{
+                return "mov rdx, rax";
+            }
+            case MOV_REG_AD ->{
+                return "mov rax, rdx";
+            }
             case CALL ->{
                 int argSize = 8;
                 for(FunctionSymbol symbol : functions){

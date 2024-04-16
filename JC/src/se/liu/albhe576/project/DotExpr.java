@@ -25,7 +25,7 @@ public class DotExpr implements  Expr{
         // The question if whether we need to
         List<Quad> quads = variable.compile(symbolTable);
         Symbol lastSymbol = Quad.getLastOperand1(quads);
-        quads.add(new Quad(QuadOp.GET_FIELD, lastSymbol, new ImmediateSymbol(member), Compiler.generateResultSymbol()));
+        quads.add(new Quad(QuadOp.GET_FIELD, lastSymbol, new ResultSymbol(member.literal), Compiler.generateResultSymbol()));
         return quads;
     }
 }

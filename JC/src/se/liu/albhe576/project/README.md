@@ -5,8 +5,9 @@
 * includes
 
 ## Compiler
-* structs
-  * just rework how we manage structs and type, functions and signatures 
+* just rework how we manage structs and type, functions and signatures 
+  * symbols especially
+* float and byte :)
 * pointers
 * array
 * index
@@ -23,6 +24,7 @@
 * can redeclare variable if it's arg?
 * actually test every instruction
 * insert ret if not there?
+
 
 
 

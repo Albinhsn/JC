@@ -1,5 +1,7 @@
 package se.liu.albhe576.project;
 
+import javax.swing.*;
+import javax.swing.plaf.basic.BasicInternalFrameTitlePane;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,33 +15,35 @@ public class Stack {
             int size = 0;
             for(StructField field : type.fields){
                 if(field.name.equals(name)){
-                    System.out.printf("FOUND FIELD %s\n", name);
                     return size;
                 }
                 size += 8;
             }
-            System.out.printf("DIDN*T FIND FIELD %s\n", name);
             return 0;
         }
         StackSymbol(int offset, StructSymbol type, String name){
             this.type   = type;
             this.name   = name;
-            this.offset = offset + type.getSize();
+            this.offset = offset;
         }
     };
 
     private final List<StackSymbol> stackSymbols;
 
     public String loadStructPointer(String name) throws UnknownSymbolException {
-
         StackSymbol symbol = this.findSymbol(name);
-        return String.format("lea rax, [rsp + %d]", symbol.offset);
+        System.out.println(symbol.offset);
+        if(symbol.offset < 0){
+            return String.format("lea rax, [rbp + %d]", -symbol.offset);
+        }else{
+            return String.format("lea rax, [rbp - %d]", -symbol.offset);
+        }
     }
     public String loadField(String variableName, String memberName) throws UnknownSymbolException {
         StackSymbol variable = this.findSymbol(variableName);
-        int offset = this.getStackPointerOffset(variable) + variable.getFieldOffset(memberName);
+        int offset = variable.getFieldOffset(memberName);
 
-        if(offset != 0){
+        if(offset == 0){
             return String.format("mov rax, [rax]");
         }
         return String.format("mov rax, [rax + %d]", offset);
@@ -67,12 +71,9 @@ public class Stack {
 
     public int getLocalSize(){
         int size = 0;
-        System.out.printf("Got %d symbols on the stack\n", this.stackSymbols.size());
         for(StackSymbol stackSymbol : this.stackSymbols){
                 size += stackSymbol.type.getSize();
-                System.out.printf("Added %d\n", size);
         }
-        System.out.printf("And ended up with %d in size\n", size);
         return size;
     }
     public String loadVariable(String name, QuadOp prevOp) throws UnknownSymbolException {
@@ -91,8 +92,12 @@ public class Stack {
             }
             return this.storeArgument(symbol);
         }catch (UnknownSymbolException e){
-            int size = this.getLocalSize();
-            this.stackSymbols.add(new StackSymbol(size, type, name));
+            int structSize = type.getSize();
+            int offset = this.getLocalSize() + structSize;
+            this.stackSymbols.add(new StackSymbol(offset, type, name));
+            if(structSize > 8){
+                return String.format("sub rsp, %d", structSize);
+            }
             return "push rax";
         }
 
@@ -139,11 +144,11 @@ public class Stack {
     public Stack(List<StructSymbol> arguments, List<String> names){
         this.stackSymbols = new ArrayList<>();
 
-        for(int i = 0, offset = 8; i < arguments.size(); i++){
+        for(int i = 0, offset = -16; i < arguments.size(); i++){
             StructSymbol arg = arguments.get(i);
             String name = names.get(i);
             this.stackSymbols.add(new StackSymbol(offset, arg, name));
-            offset += arg.getSize();
+            offset -= arg.getSize();
         }
 
     }

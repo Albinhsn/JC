@@ -32,9 +32,25 @@ public class CallExpr implements Expr{
 
         for(Expr arg : args){
             List<Quad> argQuad = arg.compile(symbolTable);
-            Symbol argSymbol = Quad.getLastResult(argQuad);
+            Quad lastQuad = argQuad.get(argQuad.size() - 1);
+            Symbol argSymbol = lastQuad.result;
             quads.addAll(argQuad);
-            quads.add(new Quad(QuadOp.PUSH, argSymbol, null, null));
+            if(lastQuad.op == QuadOp.LOAD_POINTER){
+                // Essentially create a new symbol of that size in the next scope
+                VariableSymbol variableSymbol = (VariableSymbol) Symbol.findSymbol(symbolTable, lastQuad.operand1.name);
+                Symbol varPointer = lastQuad.operand1;
+                quads.add(new Quad(QuadOp.MOV_REG_DA,null, null, null));
+                List<StructField> fields = variableSymbol.type.fields;
+                for(int i = fields.size() - 1; i >= 0; i--){
+                    StructField field = fields.get(i);
+                    quads.add(new Quad(QuadOp.GET_FIELD, varPointer, new ResultSymbol(field.name), Compiler.generateResultSymbol()));
+                    quads.add(new Quad(QuadOp.PUSH, null, null, null));
+                    quads.add(new Quad(QuadOp.MOV_REG_AD, null, null, null));
+                }
+            }else{
+                quads.add(new Quad(QuadOp.PUSH, argSymbol, null, null));
+            }
+
         }
 
         // check valid call?

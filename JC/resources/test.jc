@@ -1,12 +1,15 @@
 struct Foo{
     int a;
+    int b;
 }
-void add(int a){
-    return a;
+int add(Foo foo){
+    return foo.a + foo.b;
 }
+
 void main() {
     Foo foo;
     foo.a = 5;
-    return foo.a + add(2);
+    foo.b = 3;
+    return add(foo);
 }
 

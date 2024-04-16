@@ -11,7 +11,6 @@ public class Compiler {
 
     private final List<List<Quad>> intermediate;
     private final java.util.Stack<List<Symbol>> symbolTable;
-
     private static int resultCount;
     private static int labelCount;
     public static ResultSymbol generateResultSymbol(){
@@ -87,6 +86,7 @@ public class Compiler {
         List<String> argNames = new ArrayList<>();
         for (StructField arg : arguments) {
             args.add(lookupStruct(structSymbols, arg.structName));
+            argNames.add(arg.name);
 
         }
         return new Stack(args, argNames);
