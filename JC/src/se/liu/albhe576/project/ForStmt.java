@@ -29,7 +29,6 @@ public class ForStmt implements  Stmt{
 
     @Override
     public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
-        symbolTable.localSymbolTable.push(new ArrayList<>());
 
         List<Quad> quads = new ArrayList<>(init.compile(symbolTable));
 
@@ -37,11 +36,12 @@ public class ForStmt implements  Stmt{
         Symbol mergeLabel = Compiler.generateLabel();
 
         // Compile condition
+        symbolTable.enterScope();
         quads.add(Quad.insertLabel(conditionLabel));
         quads.addAll(condition.compile(symbolTable));
 
         // check if we jump
-        Quad.insertJMPOnComparisonCheck(quads, mergeLabel, true);
+        Quad.insertJMPOnComparisonCheck(quads, mergeLabel, false);
         // Compile body
         for(Stmt stmt : body){
             quads.addAll(stmt.compile(symbolTable));
@@ -51,9 +51,9 @@ public class ForStmt implements  Stmt{
         quads.addAll(update.compile(symbolTable));
         quads.add(new Quad(QuadOp.JMP, conditionLabel,null, null));
         quads.add(Quad.insertLabel(mergeLabel));
+        symbolTable.exitScope();
 
 
-        symbolTable.localSymbolTable.pop();
         return quads;
     }
 }

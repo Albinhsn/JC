@@ -26,8 +26,10 @@ public class ComparisonExpr implements Expr {
 
         Symbol lSymbol = Quad.getLastResult(l);
         Symbol rSymbol = Quad.getLastResult(r);
-
+        l.add(new Quad(QuadOp.PUSH, null, null, null));
         l.addAll(r);
+        l.add(new Quad(QuadOp.MOV_REG_CA, null, null, null));
+        l.add(new Quad(QuadOp.POP, null, null, null));
         l.add(new Quad(QuadOp.CMP, lSymbol, rSymbol, null));
         l.add(new Quad(QuadOp.fromToken(op), null, null, Compiler.generateSymbol(DataType.getInt())));
         return l;

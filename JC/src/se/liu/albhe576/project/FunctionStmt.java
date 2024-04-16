@@ -41,18 +41,19 @@ public class FunctionStmt implements Stmt{
     @Override
     public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
         List<Quad> out = new ArrayList<>();
-        symbolTable.functions.add(new Function(name, arguments, returnType, out));
+        symbolTable.addFunction(new Function(name, arguments, returnType, out));
+
 
         List<Symbol> localSymbols =new ArrayList<>();
         for(StructField arg : arguments){
            localSymbols.add(new Symbol(arg.name, arg.type));
         }
-        symbolTable.localSymbolTable.push(localSymbols);
 
+        symbolTable.enterScope(localSymbols);
         for(Stmt stmt : body){
             out.addAll(stmt.compile(symbolTable));
         }
-        symbolTable.localSymbolTable.pop();
+        symbolTable.exitScope();
 
         return out;
     }

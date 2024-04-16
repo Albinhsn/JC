@@ -9,17 +9,28 @@ public class DataType {
         if((other.type == DataTypes.STRUCT && type == DataTypes.STRUCT) || (other.type == DataTypes.STRUCT_POINTER && type == DataTypes.STRUCT_POINTER)){
             return other.name.equals(name);
         }
-        return type == other.type;
+
+        return (type == other.type) || (type.isPointer() && other.type.isPointer());
     }
 
-    public static DataType getPointerType(DataType dataType) throws UnexpectedTokenException {
-        switch(dataType.type){
-            case INT -> {return getIntPointer();}
-            case FLOAT -> {return getFloatPointer();}
-            case BYTE -> {return getBytePointer();}
-            case STRUCT -> {return getStructPointer(dataType.name);}
-        }
-        throw new UnexpectedTokenException(String.format("Can't parse value type pointer from %s", dataType.name));
+
+    public static DataType getTypeFromPointer(DataType type) throws CompileException {
+        return switch (type.type) {
+            case INT_POINTER -> getInt();
+            case FLOAT_POINTER -> getFloat();
+            case BYTE_POINTER -> getByte();
+            case STRUCT_POINTER -> getStruct(type.name);
+            default -> throw new CompileException(String.format("Can't get pointer from %s", type.name));
+        };
+    }
+    public static DataType getPointerFromType(DataType type) throws CompileException {
+            return switch (type.type) {
+                case INT -> DataType.getIntPointer();
+                case FLOAT -> getFloatPointer();
+                case BYTE -> getBytePointer();
+                case STRUCT -> getStructPointer(type.name);
+                default -> throw new CompileException(String.format("Can't get pointer from %s", type.name));
+            };
     }
     public static DataType getFunction(){
         return new DataType("function", DataTypes.FUNCTION);
@@ -28,16 +39,19 @@ public class DataType {
         return new DataType("int", DataTypes.INT);
     }
     public static DataType getIntPointer(){
-        return new DataType("int *", DataTypes.INT_POINTER);
+        return new DataType("int", DataTypes.INT_POINTER);
     }
     public static DataType getFloatPointer(){
-        return new DataType("float *", DataTypes.FLOAT_POINTER);
+        return new DataType("float", DataTypes.FLOAT_POINTER);
     }
     public static DataType getBytePointer(){
-        return new DataType("byte *", DataTypes.BYTE_POINTER);
+        return new DataType("byte", DataTypes.BYTE_POINTER);
+    }
+    public static DataType getVoidPointer(){
+        return new DataType("void", DataTypes.VOID_POINTER);
     }
     public static DataType getStructPointer(String name){
-        return new DataType(name + " *", DataTypes.STRUCT_POINTER);
+        return new DataType(name, DataTypes.STRUCT_POINTER);
     }
     public static DataType getFloat(){
         return new DataType("float", DataTypes.FLOAT);

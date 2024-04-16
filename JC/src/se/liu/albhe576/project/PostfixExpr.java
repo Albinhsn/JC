@@ -27,7 +27,13 @@ public class PostfixExpr implements Expr{
         Symbol increasedSymbol = Compiler.generateSymbol(symbol.type);
 
         quads.add(new Quad(QuadOp.LOAD, symbol, null, loadedSymbol));
-        quads.add(new Quad(QuadOp.INC, loadedSymbol, null, increasedSymbol));
+        if(!loadedSymbol.type.type.isPointer()){
+            quads.add(new Quad(QuadOp.INC, loadedSymbol, null, increasedSymbol));
+        }else{
+            quads.add(new Quad(QuadOp.MOV_REG_CA, null, null, null));
+            quads.add(new Quad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "8"), null, null));
+            quads.add(new Quad(QuadOp.ADD, loadedSymbol, null, increasedSymbol));
+        }
         quads.add(new Quad(QuadOp.STORE, increasedSymbol, null, symbol));
         return quads;
     }

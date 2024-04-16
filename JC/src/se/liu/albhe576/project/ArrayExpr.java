@@ -2,7 +2,6 @@ package se.liu.albhe576.project;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 
 public class ArrayExpr implements Expr{
 
@@ -27,7 +26,15 @@ public class ArrayExpr implements Expr{
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException {
-        return null;
+    public List<Quad> compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
+
+        // We declare the amount of stack space we need up front for the array
+        // Then we push the items up
+        // And lastly we store some pointer to the beginning
+        List<Quad> quads = new ArrayList<>();
+        for(int i = items.size() -1; i >= 0; i--){
+            quads.addAll(items.get(i).compile(symbolTable));
+        }
+        return quads;
     }
 }

@@ -68,6 +68,8 @@ public class Scanner {
                 }
                 case '!':{
                 }
+                case '%':{
+                }
                 case '.':{
                 }
                 case '^':{
@@ -219,6 +221,7 @@ public class Scanner {
             case ']' -> this.createToken(TokenType.TOKEN_RIGHT_BRACKET, "]");
             case ';' -> this.createToken(TokenType.TOKEN_SEMICOLON, ";");
             case ':' -> this.createToken(TokenType.TOKEN_COLON, ":");
+            case '%' -> this.createToken(TokenType.TOKEN_MOD, "%");
             case ',' -> this.createToken(TokenType.TOKEN_COMMA, ",");
             case '.' -> this.createToken(TokenType.TOKEN_DOT, ".");
             case '(' -> this.createToken(TokenType.TOKEN_LEFT_PAREN, "(");

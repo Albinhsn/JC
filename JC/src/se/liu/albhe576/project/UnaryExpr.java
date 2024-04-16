@@ -19,12 +19,28 @@ public class UnaryExpr implements Expr{
 
     @Override
     public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
-        System.out.println(expr);
         List<Quad> quads = expr.compile(symbolTable);
         Symbol symbol = Quad.getLastResult(quads);
-
+        Symbol result = Compiler.generateSymbol(symbol.type);
         QuadOp quadOp;
+
         switch(op.type){
+            // Take the address of a pointer
+            case TOKEN_AND_BIT:{
+                // Remove load
+                symbol = Quad.getLastOperand1(quads);
+                quads.remove(quads.size() - 1);
+                result = Compiler.generateSymbol(DataType.getPointerFromType(symbol.type));
+                quadOp = QuadOp.LOAD_POINTER;
+                break;
+            }
+            // Dereference
+            case TOKEN_STAR:{
+                quadOp = QuadOp.DEREFERENCE;
+                Symbol operand = Quad.getLastOperand1(quads);
+                result = Compiler.generateSymbol(DataType.getTypeFromPointer(operand.type));
+                break;
+            }
             case TOKEN_MINUS:{
                quadOp = QuadOp.NOT;
                break;
@@ -33,7 +49,8 @@ public class UnaryExpr implements Expr{
                 quadOp = QuadOp.fromToken(op);
             }
         }
-        quads.add(new Quad(quadOp, symbol, null, Compiler.generateSymbol(symbol.type)));
+
+        quads.add(new Quad(quadOp, symbol, null, result));
         return quads;
     }
 }

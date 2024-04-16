@@ -8,23 +8,45 @@ import java.util.Map;
 public class SymbolTable {
 
     public final List<Struct> structs;
-    public final List<Function> functions;
-    public final Map<String, String> constants;
-    public final java.util.Stack<List<Symbol>> localSymbolTable;
+    private final List<Function> functions;
+    private final List<Function> libraryFunctions;
+    private final Map<String, String> constants;
+    private final java.util.Stack<List<Symbol>> localSymbolTable;
 
     public void enterScope(){
         this.localSymbolTable.push(new ArrayList<>());
+    }
+    public void enterScope(List<Symbol> symbols){
+        this.localSymbolTable.push(symbols);
     }
     public void exitScope(){
         this.localSymbolTable.pop();
     }
 
 
+    public Function getCurrentFunction(){
+        return this.functions.get(this.functions.size() - 1);
+    }
+    public List<Function> getFunctions(){
+        return this.functions;
+    }
+    public Map<String, String> getConstants(){
+        return this.constants;
+    }
     public void addSymbol(Symbol symbol){
+
         localSymbolTable.peek().add(symbol);
+    }
+    public void addFunction(Function function){
+        this.functions.add(function);
     }
     public Function getFunction(String name) throws UnknownSymbolException{
         for(Function function : functions){
+            if(function.name.equals(name)){
+                return function;
+            }
+        }
+        for(Function function : this.libraryFunctions){
             if(function.name.equals(name)){
                 return function;
             }
@@ -37,6 +59,24 @@ public class SymbolTable {
         constants.put(constant, constName);
     }
 
+    public boolean isLibraryFunction(String name){
+        for(Function function : this.libraryFunctions){
+            if(function.name.equals(name)){
+                return true;
+            }
+        }
+        return false;
+    }
+    public boolean symbolExists(String name) {
+        for(List<Symbol> symbols : this.localSymbolTable){
+            for(Symbol symbol : symbols){
+                if(symbol.name.equals(name)){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     public Symbol findSymbol(String name) throws UnknownSymbolException {
         for(List<Symbol> symbols : this.localSymbolTable){
             for(Symbol symbol : symbols){
@@ -48,7 +88,7 @@ public class SymbolTable {
         throw new UnknownSymbolException(String.format("Can't find symbol of name %s", name));
     }
     public Symbol getMemberSymbol(Symbol structSymbol, String member) throws UnknownSymbolException {
-        Struct struct = lookupStruct(this.structs, structSymbol.name);
+        Struct struct = lookupStruct(this.structs, structSymbol.type.name);
         for(StructField field : struct.fields){
             if(field.name.equals(member)){
                return new Symbol(member, field.type);
@@ -58,9 +98,7 @@ public class SymbolTable {
     }
 
     public static Struct lookupStruct(List<Struct> structs, String name) throws UnknownSymbolException {
-        System.out.printf("Looking for %s\n", name);
         for(Struct struct : structs){
-            System.out.printf("Checking vs %s\n", struct.type.name);
             if(struct.type.name.equals(name)){
                 return struct;
             }
@@ -68,11 +106,26 @@ public class SymbolTable {
         throw new UnknownSymbolException(String.format("Couldn't find struct '%s'", name));
     }
 
+    private void addLibraryFunctions(){
+        List<StructField> mallocArgs = new ArrayList<>();
+        mallocArgs.add(new StructField("size", DataType.getInt(), "int"));
+        Function malloc = new Function("malloc", mallocArgs, DataType.getVoidPointer(), new ArrayList<>());
+
+        this.libraryFunctions.add(malloc);
+
+        List<StructField> freeArgs = new ArrayList<>();
+        freeArgs.add(new StructField("pointer", DataType.getVoidPointer(), "void *"));
+        Function free = new Function("free", freeArgs, DataType.getVoid(), new ArrayList<>());
+
+        this.libraryFunctions.add(free);
+    }
 
     public SymbolTable(){
         this.constants = new HashMap<>();
         this.structs = new ArrayList<>();
         this.functions = new ArrayList<>();
+        this.libraryFunctions = new ArrayList<>();
+        this.addLibraryFunctions();
         this.localSymbolTable = new java.util.Stack<>();
     }
 }

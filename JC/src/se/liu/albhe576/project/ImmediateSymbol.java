@@ -7,6 +7,11 @@ public class ImmediateSymbol extends Symbol{
         return value;
     }
 
+    @Override
+    public boolean isNull() {
+        return type.type == DataTypes.INT && value.equals("0");
+    }
+
     public String value;
     public ImmediateSymbol(String name, DataType type, String value){
         super(name, type);

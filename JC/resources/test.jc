@@ -1,5 +1,9 @@
-void main() {
-    int a = 5;
-    return a;
+int foo(float a, int b){
+    int c = 5;
+    return a * b + c;
+}
+
+int main() {
+    return foo(2.2, 3);
 }
 

@@ -1,7 +1,7 @@
 package se.liu.albhe576.project;
 
 public enum QuadOp {
-    NOT, LOGICAL_NOT, SETNE, SETLE, SETL, SETG, SETGE, SETE, LABEL, INDEX, POP, LOAD_POINTER, LOAD_IMM, INC,DEC, ADD, JG,JE, JGE, JL, SUB, MUL, DIV, LOAD, STORE, CMP, JMP, JNZ, JZ, AND, OR, XOR, PUSH,CALL, GET_FIELD, SET_FIELD, MOV_REG_AC, MOV_REG_CA, MOV_REG_AD, MOV_REG_DA, RET, SHL, SHR;
+    CVTDQ2PD, CVTTSS2SI, MOD, MOV_RDI, DEREFERENCE, FADD, FMUL, FDIV, FSUB, NOT, LOGICAL_NOT, SETNE, SETLE, SETL, SETG, SETGE, SETE, LABEL, INDEX, POP, LOAD_POINTER, LOAD_IMM, INC,DEC, ADD, JE, SUB, MUL, DIV, LOAD, STORE, CMP, JMP, JNZ, AND, OR, XOR, PUSH,CALL, GET_FIELD, SET_FIELD, MOV_REG_AC, MOV_REG_CA, MOV_REG_AD, MOV_REG_DA, RET, SHL, SHR;
 
     public static QuadOp fromToken(Token token) throws CompileException {
         switch(token.type){
@@ -59,7 +59,21 @@ public enum QuadOp {
             case TOKEN_AUGMENTED_XOR, TOKEN_XOR-> {
                 return XOR;
             }
+            case TOKEN_MOD-> {
+                return MOD;
+            }
         }
         throw new CompileException(String.format("Unknown token to quad op? %s", token.literal));
+    }
+
+    public QuadOp convertToFloat() throws InvalidOperation {
+        switch(this){
+            case ADD -> {return FADD;}
+            case SUB -> {return FSUB;}
+            case DIV -> {return FDIV;}
+            case MUL -> {return FMUL;}
+        }
+
+        throw new InvalidOperation(String.format("Can't convert op %s to float op?", this.name()));
     }
 }

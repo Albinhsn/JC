@@ -13,15 +13,18 @@ public class Compiler {
     public static Symbol generateSymbol(DataType type){
         return new Symbol("T" + resultCount++, type);
     }
+
     public static ImmediateSymbol generateImmediateSymbol(DataType type, String literal){
         return new ImmediateSymbol("T" + resultCount++, type, literal);
     }
     public static Symbol generateLabel(){
         return new Symbol( String.format("label%d", labelCount++), new DataType("label", DataTypes.VOID));
     }
+
     public void Compile(String name) throws CompileException, IOException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
         Compiler.resultCount = 0;
         Compiler.labelCount = 0;
+
         // Intermediate code generation
         this.generateIntermediate();
 
@@ -36,7 +39,7 @@ public class Compiler {
             stmt.compile(symbolTable);
         }
 
-        List<Function> functions = symbolTable.functions;
+        List<Function> functions = symbolTable.getFunctions();
         for(Function function : functions){
             System.out.println("\n" + function.name + ":\n");
 
@@ -52,6 +55,9 @@ public class Compiler {
     private static FileWriter initOutput(String name, Map<String, String> constants) throws IOException {
         StringBuilder header = new StringBuilder();
         header.append("global _start\n");
+
+        header.append("extern malloc\n");
+        header.append("extern free\n");
 
         header.append("\n\nsection .data\n");
         for(Map.Entry<String, String> entry : constants.entrySet()){
@@ -72,17 +78,24 @@ public class Compiler {
 
 
     public void generateAssembly(String name) throws IOException, UnknownSymbolException {
-        FileWriter fileWriter = initOutput(name, this.symbolTable.constants);
+        final List<Function> functions = this.symbolTable.getFunctions();
+        final Map<String, String> constants = this.symbolTable.getConstants();
+        FileWriter fileWriter = initOutput(name, constants);
 
-        for(Function function : this.symbolTable.functions){
+        for(Function function : functions){
             fileWriter.write("\n\n" + function.name + ":\npush rbp\nmov rbp, rsp\n");
 
-            QuadOp prevOp = null;
+            Quad prev = null;
             Stack stack = new Stack(function.arguments, this.symbolTable.structs);
 
             for (Quad intermediate : function.intermediates) {
-                fileWriter.write(intermediate.emit(stack, prevOp, this.symbolTable.functions, this.symbolTable.constants) + "\n");
-                prevOp = intermediate.op;
+                fileWriter.write(intermediate.emit(stack, prev, functions, constants) + "\n");
+                prev = intermediate;
+            }
+            Quad lastQuad = function.intermediates.get(function.intermediates.size() - 1);
+            if(lastQuad.op != QuadOp.RET){
+                Quad retQuad = new Quad(QuadOp.RET, null, null, null);
+                fileWriter.write(retQuad.emit(stack, lastQuad, functions, constants) + "\n");
             }
         }
 

@@ -24,12 +24,20 @@ public class AssignExpr implements  Expr{
 
         if(variable instanceof DotExpr dotExpr){
             targetVariable.remove(targetVariable.size() - 1);
-            Symbol result = Quad.getLastOperand1(targetVariable);
-            targetVariable.add(new Quad(QuadOp.PUSH, null, null, null));
+            Symbol operand1 = Quad.getLastOperand1(targetVariable);
+            Symbol result = Quad.getLastResult(targetVariable);
+            Symbol memberSymbol = symbolTable.getMemberSymbol(result, dotExpr.member.literal);
+
+
+            targetVariable.add(new Quad(QuadOp.PUSH, result, null, null));
             targetVariable.addAll(val);
-            targetVariable.add(new Quad(QuadOp.MOV_REG_CA, null, null, null));
-            targetVariable.add(new Quad(QuadOp.POP, null, null, null));
-            targetVariable.add(new Quad(QuadOp.SET_FIELD, null, symbolTable.getMemberSymbol(result, dotExpr.member.literal), result));
+            Symbol valResult = Quad.getLastResult(val);
+            if(memberSymbol.type.type != DataTypes.FLOAT){
+                targetVariable.add(new Quad(QuadOp.MOV_REG_CA, valResult, null, Compiler.generateSymbol(valResult.type)));
+            }
+            targetVariable.add(new Quad(QuadOp.POP, null, null, Compiler.generateSymbol(result.type)));
+            targetVariable.add(new Quad(QuadOp.SET_FIELD, null, memberSymbol, operand1));
+
             return targetVariable;
 
         }

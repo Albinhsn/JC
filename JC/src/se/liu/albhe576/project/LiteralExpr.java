@@ -29,11 +29,12 @@ public class LiteralExpr implements Expr{
 
         Symbol resultSymbol = Compiler.generateSymbol(type);
         switch(token.type){
-            case TOKEN_STRING -> {}
-            case TOKEN_FLOAT_LITERAL-> {
+            case TOKEN_STRING:{}
+            case TOKEN_FLOAT_LITERAL:{
                 symbolTable.addConstant(token.literal);
+                break;
             }
-            default ->{}
+            default :{}
         }
 
         quad.add(new Quad(QuadOp.LOAD_IMM, immediateSymbol, null, resultSymbol));

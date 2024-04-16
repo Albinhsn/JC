@@ -8,6 +8,10 @@ public class Symbol {
         return name;
     }
 
+    public boolean isNull(){
+        return false;
+    }
+
     public String name;
     public DataType type;
     public Symbol(String name, DataType type){
