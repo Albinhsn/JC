@@ -5,5 +5,5 @@ import java.util.Stack;
 
 public interface Stmt {
 
-    List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException;
+    List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException;
 }

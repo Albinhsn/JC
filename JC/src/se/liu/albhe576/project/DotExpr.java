@@ -19,13 +19,14 @@ public class DotExpr implements  Expr{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
         // feels like this can be solved in the parser
         // we don't know whether we're supposed to load this value or not
         // The question if whether we need to
         List<Quad> quads = variable.compile(symbolTable);
-        Symbol lastSymbol = Quad.getLastOperand1(quads);
-        quads.add(new Quad(QuadOp.GET_FIELD, lastSymbol, new ResultSymbol(member.literal), Compiler.generateResultSymbol()));
+        Symbol lastSymbol = Quad.getLastResult(quads);
+        Symbol memberSymbol = symbolTable.getMemberSymbol(lastSymbol, this.member.literal);
+        quads.add(new Quad(QuadOp.GET_FIELD, lastSymbol, memberSymbol, Compiler.generateSymbol(memberSymbol.type)));
         return quads;
     }
 }

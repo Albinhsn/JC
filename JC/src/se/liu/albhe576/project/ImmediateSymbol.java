@@ -4,13 +4,12 @@ public class ImmediateSymbol extends Symbol{
 
     @Override
     public String toString() {
-        return value.literal;
+        return value;
     }
 
-    public Token value;
-    public ImmediateSymbol(Token value){
-       super("imm");
-       this.value = value;
+    public String value;
+    public ImmediateSymbol(String name, DataType type, String value){
+        super(name, type);
+        this.value = value;
     }
-
 }

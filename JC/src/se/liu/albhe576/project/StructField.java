@@ -8,12 +8,10 @@ public class StructField {
     }
 
     public final String name;
-    public final StructType type;
-    public final String structName;
+    public final DataType type;
 
-    public StructField(String name, StructType type, String structName) {
+    public StructField(String name, DataType type, String structName) {
         this.name = name;
         this.type = type;
-        this.structName = structName;
     }
 }

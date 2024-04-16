@@ -27,7 +27,7 @@ public class ArrayExpr implements Expr{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) {
+    public List<Quad> compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException {
         return null;
     }
 }

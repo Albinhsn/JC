@@ -27,25 +27,40 @@ public class CallExpr implements Expr{
    }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws CompileException, UnknownSymbolException {
+    public List<Quad> compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, InvalidOperation, UnexpectedTokenException {
         List<Quad> quads = new ArrayList<>();
 
-        for(Expr arg : args){
+        Function function = symbolTable.getFunction(this.name.literal);
+        List<StructField> functionArguments = function.arguments;
+        if(args.size() != functionArguments.size()){
+            throw new CompileException(String.format("Function parameter mismatch expected %d got %d on line %d", functionArguments.size(), args.size(), name.line));
+        }
+
+        for(int i = 0; i < args.size(); i++){
+            Expr arg = args.get(i);
+
             List<Quad> argQuad = arg.compile(symbolTable);
             Quad lastQuad = argQuad.get(argQuad.size() - 1);
             Symbol argSymbol = lastQuad.result;
+            DataType funcArgType = functionArguments.get(i).type;
+            if(!argSymbol.type.isSameType(funcArgType)){
+                throw new CompileException(String.format("Function parameter type mismatch expected %s got %s on line %d", argSymbol.type.name, funcArgType.name, name.line));
+            }
             quads.addAll(argQuad);
-            if(lastQuad.op == QuadOp.LOAD_POINTER){
-                // Essentially create a new symbol of that size in the next scope
-                VariableSymbol variableSymbol = (VariableSymbol) Symbol.findSymbol(symbolTable, lastQuad.operand1.name);
+
+            // This will have only loaded the pointer into rax, but we need to get every field onto the arg
+            // Should be recursive once we support struct in struct
+            if(argSymbol.type.type == DataTypes.STRUCT){
                 Symbol varPointer = lastQuad.operand1;
-                quads.add(new Quad(QuadOp.MOV_REG_DA,null, null, null));
-                List<StructField> fields = variableSymbol.type.fields;
-                for(int i = fields.size() - 1; i >= 0; i--){
-                    StructField field = fields.get(i);
-                    quads.add(new Quad(QuadOp.GET_FIELD, varPointer, new ResultSymbol(field.name), Compiler.generateResultSymbol()));
+                quads.add(new Quad(QuadOp.MOV_REG_CA,null, null, null));
+
+                Struct struct = symbolTable.lookupStruct(symbolTable.structs, argSymbol.type.name);
+
+                for(int j = struct.fields.size() - 1; j >= 0; j--){
+                    StructField field = struct.fields.get(j);
+                    quads.add(new Quad(QuadOp.GET_FIELD, varPointer, new Symbol(field.name, field.type), Compiler.generateSymbol(field.type)));
                     quads.add(new Quad(QuadOp.PUSH, null, null, null));
-                    quads.add(new Quad(QuadOp.MOV_REG_AD, null, null, null));
+                    quads.add(new Quad(QuadOp.MOV_REG_AC, null, null, null));
                 }
             }else{
                 quads.add(new Quad(QuadOp.PUSH, argSymbol, null, null));
@@ -54,8 +69,7 @@ public class CallExpr implements Expr{
         }
 
         // check valid call?
-        Symbol function = Symbol.findSymbol(symbolTable, name.literal);
-        quads.add(new Quad(QuadOp.CALL, function, null, Compiler.generateResultSymbol()));
+        quads.add(new Quad(QuadOp.CALL, function.getFunctionSymbol(), null, Compiler.generateSymbol(function.returnType)));
         return quads;
     }
 }

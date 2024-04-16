@@ -1,6 +1,7 @@
 package se.liu.albhe576.project;
 
 import java.util.List;
+import java.util.Map;
 
 public class Quad {
 
@@ -24,7 +25,7 @@ public class Quad {
         return quads.get(quads.size() - 1).operand1;
     }
 
-    public static Quad insertLabel(ResultSymbol label){
+    public static Quad insertLabel(Symbol label){
         return new Quad(QuadOp.LABEL, label, null, null);
     }
 
@@ -38,8 +39,8 @@ public class Quad {
 
 
     public static void insertBooleanComparison(List<Quad> quads, String immediateLiteral){
-        ImmediateSymbol immediateSymbol = new ImmediateSymbol(new Token(TokenType.TOKEN_INT_LITERAL, 0, immediateLiteral));
-        ResultSymbol immLoadResult = Compiler.generateResultSymbol();
+        Symbol immediateSymbol = new Symbol(immediateLiteral, DataType.getInt());
+        Symbol immLoadResult = Compiler.generateSymbol(DataType.getInt());
         quads.add(new Quad(QuadOp.PUSH, null, null, null));
         quads.add(new Quad(QuadOp.LOAD_IMM, immediateSymbol, null, immLoadResult));
         quads.add(new Quad(QuadOp.MOV_REG_CA, null, null, null));
@@ -47,7 +48,7 @@ public class Quad {
         quads.add(new Quad(QuadOp.CMP, null, null,null));
     }
 
-    public static void insertJMPOnComparisonCheck(List<Quad> quads, ResultSymbol jmpLocation, boolean jumpIfTrue){
+    public static void insertJMPOnComparisonCheck(List<Quad> quads, Symbol jmpLocation, boolean jumpIfTrue){
         String immLiteral;
         if(jumpIfTrue){
             immLiteral = "1";
@@ -56,16 +57,26 @@ public class Quad {
         }
         insertBooleanComparison(quads, immLiteral);
         quads.add(new Quad(QuadOp.JE, jmpLocation, null, null));
-
     }
-    public String emit(Stack stack, QuadOp prevOp, List<FunctionSymbol> functions, List<StructSymbol> structSymbols) throws UnknownSymbolException {
+
+    public String emit(Stack stack, QuadOp prevOp, List<Function> functions, Map<String, String> constants) throws UnknownSymbolException {
         switch(this.op){
             case LOAD_IMM -> {
-                ImmediateSymbol imm = (ImmediateSymbol) operand1;
+                ImmediateSymbol imm = (ImmediateSymbol) this.operand1;
                 if(prevOp == QuadOp.LOAD_IMM || prevOp == QuadOp.LOAD){
-                    return String.format("mov rcx, %s", imm.value.literal);
+                    return String.format("mov rcx, %s", imm.value);
                 }
-                return String.format("mov rax, %s", imm.value.literal);
+
+                switch(imm.type.type){
+                    case INT -> {return String.format("mov rax, %s", imm.value);}
+                    case FLOAT-> {
+                        if(constants.containsKey(imm.name)){
+                            return String.format("mov xmm0,[%s]", constants.get(imm.value));
+                        }
+                        throw new UnknownSymbolException(String.format("Couldn't find constant '%s'", imm.value));
+                    }
+                }
+                throw new UnknownSymbolException(String.format("Can't load this type? %s", imm.type.type));
             }
             case INC -> {
                 return "inc rax";
@@ -98,8 +109,7 @@ public class Quad {
                 return stack.loadField(operand1.name, operand2.name);
             }
             case STORE -> {
-                VariableSymbol variableSymbol = (VariableSymbol) result;
-                return stack.storeVariable(variableSymbol.type, result.name);
+                return stack.storeVariable(result.type, result.name);
             }
             case CMP -> {
                 return "cmp rax, rcx";
@@ -151,12 +161,13 @@ public class Quad {
             }
             case CALL ->{
                 int argSize = 8;
-                for(FunctionSymbol symbol : functions){
-                    if(symbol.name.equals(operand1.name)){
-                        argSize *= symbol.arguments.size();
+                for(Function function : functions){
+                    if(function.name.equals(operand1.name)){
+                        argSize *= function.arguments.size();
                         break;
                     }
                 }
+
                 if(argSize != 0){
                     return String.format("call %s\nadd rsp, %d", operand1.name, argSize);
                 }
@@ -171,7 +182,7 @@ public class Quad {
             case RET ->{
                 int localVariables = stack.getLocalSize();
                 if(localVariables > 0){
-                    return String.format("mov rsp, rbp\npop rbp\nret", localVariables);
+                    return "mov rsp, rbp\npop rbp\nret";
                 }
                 return "mov rsp, rbp\npop rbp\nret";
             }

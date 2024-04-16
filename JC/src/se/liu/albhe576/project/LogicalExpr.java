@@ -1,5 +1,6 @@
 package se.liu.albhe576.project;
 
+import javax.xml.crypto.Data;
 import java.util.List;
 import java.util.Stack;
 
@@ -20,23 +21,23 @@ public class LogicalExpr implements Expr{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
         List<Quad> l = left.compile(symbolTable);
         List<Quad> r = right.compile(symbolTable);
 
 
-        ResultSymbol shortCircuitLabel = Compiler.generateLabel();
-        ResultSymbol mergeLabel = Compiler.generateLabel();
+        Symbol shortCircuitLabel = Compiler.generateLabel();
+        Symbol mergeLabel = Compiler.generateLabel();
         switch(op.type){
             case TOKEN_AND_LOGICAL:{
                 // check first one, jump to mergeFalse, if false
                 Quad.insertJMPOnComparisonCheck(l, shortCircuitLabel, false);
                 l.addAll(r);
                 Quad.insertJMPOnComparisonCheck(l, shortCircuitLabel, false);
-                l.add(new Quad(QuadOp.LOAD_IMM, new ImmediateSymbol(new Token(TokenType.TOKEN_INT_LITERAL, 0, "1")), null,Compiler.generateResultSymbol()));
+                l.add(new Quad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "1"), null,Compiler.generateSymbol(DataType.getInt())));
                 l.add(new Quad(QuadOp.JMP, mergeLabel, null, null));
                 l.add(Quad.insertLabel(shortCircuitLabel));
-                l.add(new Quad(QuadOp.LOAD_IMM, new ImmediateSymbol(new Token(TokenType.TOKEN_INT_LITERAL, 0, "0")), null,Compiler.generateResultSymbol()));
+                l.add(new Quad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "0"), null,Compiler.generateSymbol(DataType.getInt())));
                 l.add(Quad.insertLabel(mergeLabel));
                 break;
             }
@@ -47,17 +48,17 @@ public class LogicalExpr implements Expr{
                 Quad.insertJMPOnComparisonCheck(l, shortCircuitLabel, true);
                 l.addAll(r);
                 Quad.insertJMPOnComparisonCheck(l, shortCircuitLabel, true);
-                l.add(new Quad(QuadOp.LOAD_IMM, new ImmediateSymbol(new Token(TokenType.TOKEN_INT_LITERAL, 0, "0")), null,Compiler.generateResultSymbol()));
+                l.add(new Quad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "0"), null,Compiler.generateSymbol(DataType.getInt())));
                 l.add(new Quad(QuadOp.JMP, mergeLabel, null, null));
                 l.add(Quad.insertLabel(shortCircuitLabel));
-                l.add(new Quad(QuadOp.LOAD_IMM, new ImmediateSymbol(new Token(TokenType.TOKEN_INT_LITERAL, 0, "1")), null,Compiler.generateResultSymbol()));
+                l.add(new Quad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "1"), null,Compiler.generateSymbol(DataType.getInt())));
                 l.add(Quad.insertLabel(mergeLabel));
                 break;
             }
             default: {
                 Symbol lSymbol = Quad.getLastResult(l);
                 Symbol rSymbol = Quad.getLastResult(r);
-                l.add(new Quad(QuadOp.fromToken(op), lSymbol, rSymbol, Compiler.generateResultSymbol()));
+                l.add(new Quad(QuadOp.fromToken(op), lSymbol, rSymbol, Compiler.generateSymbol(DataType.getInt())));
             }
         }
         return l;

@@ -19,15 +19,12 @@ public class PostfixExpr implements Expr{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException {
+    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException {
         List<Quad> quads = new ArrayList<>();
-        Symbol symbol = Symbol.findSymbol(symbolTable, literal.literal);
+        Symbol symbol = symbolTable.findSymbol(literal.literal);
 
-        Symbol loadedSymbol = Compiler.generateResultSymbol();
-        symbolTable.peek().add(loadedSymbol);
-
-        Symbol increasedSymbol = Compiler.generateResultSymbol();
-        symbolTable.peek().add(increasedSymbol);
+        Symbol loadedSymbol = Compiler.generateSymbol(symbol.type);
+        Symbol increasedSymbol = Compiler.generateSymbol(symbol.type);
 
         quads.add(new Quad(QuadOp.LOAD, symbol, null, loadedSymbol));
         quads.add(new Quad(QuadOp.INC, loadedSymbol, null, increasedSymbol));

@@ -20,7 +20,7 @@ public class ComparisonExpr implements Expr {
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
         List<Quad> l = left.compile(symbolTable);
         List<Quad> r = right.compile(symbolTable);
 
@@ -29,7 +29,7 @@ public class ComparisonExpr implements Expr {
 
         l.addAll(r);
         l.add(new Quad(QuadOp.CMP, lSymbol, rSymbol, null));
-        l.add(new Quad(QuadOp.fromToken(op), null, null, Compiler.generateResultSymbol()));
+        l.add(new Quad(QuadOp.fromToken(op), null, null, Compiler.generateSymbol(DataType.getInt())));
         return l;
     }
 }

@@ -16,21 +16,17 @@ public class VarExpr implements  Expr {
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException {
+    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException {
 
         List<Quad> quads = new ArrayList<>();
-        ResultSymbol result = Compiler.generateResultSymbol();
-        symbolTable.peek().add(result);
 
-        Symbol symbol = Symbol.findSymbol(symbolTable, token.literal);
-        if(symbol instanceof VariableSymbol variableSymbol){
-            if(VariableSymbol.isStruct(variableSymbol.type.name)){
-                quads.add(new Quad(QuadOp.LOAD_POINTER, Symbol.findSymbol(symbolTable, token.literal), null, result));
-                return quads;
-            }
+        Symbol symbol = symbolTable.findSymbol(token.literal);
+        if(symbol.type.type == DataTypes.STRUCT){
+            quads.add(new Quad(QuadOp.LOAD_POINTER, symbol, null, Compiler.generateSymbol(symbol.type)));
+            return quads;
         }
 
-        quads.add(new Quad(QuadOp.LOAD, Symbol.findSymbol(symbolTable, token.literal), null, result));
+        quads.add(new Quad(QuadOp.LOAD, symbol, null, Compiler.generateSymbol(symbol.type)));
         return quads;
     }
 }

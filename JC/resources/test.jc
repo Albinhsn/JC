@@ -1,15 +1,5 @@
-struct Foo{
-    int a;
-    int b;
-}
-int add(Foo foo){
-    return foo.a + foo.b;
-}
-
 void main() {
-    Foo foo;
-    foo.a = 5;
-    foo.b = 3;
-    return add(foo);
+    int a = 5;
+    return a;
 }
 

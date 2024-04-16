@@ -25,12 +25,12 @@ public class FunctionStmt implements Stmt{
 
     }
 
-    private final StructType returnType;
+    private final DataType returnType;
     private final String name;
     private final List<StructField> arguments;
     private final List<Stmt> body;
 
-    public FunctionStmt(StructType returnType, String name, List<StructField> arguments, List<Stmt> body){
+    public FunctionStmt(DataType returnType, String name, List<StructField> arguments, List<Stmt> body){
         this.returnType = returnType;
         this.name = name;
         this.arguments = arguments;
@@ -39,20 +39,20 @@ public class FunctionStmt implements Stmt{
     }
 
     @Override
-    public List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
         List<Quad> out = new ArrayList<>();
+        symbolTable.functions.add(new Function(name, arguments, returnType, out));
 
-        symbolTable.peek().add(new FunctionSymbol(name, arguments, returnType));
-        List<Symbol> functionSymbols = new ArrayList<>();
+        List<Symbol> localSymbols =new ArrayList<>();
         for(StructField arg : arguments){
-            functionSymbols.add(new VariableSymbol(Compiler.lookupStruct(structTable, arg.structName), arg.name));
+           localSymbols.add(new Symbol(arg.name, arg.type));
         }
+        symbolTable.localSymbolTable.push(localSymbols);
 
-        symbolTable.push(functionSymbols);
         for(Stmt stmt : body){
-            out.addAll(stmt.compile(structTable, symbolTable));
+            out.addAll(stmt.compile(symbolTable));
         }
-        symbolTable.pop();
+        symbolTable.localSymbolTable.pop();
 
         return out;
     }

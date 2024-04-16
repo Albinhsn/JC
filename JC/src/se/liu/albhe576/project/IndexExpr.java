@@ -19,7 +19,7 @@ public class IndexExpr implements Expr{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
         List<Quad> val = value.compile(symbolTable);
         Symbol valSymbol = Quad.getLastResult(val);
 
@@ -27,7 +27,7 @@ public class IndexExpr implements Expr{
         Symbol idxSymbol = Quad.getLastResult(idx);
 
         val.addAll(idx);
-        val.add(new Quad(QuadOp.INDEX, valSymbol, idxSymbol, Compiler.generateResultSymbol()));
+        // val.add(new Quad(QuadOp.INDEX, valSymbol, idxSymbol, Compiler.generateSymbol()));
         return val;
     }
 }

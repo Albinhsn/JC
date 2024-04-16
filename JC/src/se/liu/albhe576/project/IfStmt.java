@@ -38,27 +38,27 @@ public class IfStmt implements Stmt{
     }
 
     @Override
-    public List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
         List<Quad> out = new ArrayList<>(condition.compile(symbolTable));
 
         // insert conditional check
         List<Quad> ifQuad = new ArrayList<>();
         for(Stmt stmt : ifBody){
-            symbolTable.push(new ArrayList<>());
-            ifQuad.addAll(stmt.compile(structTable, symbolTable));
-            symbolTable.pop();
+            symbolTable.enterScope();
+            ifQuad.addAll(stmt.compile(symbolTable));
+            symbolTable.exitScope();
         }
 
         // insert unconditional jump
         List<Quad> elseQuad = new ArrayList<>();
         for(Stmt stmt : elseBody){
-            symbolTable.push(new ArrayList<>());
-            elseQuad.addAll(stmt.compile(structTable, symbolTable));
-            symbolTable.pop();
+            symbolTable.enterScope();
+            elseQuad.addAll(stmt.compile(symbolTable));
+            symbolTable.exitScope();
         }
 
-        ResultSymbol elseLabel = Compiler.generateLabel();
-        ResultSymbol mergeLabel = Compiler.generateLabel();
+        Symbol elseLabel = Compiler.generateLabel();
+        Symbol mergeLabel = Compiler.generateLabel();
 
         Quad.insertJMPOnComparisonCheck(out, elseLabel, false);
         out.addAll(ifQuad);

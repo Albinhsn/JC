@@ -19,7 +19,7 @@ public class ReturnStmt implements Stmt{
 
 
     @Override
-    public List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
         List<Quad> out = expr.compile(symbolTable);
         out.add(new Quad(QuadOp.RET, null, null, null));
         return out;

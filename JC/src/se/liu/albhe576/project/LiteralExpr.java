@@ -20,11 +20,23 @@ public class LiteralExpr implements Expr{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) {
+    public List<Quad> compile(SymbolTable symbolTable) throws UnexpectedTokenException {
         List<Quad> quad = new ArrayList<>();
-        ResultSymbol resultSymbol = Compiler.generateResultSymbol();
-        symbolTable.peek().add(resultSymbol);
-        quad.add(new Quad(QuadOp.LOAD_IMM, new ImmediateSymbol(token), null, resultSymbol));
+
+
+        DataType type = DataType.getDataTypeFromToken(token);
+        Symbol immediateSymbol = Compiler.generateImmediateSymbol(type, token.literal);
+
+        Symbol resultSymbol = Compiler.generateSymbol(type);
+        switch(token.type){
+            case TOKEN_STRING -> {}
+            case TOKEN_FLOAT_LITERAL-> {
+                symbolTable.addConstant(token.literal);
+            }
+            default ->{}
+        }
+
+        quad.add(new Quad(QuadOp.LOAD_IMM, immediateSymbol, null, resultSymbol));
         return quad;
     }
 }

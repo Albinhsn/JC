@@ -1,7 +1,6 @@
 package se.liu.albhe576.project;
 
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
@@ -18,7 +17,7 @@ public class ExprStmt implements  Stmt{
     }
 
     @Override
-    public List<Quad> compile(List<StructSymbol> structTable, Stack<List<Symbol>> symbolTable) throws UnknownSymbolException, CompileException {
+    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
         return expr.compile(symbolTable);
     }
 }

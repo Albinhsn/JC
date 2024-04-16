@@ -7,10 +7,11 @@
 ## Compiler
 * just rework how we manage structs and type, functions and signatures 
   * symbols especially
-* float and byte :)
+* float :)
 * pointers
 * array
 * index
+* string and byte
 
 ### Bugs
 * support recursive structures
@@ -26,5 +27,14 @@
 * insert ret if not there?
 
 
+DataType 
+  Enum for underlying type
+  Name for the actual name of it
 
-
+DataTypes and Structs in the compiler 
+Struct 
+  * List<StructField>
+    * DataType
+Symbol
+    * Name
+    * DataType

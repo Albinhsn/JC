@@ -22,7 +22,7 @@ public class AugmentedExpr implements  Expr{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws CompileException, UnknownSymbolException {
+    public List<Quad> compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, InvalidOperation, UnexpectedTokenException {
         List<Quad> targetQuads = target.compile(symbolTable);
         Symbol targetSymbol = Quad.getLastOperand1(targetQuads);
         List<Quad> valueQuads = value.compile(symbolTable);

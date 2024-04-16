@@ -6,5 +6,5 @@ import java.util.Stack;
 
 public interface Expr {
 
-    List<Quad> compile(Stack<List<Symbol>> symbolTable) throws CompileException, UnknownSymbolException;
+    List<Quad> compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, InvalidOperation, UnexpectedTokenException;
 }

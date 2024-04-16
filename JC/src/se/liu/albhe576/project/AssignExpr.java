@@ -17,7 +17,7 @@ public class AssignExpr implements  Expr{
     }
 
     @Override
-    public List<Quad> compile(Stack<List<Symbol>> symbolTable) throws CompileException, UnknownSymbolException {
+    public List<Quad> compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
         List<Quad> val = value.compile(symbolTable);
         List<Quad> targetVariable = variable.compile(symbolTable);
 
@@ -29,13 +29,14 @@ public class AssignExpr implements  Expr{
             targetVariable.addAll(val);
             targetVariable.add(new Quad(QuadOp.MOV_REG_CA, null, null, null));
             targetVariable.add(new Quad(QuadOp.POP, null, null, null));
-            targetVariable.add(new Quad(QuadOp.SET_FIELD, null, new ResultSymbol(dotExpr.member.literal), result));
+            targetVariable.add(new Quad(QuadOp.SET_FIELD, null, symbolTable.getMemberSymbol(result, dotExpr.member.literal), result));
             return targetVariable;
 
         }
 
         // Figure out if legal?
         Symbol res = Quad.getLastResult(val);
+
         val.addAll(targetVariable);
         val.add(new Quad(QuadOp.STORE, res, null, Quad.getLastResult(targetVariable)));
 
