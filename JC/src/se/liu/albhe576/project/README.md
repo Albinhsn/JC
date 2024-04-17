@@ -4,10 +4,9 @@
 
 * macros
   * just #define and then process them during parsing?
-* array
-  * stack based 
 * string and byte
 * support Foo** foo;
+* assign structs, array of structs?
 
 ## Bugs
 ### Compiler

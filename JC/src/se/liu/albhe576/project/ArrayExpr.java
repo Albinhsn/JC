@@ -33,9 +33,19 @@ public class ArrayExpr extends Expr{
         // Then we push the items up
         // And lastly we store some pointer to the beginning
         QuadList quads = new QuadList();
-        for(int i = items.size() -1; i >= 0; i--){
-            quads.concat(items.get(i).compile(symbolTable));
+        List<Symbol> argSymbols = new ArrayList<>();
+        for(Expr item : this.items){
+            quads.concat(item.compile(symbolTable));
+            quads.addQuad(QuadOp.PUSH, null, null, quads.getLastResult());
+            argSymbols.add(quads.getLastResult());
         }
+        Symbol first = argSymbols.get(0);
+        for(int i = 1; i < argSymbols.size(); i++){
+            if(!first.type.isSameType(argSymbols.get(i).type)){
+                throw new CompileException(String.format("Can't have different types in array declaration on line %d", this.line));
+            }
+        }
+        quads.addQuad(QuadOp.LEA_RSP, null, null, Compiler.generateSymbol(DataType.getPointerFromType(first.type)));
 
         return quads;
     }

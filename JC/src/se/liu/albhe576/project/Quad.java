@@ -93,6 +93,9 @@ public class Quad {
             case ADD -> {
                 return "add rax, rcx";
             }
+            case LEA_RSP -> {
+                return "lea rax, [rsp]";
+            }
             case FADD -> {
                 String setup = this.setupFloatingPointBinary();
                 return setup + "addss xmm0, xmm1";
