@@ -63,7 +63,7 @@ public class Compiler {
         header.append("\n\nsection .data\n");
         for(Map.Entry<String, Constant> entry : constants.entrySet()){
             Constant value = entry.getValue();
-            if(value.type == DataTypes.BYTE_POINTER){
+            if(value.type == DataTypes.STRING){
                 header.append(String.format("%s db \"%s\", 10, 0\n", value.label, entry.getKey()));
             }else{
                 header.append(String.format("%s dd %s\n", entry.getValue(), entry.getKey()));
@@ -95,7 +95,7 @@ public class Compiler {
             Stack stack = new Stack(function.arguments, this.symbolTable.structs);
 
             for (Quad intermediate : function.intermediates.getQuads()) {
-                //fileWriter.write("; " + intermediate + "\n");
+                fileWriter.write("; " + intermediate + "\n");
                 fileWriter.write(intermediate.emit(stack, prev, functions, constants) + "\n");
                 prev = intermediate;
             }

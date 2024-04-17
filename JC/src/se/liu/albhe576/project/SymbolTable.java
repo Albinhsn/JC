@@ -24,6 +24,14 @@ public class SymbolTable {
     }
 
 
+    public int getStructSize(String name){
+        for(Struct struct : structs){
+            if(struct.type.name.equals(name)){
+                return struct.getSize();
+            }
+        }
+        return 8;
+    }
     public Function getCurrentFunction(){
         return this.functions.get(this.functions.size() - 1);
     }
@@ -46,6 +54,9 @@ public class SymbolTable {
                 return function;
             }
         }
+        throw new UnknownSymbolException(String.format("Can't find function %s", name));
+    }
+    public Function getLibraryFunction(String name) throws UnknownSymbolException{
         for(Function function : this.libraryFunctions){
             if(function.name.equals(name)){
                 return function;

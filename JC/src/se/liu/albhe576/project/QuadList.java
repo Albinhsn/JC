@@ -42,6 +42,9 @@ public class QuadList {
     public Symbol getLastOperand1(){
         return this.quads.get(this.quads.size() - 1).operand1;
     }
+    public Symbol getLastOperand2(){
+        return this.quads.get(this.quads.size() - 1).operand2;
+    }
     public void insertLabel(Symbol label){
         this.quads.add(new Quad(QuadOp.LABEL, label, null, null));
     }

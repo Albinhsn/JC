@@ -36,13 +36,42 @@ public class UnaryExpr extends Expr{
             // Dereference
             case TOKEN_STAR:{
                 quadOp = QuadOp.DEREFERENCE;
-                Symbol operand = quads.getLastOperand1();
-                result = Compiler.generateSymbol(DataType.getTypeFromPointer(operand.type));
+                symbol = quads.getLastOperand1();
                 break;
             }
             case TOKEN_MINUS:{
                quadOp = QuadOp.NOT;
                break;
+            }
+            case TOKEN_INCREMENT:{
+                if(result.type.type.isPointer()){
+                    int structSize = symbolTable.getStructSize(result.type.name);
+                    quads.addQuad(QuadOp.PUSH, result, null, Compiler.generateSymbol(result.type));
+                    Symbol immSymbol = Compiler.generateSymbol(DataType.getInt());
+                    quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, immSymbol);
+                    Symbol movedImm = Compiler.generateSymbol(DataType.getInt());
+                    quads.addQuad(QuadOp.MOV_REG_CA, immSymbol, null, movedImm);
+                    quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(result.type));
+                    quads.addQuad(QuadOp.ADD, Compiler.generateSymbol(result.type), movedImm, Compiler.generateSymbol(result.type));
+                    return quads;
+                }
+                quadOp = QuadOp.fromToken(op);
+                break;
+            }
+            case TOKEN_DECREMENT:{
+                if(result.type.type.isPointer()){
+                    int structSize = symbolTable.getStructSize(result.type.name);
+                    quads.addQuad(QuadOp.PUSH, result, null, Compiler.generateSymbol(result.type));
+                    Symbol immSymbol = Compiler.generateSymbol(DataType.getInt());
+                    quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, immSymbol);
+                    Symbol movedImm = Compiler.generateSymbol(DataType.getInt());
+                    quads.addQuad(QuadOp.MOV_REG_CA, immSymbol, null, movedImm);
+                    quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(result.type));
+                    quads.addQuad(QuadOp.SUB, Compiler.generateSymbol(result.type), movedImm, Compiler.generateSymbol(result.type));
+                    return quads;
+                }
+                quadOp = QuadOp.fromToken(op);
+                break;
             }
             default:{
                 quadOp = QuadOp.fromToken(op);

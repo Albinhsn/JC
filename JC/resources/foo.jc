@@ -1,3 +1,10 @@
+
 struct Foo{
     int a;
+    int b;
+}
+
+struct Bar{
+    int c;
+    Foo foo;
 }

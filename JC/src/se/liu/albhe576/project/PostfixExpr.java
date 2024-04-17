@@ -30,8 +30,9 @@ public class PostfixExpr extends Expr{
         if(!loadedSymbol.type.type.isPointer()){
             quads.addQuad(QuadOp.INC, loadedSymbol, null, increasedSymbol);
         }else{
+            int structSize = symbolTable.getStructSize(loadedSymbol.type.name);
             quads.addQuad(QuadOp.MOV_REG_CA, null, null, null);
-            quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "8"), null, null);
+            quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, null);
             quads.addQuad(QuadOp.ADD, loadedSymbol, null, increasedSymbol);
         }
         quads.addQuad(QuadOp.STORE, increasedSymbol, null, symbol);

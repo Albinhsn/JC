@@ -69,12 +69,12 @@ public class Quad {
         switch(this.op){
             case LOAD_IMM -> {
                 ImmediateSymbol imm = (ImmediateSymbol) this.operand1;
-                int registerIndex = (prevOp == QuadOp.LOAD_IMM || prevOp == QuadOp.LOAD) ? 1 :0;
+                int registerIndex = prevOp != null && prevOp.isLoad() ? 1 :0;
                 String register = this.getRegisterFromType(operand1.type.type, registerIndex);
 
                 switch(imm.type.type){
                     case INT -> {return String.format("mov %s, %s", register, imm.value);}
-                    case BYTE_POINTER -> {return String.format("mov %s, %s", register,constants.get(imm.value).label);}
+                    case STRING -> {return String.format("mov %s, %s", register,constants.get(imm.value).label);}
                     case FLOAT-> {
                         if(constants.containsKey(imm.value)){
                             return String.format("movss %s,[%s]", register, constants.get(imm.value).label);
@@ -149,10 +149,10 @@ public class Quad {
                 return stack.loadVariable(operand1.name, prevOp);
             }
             case SET_FIELD -> {
-                return stack.storeField(result, operand2);
+                return stack.storeField(operand1.type, operand2);
             }
             case GET_FIELD -> {
-                return stack.loadField(operand1.name, operand2.name);
+                return stack.loadField(operand1.type, operand2.name);
             }
             case STORE -> {
                 return stack.storeVariable(result.type, result.name);
@@ -225,6 +225,12 @@ public class Quad {
             }
             case MOV_R9->{
                 return "mov r9, rax";
+            }
+            case CALL_LIBRARY -> {
+                if(stack.getLocalSize() % 16 != 0){
+                    return String.format("sub rsp, 8\ncall %s\nadd rsp, 8", operand1.name);
+                }
+                return String.format("call %s", operand1.name);
             }
             case CALL ->{
                 int argSize = 1;

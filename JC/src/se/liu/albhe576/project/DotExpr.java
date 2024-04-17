@@ -26,8 +26,9 @@ public class DotExpr extends Expr{
         QuadList quads = variable.compile(symbolTable);
         Symbol lastSymbol = quads.getLastResult();
         Symbol lastOperand= quads.getLastOperand1();
+        Symbol lastOperand2= quads.getLastOperand2();
         Symbol memberSymbol = symbolTable.getMemberSymbol(lastSymbol, this.member.literal);
-        quads.addQuad(QuadOp.GET_FIELD, lastOperand, memberSymbol, Compiler.generateSymbol(memberSymbol.type));
+        quads.addQuad(QuadOp.GET_FIELD, lastSymbol, memberSymbol, Compiler.generateSymbol(memberSymbol.type));
         return quads;
     }
 }

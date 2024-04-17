@@ -3,7 +3,7 @@ package se.liu.albhe576.project;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ArrayExpr extends Expr{
+public class ArrayStmt extends Stmt {
 
     @Override
     public String toString() {
@@ -19,10 +19,14 @@ public class ArrayExpr extends Expr{
         return s.toString();
     }
 
+    public final DataType type;
+    public final String name;
     private final List<Expr> items;
 
-    public ArrayExpr(List<Expr> items, int line){
+    public ArrayStmt(DataType type, String name, List<Expr> items, int line){
         super(line);
+        this.type = type;
+        this.name = name;
         this.items = items;
     }
 

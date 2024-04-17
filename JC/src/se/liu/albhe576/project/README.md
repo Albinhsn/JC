@@ -2,22 +2,17 @@
 
 ## Features remaining
 
-* macros
-  * just #define and then process them during parsing?
-* string and byte
-* support Foo** foo;
-* assign structs, array of structs?
 
 ## Bugs
 ### Compiler
-* support recursive structures
 
 ### Parser
-* allow int foo; Foo foo;
-  * this is simplified if parser also knows about struct declarations
 * allow Foo * foo and a * b
 * do actual proper error handling while parsing, and figure out what to do with exceptions
+* support recursive structures
+  * Foo foo {Bar bar}
 
-### Optimizations
-* when doing a binary check if both are loads
-  * that means we can optimize away some push/pop
+
+### Showcases
+Snake X11 
+

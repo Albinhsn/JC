@@ -42,7 +42,7 @@ public class CallExpr extends Expr{
    }
    private QuadList callLibrary(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
 
-       Function function = symbolTable.getFunction(this.name.literal);
+       Function function = symbolTable.getLibraryFunction(this.name.literal);
        QuadOp[] argLocations = new QuadOp[]{
               QuadOp.MOV_RDI,
                QuadOp.MOV_RSI,
@@ -63,9 +63,7 @@ public class CallExpr extends Expr{
            out.concat(argQuad);
        }
 
-       out.addQuad(QuadOp.PUSH_RBP, null, null, null);
-       out.addQuad(QuadOp.CALL, function.getFunctionSymbol(), null, Compiler.generateSymbol(function.returnType));
-       out.addQuad(QuadOp.POP_RBP, null, null, Compiler.generateSymbol(function.returnType));
+       out.addQuad(QuadOp.CALL_LIBRARY, function.getFunctionSymbol(), null, Compiler.generateSymbol(function.returnType));
        return out;
    }
 

@@ -11,7 +11,7 @@ public class Stack {
         private final String name;
         private int getFieldOffset(List<Struct> structs, String name) throws UnknownSymbolException {
             // ToDo wtf are you doing
-            if(type.type != DataTypes.STRUCT){
+            if(!type.type.isStruct()){
                 return 0;
             }
             Struct struct = SymbolTable.lookupStruct(structs, this.type.name);
@@ -42,24 +42,41 @@ public class Stack {
             return String.format("lea rax, [rbp + %d]", symbol.offset);
         }
     }
-    public String loadField(String variableName, String memberName) throws UnknownSymbolException {
-        StackSymbol variable = this.findSymbol(variableName);
-        int offset = variable.getFieldOffset(structs, memberName);
-
-        if(offset == 0){
-            return "mov rax, [rax]";
+    private int getFieldOffset(Struct struct, String memberName)throws UnknownSymbolException  {
+        int size = 0;
+        for(StructField field : struct.fields){
+            if(field.name.equals(memberName)){
+                return size;
+            }
+            size += 8;
         }
-        return String.format("mov rax, [rax + %d]", offset);
+        throw new UnknownSymbolException(String.format("Couldn't find member %s?\n", memberName));
     }
-    public String storeField(Symbol variableSymbol, Symbol memberSymbol) throws UnknownSymbolException{
-        StackSymbol variable = this.findSymbol(variableSymbol.name);
-        int offset = variable.getFieldOffset(structs, memberSymbol.name);
-        String move = memberSymbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
-        String register = this.getRegisterFromType(memberSymbol.type.type, 0);
-        if(offset != 0){
-            return String.format("%s [rax + %d], %s", move, offset, register);
+    public String loadField(DataType type, String memberName) throws UnknownSymbolException {
+        for(Struct struct : this.structs){
+            if(struct.type.name.equals(type.name)){
+                int offset = this.getFieldOffset(struct, memberName);
+                if(offset == 0){
+                    return "mov rax, [rax]";
+                }
+                return String.format("mov rax, [rax + %d]", offset);
+            }
         }
-        return String.format("%s [rax], %s", move, register);
+        throw new UnknownSymbolException(String.format("Couldn't find struct %s of type %s", type.name, memberName));
+    }
+    public String storeField(DataType type, Symbol memberSymbol) throws UnknownSymbolException{
+        String move = memberSymbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
+        String register = this.getRegisterFromType(memberSymbol.type.type, 1);
+        for(Struct struct : this.structs){
+            if(struct.type.name.equals(type.name)){
+                int offset = this.getFieldOffset(struct, memberSymbol.name);
+                if(offset != 0){
+                    return String.format("%s [rax + %d], %s", move, offset, register);
+                }
+                return String.format("%s [rax], %s", move, register);
+            }
+        }
+        throw new UnknownSymbolException(String.format("Couldn't find struct %s of member %s", type.name, memberSymbol.name));
     }
     private boolean symbolExists(String name){
         for(StackSymbol stackSymbol : this.stackSymbols){
@@ -132,7 +149,7 @@ public class Stack {
 
     private String loadArgument(StackSymbol symbol, QuadOp prevOp){
         int offset = this.getStackPointerOffset(symbol);
-        int registerIndex = (prevOp == QuadOp.LOAD_IMM || prevOp == QuadOp.LOAD) ? 1 : 0;
+        int registerIndex = prevOp.isLoad() ? 1 : 0;
         String move = symbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
         String register = this.getRegisterFromType(symbol.type.type, registerIndex);
 
@@ -156,7 +173,7 @@ public class Stack {
 
     private String loadLocal(StackSymbol symbol, QuadOp prevOp){
         int offset = this.getStackPointerOffset(symbol);
-        int registerIndex = (prevOp == QuadOp.LOAD_IMM || prevOp == QuadOp.LOAD) ? 1 : 0;
+        int registerIndex = prevOp.isLoad() ? 1 : 0;
         String move = symbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
         String register = this.getRegisterFromType(symbol.type.type, registerIndex);
         if(offset == 0){

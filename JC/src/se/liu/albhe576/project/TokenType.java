@@ -52,7 +52,6 @@ public enum TokenType {
     TOKEN_OR_BIT,
     TOKEN_XOR,
     TOKEN_INT_LITERAL,
-    TOKEN_BYTE,
     TOKEN_FLOAT,
     TOKEN_FLOAT_LITERAL,
     TOKEN_STRUCT,

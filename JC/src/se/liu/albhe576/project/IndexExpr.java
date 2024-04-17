@@ -32,11 +32,16 @@ public class IndexExpr extends Expr{
         Symbol valSymbol = val.getLastResult();
 
         idx.concat(val);
+        int structSize = symbolTable.getStructSize(idxOperand.type.name);
         idx.addQuad(QuadOp.MOV_REG_CA, null, null, null);
+        idx.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, Compiler.generateSymbol(DataType.getInt()));
+        idx.addQuad(QuadOp.MUL, null, null, Compiler.generateSymbol(DataType.getInt()));
+        idx.addQuad(QuadOp.MOV_REG_CA, null, null, null);
+
 
         Symbol poppedSymbol = Compiler.generateSymbol(pushedSymbol.type);
         idx.addQuad(QuadOp.POP, pushedSymbol, null, poppedSymbol);
-        idx.addQuad(QuadOp.INDEX, idxOperand, valSymbol, Compiler.generateSymbol(DataType.getTypeFromPointer(idxSymbol.type)));
+        idx.addQuad(QuadOp.INDEX, idxOperand, valSymbol, Compiler.generateSymbol(idxSymbol.type.getTypeFromPointer()));
         return idx;
     }
 }

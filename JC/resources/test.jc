@@ -2,8 +2,8 @@
 #include "resources/foo.jc"
 
 int main() {
-    int* arr= [1,2,3];
-
-    return arr[0];
+    Bar * bar = malloc(24);
+    bar.foo.a = 5;
+    return bar.foo.a;
 }
 

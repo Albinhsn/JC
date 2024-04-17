@@ -17,14 +17,16 @@ public class AssignExpr extends Expr{
     }
 
     private QuadList compileStoreField(SymbolTable symbolTable, QuadList valueQuads, QuadList variableQuads) throws UnknownSymbolException {
+        // Check whether or not the thing we're assigning to is a struct dotExpr already?
         Quad lastQuad =  variableQuads.getLastQuad();
         variableQuads.removeLastQuad();
         Symbol struct = lastQuad.operand1;
+        Symbol op2 = lastQuad.operand2;
         Symbol result = lastQuad.result;
         Symbol memberSymbol = symbolTable.getMemberSymbol(struct, lastQuad.operand2.name);
 
 
-        Symbol pushed = Compiler.generateSymbol(result.type);
+        Symbol pushed = Compiler.generateSymbol(struct.type);
         variableQuads.addQuad(QuadOp.PUSH, result, null, pushed);
         variableQuads.concat(valueQuads);
         Symbol valResult = valueQuads.getLastResult();
@@ -35,7 +37,7 @@ public class AssignExpr extends Expr{
 
         Symbol popped = Compiler.generateSymbol(result.type);
         variableQuads.addQuad(QuadOp.POP, pushed, null, popped);
-        variableQuads.addQuad(QuadOp.SET_FIELD, popped, memberSymbol, struct);
+        variableQuads.addQuad(QuadOp.SET_FIELD, struct, memberSymbol, result);
 
         return variableQuads;
     }
@@ -52,6 +54,12 @@ public class AssignExpr extends Expr{
         if(variableQuads.getLastOp() == QuadOp.GET_FIELD){
             return this.compileStoreField(symbolTable, valueQuads, variableQuads);
 
+        }else if(variableQuads.size() == 1){
+            // If we're just storing a variable on the stack we don't care to load the variable at all
+            // So just store it directly instead, ToDo type check though
+            Symbol res = valueQuads.getLastResult();
+            valueQuads.addQuad(QuadOp.STORE, res, null, variableQuads.getLastResult());
+            return valueQuads;
         }
 
         // Figure out if legal?

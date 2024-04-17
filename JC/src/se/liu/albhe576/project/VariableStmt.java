@@ -37,21 +37,21 @@ public class VariableStmt extends Stmt{
     @Override
     public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
 
+        QuadList valueQuads = new QuadList();
+        Symbol lastSymbol = null;
         if(symbolTable.symbolExists(name)){
             throw new CompileException(String.format("Trying to redeclare existing variable %s\n", name));
+        }else if(value != null){
+            valueQuads.concat(value.compile(symbolTable));
+            Symbol lastOperand = valueQuads.getLastOperand1();
+            lastSymbol = valueQuads.getLastResult();
+
+            this.checkValidTypes(lastSymbol, lastOperand, valueQuads);
         }
-        QuadList val = value.compile(symbolTable);
-
-        // ToDo check valid conversion instead of just the same
-        Symbol lastOperand = val.getLastOperand1();
-        Symbol lastSymbol = val.getLastResult();
-
-        this.checkValidTypes(lastSymbol, lastOperand, val);
 
         Symbol variable = new Symbol(name, type);
-
-        val.addQuad(QuadOp.STORE, lastSymbol, null, variable);
+        valueQuads.addQuad(QuadOp.STORE, lastSymbol, null, variable);
         symbolTable.addSymbol(variable);
-        return val;
+        return valueQuads;
     }
 }

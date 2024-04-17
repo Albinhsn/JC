@@ -13,51 +13,62 @@ public class DataType {
         return (type == other.type) || (type.isPointer() && other.type.isPointer());
     }
 
+    public int getSize(){
+        if(type.isStruct()){
 
-    public static DataType getTypeFromPointer(DataType type) throws CompileException {
-        return switch (type.type) {
+        }
+        return 0;
+    }
+
+
+    public DataType getTypeFromPointer() throws CompileException {
+        return switch (type) {
             case INT_POINTER -> getInt();
             case FLOAT_POINTER -> getFloat();
-            case BYTE_POINTER -> getByte();
-            case STRUCT_POINTER -> getStruct(type.name);
-            default -> throw new CompileException(String.format("Can't get pointer from %s", type.name));
+            case STRUCT_POINTER -> getStruct(name);
+            default -> throw new CompileException(String.format("Can't get pointer from %s", name));
         };
     }
-    public static DataType getPointerFromType(DataType type) throws CompileException {
+    public static PointerDataType getPointerFromType(DataType type) throws CompileException {
             return switch (type.type) {
-                case INT, INT_POINTER -> DataType.getIntPointer();
-                case FLOAT, FLOAT_POINTER -> getFloatPointer();
-                case BYTE, BYTE_POINTER -> getBytePointer();
-                case STRUCT, STRUCT_POINTER -> getStructPointer(type.name);
+                case INT -> DataType.getIntPointer(1);
+                case INT_POINTER -> {
+                   PointerDataType dataType = (PointerDataType)  type;
+                   yield DataType.getIntPointer(dataType.depth + 1);
+                }
+                case FLOAT -> getFloatPointer(1);
+                case FLOAT_POINTER -> {
+                    PointerDataType dataType = (PointerDataType)  type;
+                    yield getFloatPointer(dataType.depth + 1);
+                }
+                case STRUCT -> getStructPointer(type.name, 1);
+                case STRUCT_POINTER -> {
+                    PointerDataType dataType = (PointerDataType)  type;
+                    yield getStructPointer(type.name, dataType.depth + 1);
+                }
                 default -> throw new CompileException(String.format("Can't get pointer from %s", type.name));
             };
-    }
-    public static DataType getFunction(){
-        return new DataType("function", DataTypes.FUNCTION);
     }
     public static DataType getInt(){
         return new DataType("int", DataTypes.INT);
     }
-    public static DataType getIntPointer(){
-        return new DataType("int", DataTypes.INT_POINTER);
+    public static PointerDataType getIntPointer(int depth){
+        return new PointerDataType("int", DataTypes.INT_POINTER, depth);
     }
-    public static DataType getFloatPointer(){
-        return new DataType("float", DataTypes.FLOAT_POINTER);
-    }
-    public static DataType getBytePointer(){
-        return new DataType("byte", DataTypes.BYTE_POINTER);
+    public static PointerDataType getFloatPointer(int depth){
+        return new PointerDataType("float", DataTypes.FLOAT_POINTER, depth);
     }
     public static DataType getVoidPointer(){
         return new DataType("void", DataTypes.VOID_POINTER);
     }
-    public static DataType getStructPointer(String name){
-        return new DataType(name, DataTypes.STRUCT_POINTER);
+    public static DataType getString(){
+        return new DataType("string", DataTypes.STRING);
+    }
+    public static PointerDataType getStructPointer(String name, int depth){
+        return new PointerDataType(name, DataTypes.STRUCT_POINTER, depth);
     }
     public static DataType getFloat(){
         return new DataType("float", DataTypes.FLOAT);
-    }
-    public static DataType getByte(){
-        return new DataType("byte", DataTypes.BYTE);
     }
     public static DataType getStruct(String name){
         return new DataType(name, DataTypes.STRUCT);
@@ -70,8 +81,7 @@ public class DataType {
         switch(token.type){
             case TOKEN_INT, TOKEN_INT_LITERAL -> {return DataType.getInt();}
             case TOKEN_FLOAT, TOKEN_FLOAT_LITERAL -> {return DataType.getFloat();}
-            case TOKEN_BYTE -> {return getByte();}
-            case TOKEN_STRING-> {return getBytePointer();}
+            case TOKEN_STRING-> {return DataType.getString();}
             case TOKEN_IDENTIFIER -> {return getStruct(token.literal);}
             case TOKEN_VOID -> {return getVoid();}
         }
