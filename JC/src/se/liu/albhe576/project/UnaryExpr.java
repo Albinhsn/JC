@@ -1,10 +1,7 @@
 package se.liu.albhe576.project;
 
 
-import java.util.List;
-import java.util.Stack;
-
-public class UnaryExpr implements Expr{
+public class UnaryExpr extends Expr{
     @Override
     public String toString() {
         return String.format("%s%s", op.literal, expr);
@@ -12,24 +9,26 @@ public class UnaryExpr implements Expr{
 
     public Expr expr;
     public Token op;
-    public UnaryExpr(Expr expr, Token op){
+    public UnaryExpr(Expr expr, Token op, int line){
+        super(line);
         this.expr = expr;
         this.op = op;
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
-        List<Quad> quads = expr.compile(symbolTable);
-        Symbol symbol = Quad.getLastResult(quads);
+    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
+        QuadList quads = expr.compile(symbolTable);
+        Symbol symbol = quads.getLastResult();
         Symbol result = Compiler.generateSymbol(symbol.type);
         QuadOp quadOp;
 
         switch(op.type){
             // Take the address of a pointer
+            // int foo = &bar;
             case TOKEN_AND_BIT:{
                 // Remove load
-                symbol = Quad.getLastOperand1(quads);
-                quads.remove(quads.size() - 1);
+                symbol = quads.getLastOperand1();
+                quads.removeLastQuad();
                 result = Compiler.generateSymbol(DataType.getPointerFromType(symbol.type));
                 quadOp = QuadOp.LOAD_POINTER;
                 break;
@@ -37,7 +36,7 @@ public class UnaryExpr implements Expr{
             // Dereference
             case TOKEN_STAR:{
                 quadOp = QuadOp.DEREFERENCE;
-                Symbol operand = Quad.getLastOperand1(quads);
+                Symbol operand = quads.getLastOperand1();
                 result = Compiler.generateSymbol(DataType.getTypeFromPointer(operand.type));
                 break;
             }
@@ -50,7 +49,7 @@ public class UnaryExpr implements Expr{
             }
         }
 
-        quads.add(new Quad(quadOp, symbol, null, result));
+        quads.addQuad(quadOp, symbol, null, result);
         return quads;
     }
 }

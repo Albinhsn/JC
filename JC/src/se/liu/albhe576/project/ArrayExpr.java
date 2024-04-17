@@ -3,7 +3,7 @@ package se.liu.albhe576.project;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ArrayExpr implements Expr{
+public class ArrayExpr extends Expr{
 
     @Override
     public String toString() {
@@ -21,20 +21,22 @@ public class ArrayExpr implements Expr{
 
     private final List<Expr> items;
 
-    public ArrayExpr(List<Expr> items){
+    public ArrayExpr(List<Expr> items, int line){
+        super(line);
         this.items = items;
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
+    public QuadList compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
 
         // We declare the amount of stack space we need up front for the array
         // Then we push the items up
         // And lastly we store some pointer to the beginning
-        List<Quad> quads = new ArrayList<>();
+        QuadList quads = new QuadList();
         for(int i = items.size() -1; i >= 0; i--){
-            quads.addAll(items.get(i).compile(symbolTable));
+            quads.concat(items.get(i).compile(symbolTable));
         }
+
         return quads;
     }
 }

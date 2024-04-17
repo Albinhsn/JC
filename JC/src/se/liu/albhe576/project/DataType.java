@@ -6,7 +6,7 @@ public class DataType {
     public DataTypes type;
 
     public boolean isSameType(DataType other){
-        if((other.type == DataTypes.STRUCT && type == DataTypes.STRUCT) || (other.type == DataTypes.STRUCT_POINTER && type == DataTypes.STRUCT_POINTER)){
+        if(other.type.isStruct()  && type.isStruct()){
             return other.name.equals(name);
         }
 
@@ -25,10 +25,10 @@ public class DataType {
     }
     public static DataType getPointerFromType(DataType type) throws CompileException {
             return switch (type.type) {
-                case INT -> DataType.getIntPointer();
-                case FLOAT -> getFloatPointer();
-                case BYTE -> getBytePointer();
-                case STRUCT -> getStructPointer(type.name);
+                case INT, INT_POINTER -> DataType.getIntPointer();
+                case FLOAT, FLOAT_POINTER -> getFloatPointer();
+                case BYTE, BYTE_POINTER -> getBytePointer();
+                case STRUCT, STRUCT_POINTER -> getStructPointer(type.name);
                 default -> throw new CompileException(String.format("Can't get pointer from %s", type.name));
             };
     }
@@ -71,6 +71,7 @@ public class DataType {
             case TOKEN_INT, TOKEN_INT_LITERAL -> {return DataType.getInt();}
             case TOKEN_FLOAT, TOKEN_FLOAT_LITERAL -> {return DataType.getFloat();}
             case TOKEN_BYTE -> {return getByte();}
+            case TOKEN_STRING-> {return getBytePointer();}
             case TOKEN_IDENTIFIER -> {return getStruct(token.literal);}
             case TOKEN_VOID -> {return getVoid();}
         }

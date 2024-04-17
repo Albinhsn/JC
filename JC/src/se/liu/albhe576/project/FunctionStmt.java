@@ -2,9 +2,8 @@ package se.liu.albhe576.project;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 
-public class FunctionStmt implements Stmt{
+public class FunctionStmt extends Stmt{
 
     @Override
     public String toString() {
@@ -30,7 +29,8 @@ public class FunctionStmt implements Stmt{
     private final List<StructField> arguments;
     private final List<Stmt> body;
 
-    public FunctionStmt(DataType returnType, String name, List<StructField> arguments, List<Stmt> body){
+    public FunctionStmt(DataType returnType, String name, List<StructField> arguments, List<Stmt> body, int line){
+        super(line);
         this.returnType = returnType;
         this.name = name;
         this.arguments = arguments;
@@ -39,10 +39,9 @@ public class FunctionStmt implements Stmt{
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
-        List<Quad> out = new ArrayList<>();
+    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+        QuadList out = new QuadList();
         symbolTable.addFunction(new Function(name, arguments, returnType, out));
-
 
         List<Symbol> localSymbols =new ArrayList<>();
         for(StructField arg : arguments){
@@ -51,7 +50,7 @@ public class FunctionStmt implements Stmt{
 
         symbolTable.enterScope(localSymbols);
         for(Stmt stmt : body){
-            out.addAll(stmt.compile(symbolTable));
+            out.concat(stmt.compile(symbolTable));
         }
         symbolTable.exitScope();
 

@@ -7,12 +7,12 @@ public class Function {
     public String name;
     public List<StructField> arguments;
     public DataType returnType;
-    public List<Quad> intermediates;
+    public QuadList intermediates;
 
     public Symbol getFunctionSymbol(){
         return new Symbol(name, DataType.getFunction());
     }
-    public Function(String name, List<StructField> arguments, DataType returnType, List<Quad> intermediates){
+    public Function(String name, List<StructField> arguments, DataType returnType, QuadList intermediates){
         this.name = name;
         this.arguments = arguments;
         this.returnType = returnType;

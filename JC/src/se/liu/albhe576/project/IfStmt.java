@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
-public class IfStmt implements Stmt{
+public class IfStmt extends Stmt{
     @Override
     public String toString() {
         StringBuilder s = new StringBuilder();
@@ -30,7 +30,8 @@ public class IfStmt implements Stmt{
     public Expr condition;
     public List<Stmt> ifBody;
     public List<Stmt> elseBody;
-    public IfStmt(Expr condition, List<Stmt> ifBody, List<Stmt> elseBody){
+    public IfStmt(Expr condition, List<Stmt> ifBody, List<Stmt> elseBody, int line){
+        super(line);
         this.condition = condition;
         this.ifBody= ifBody;
         this.elseBody= elseBody;
@@ -38,22 +39,22 @@ public class IfStmt implements Stmt{
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
-        List<Quad> out = new ArrayList<>(condition.compile(symbolTable));
+    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+        QuadList out = condition.compile(symbolTable);
 
         // insert conditional check
-        List<Quad> ifQuad = new ArrayList<>();
+        QuadList ifQuad = new QuadList();
         for(Stmt stmt : ifBody){
             symbolTable.enterScope();
-            ifQuad.addAll(stmt.compile(symbolTable));
+            ifQuad.concat(stmt.compile(symbolTable));
             symbolTable.exitScope();
         }
 
         // insert unconditional jump
-        List<Quad> elseQuad = new ArrayList<>();
+        QuadList elseQuad = new QuadList();
         for(Stmt stmt : elseBody){
             symbolTable.enterScope();
-            elseQuad.addAll(stmt.compile(symbolTable));
+            elseQuad.concat(stmt.compile(symbolTable));
             symbolTable.exitScope();
         }
 
@@ -61,11 +62,11 @@ public class IfStmt implements Stmt{
         Symbol mergeLabel = Compiler.generateLabel();
 
         Quad.insertJMPOnComparisonCheck(out, elseLabel, false);
-        out.addAll(ifQuad);
-        out.add(new Quad(QuadOp.JMP, mergeLabel, null, null));
-        out.add(new Quad(QuadOp.LABEL, elseLabel, null, null));
-        out.addAll(elseQuad);
-        out.add(new Quad(QuadOp.LABEL, mergeLabel, null, null));
+        out.concat(ifQuad);
+        out.addQuad(QuadOp.JMP, mergeLabel, null, null);
+        out.addQuad(QuadOp.LABEL, elseLabel, null, null);
+        out.concat(elseQuad);
+        out.addQuad(QuadOp.LABEL, mergeLabel, null, null);
 
         return out;
     }

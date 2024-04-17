@@ -6,6 +6,9 @@ public enum DataTypes {
     public boolean isInteger(){
         return this == DataTypes.INT || this == DataTypes.BYTE;
     }
+    public boolean isStruct(){
+        return this == DataTypes.STRUCT || this == DataTypes.STRUCT_POINTER;
+    }
     public boolean isPointer(){
         switch(this){
             case INT_POINTER:{}

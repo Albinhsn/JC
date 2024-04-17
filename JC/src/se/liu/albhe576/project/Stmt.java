@@ -1,8 +1,10 @@
 package se.liu.albhe576.project;
 
-import java.util.List;
-import java.util.Stack;
+public abstract class Stmt {
 
-public interface Stmt {
-    List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException;
+    protected final int line;
+    abstract QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException;
+    public Stmt(int line){
+       this.line = line;
+    }
 }

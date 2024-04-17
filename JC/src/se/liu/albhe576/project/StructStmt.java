@@ -2,9 +2,8 @@ package se.liu.albhe576.project;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 
-public class StructStmt implements Stmt{
+public class StructStmt extends Stmt{
     @Override
     public String toString() {
         StringBuilder s = new StringBuilder();
@@ -19,14 +18,15 @@ public class StructStmt implements Stmt{
     private final Token name;
     private final List<StructField> fields;
 
-    public StructStmt(Token name, List<StructField> fields){
+    public StructStmt(Token name, List<StructField> fields, int line){
+        super(line);
         this.name = name;
         this.fields = fields;
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) {
+    public QuadList compile(SymbolTable symbolTable) {
         symbolTable.structs.add(new Struct(name.literal, fields));
-        return new ArrayList<>();
+        return new QuadList();
     }
 }

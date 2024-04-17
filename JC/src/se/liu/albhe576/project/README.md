@@ -2,19 +2,22 @@
 
 ## Features remaining
 
+* macros
+  * just #define and then process them during parsing?
 * array
-* index
-* includes
+  * stack based 
 * string and byte
+* support Foo** foo;
 
-### Bugs
-* line number of every expr/stmt
-* some sort of features to track back through quads to find the actual name of the thing we operate on
-* do actual proper error handling while parsing, and figure out what to do with exceptions
+## Bugs
+### Compiler
 * support recursive structures
-* can assign a float to and int even though it will be treated as a float afterwards
-* figure out if we store every floating point value inside 
-* a lot of buggyness and awkwardsness with float vs int conversions, figure out format/schema for it
+
+### Parser
+* allow int foo; Foo foo;
+  * this is simplified if parser also knows about struct declarations
+* allow Foo * foo and a * b
+* do actual proper error handling while parsing, and figure out what to do with exceptions
 
 ### Optimizations
 * when doing a binary check if both are loads

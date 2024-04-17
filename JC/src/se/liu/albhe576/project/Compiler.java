@@ -8,12 +8,13 @@ public class Compiler {
 
     private final List<Stmt> stmts;
     private final SymbolTable symbolTable;
+
     private static int resultCount;
     private static int labelCount;
+
     public static Symbol generateSymbol(DataType type){
         return new Symbol("T" + resultCount++, type);
     }
-
     public static ImmediateSymbol generateImmediateSymbol(DataType type, String literal){
         return new ImmediateSymbol("T" + resultCount++, type, literal);
     }
@@ -22,8 +23,6 @@ public class Compiler {
     }
 
     public void Compile(String name) throws CompileException, IOException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
-        Compiler.resultCount = 0;
-        Compiler.labelCount = 0;
 
         // Intermediate code generation
         this.generateIntermediate();
@@ -34,14 +33,15 @@ public class Compiler {
 
 
     public void generateIntermediate() throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
-
+        QuadList quads = new QuadList();
         for(Stmt stmt : stmts){
-            stmt.compile(symbolTable);
+            quads.concat(stmt.compile(symbolTable));
         }
 
         List<Function> functions = symbolTable.getFunctions();
         for(Function function : functions){
             System.out.println("\n" + function.name + ":\n");
+
 
             for(int i = 0; i < function.intermediates.size(); i++){
                 Quad intermediate = function.intermediates.get(i);
@@ -52,16 +52,22 @@ public class Compiler {
 
     }
 
-    private static FileWriter initOutput(String name, Map<String, String> constants) throws IOException {
+    private static FileWriter initOutput(String name, Map<String, Constant> constants) throws IOException {
         StringBuilder header = new StringBuilder();
         header.append("global _start\n");
 
         header.append("extern malloc\n");
         header.append("extern free\n");
+        header.append("extern printf\n");
 
         header.append("\n\nsection .data\n");
-        for(Map.Entry<String, String> entry : constants.entrySet()){
-            header.append(String.format("%s dd %s\n", entry.getValue(), entry.getKey()));
+        for(Map.Entry<String, Constant> entry : constants.entrySet()){
+            Constant value = entry.getValue();
+            if(value.type == DataTypes.BYTE_POINTER){
+                header.append(String.format("%s db \"%s\", 10, 0\n", value.label, entry.getKey()));
+            }else{
+                header.append(String.format("%s dd %s\n", entry.getValue(), entry.getKey()));
+            }
         }
         header.append("\n\nsection .text\n");
         header.append("_start:\n");
@@ -79,7 +85,7 @@ public class Compiler {
 
     public void generateAssembly(String name) throws IOException, UnknownSymbolException {
         final List<Function> functions = this.symbolTable.getFunctions();
-        final Map<String, String> constants = this.symbolTable.getConstants();
+        final Map<String, Constant> constants = this.symbolTable.getConstants();
         FileWriter fileWriter = initOutput(name, constants);
 
         for(Function function : functions){
@@ -88,7 +94,8 @@ public class Compiler {
             Quad prev = null;
             Stack stack = new Stack(function.arguments, this.symbolTable.structs);
 
-            for (Quad intermediate : function.intermediates) {
+            for (Quad intermediate : function.intermediates.getQuads()) {
+                //fileWriter.write("; " + intermediate + "\n");
                 fileWriter.write(intermediate.emit(stack, prev, functions, constants) + "\n");
                 prev = intermediate;
             }

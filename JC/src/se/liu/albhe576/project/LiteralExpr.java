@@ -2,9 +2,8 @@ package se.liu.albhe576.project;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 
-public class LiteralExpr implements Expr{
+public class LiteralExpr extends Expr{
 
     @Override
     public String toString() {
@@ -14,14 +13,14 @@ public class LiteralExpr implements Expr{
         return token.literal;
     }
     private final Token token;
-    public LiteralExpr(Token token){
+    public LiteralExpr(Token token, int line){
+        super(line);
         this.token = token;
-
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws UnexpectedTokenException {
-        List<Quad> quad = new ArrayList<>();
+    public QuadList compile(SymbolTable symbolTable) throws UnexpectedTokenException {
+        QuadList quad = new QuadList();
 
 
         DataType type = DataType.getDataTypeFromToken(token);
@@ -31,13 +30,13 @@ public class LiteralExpr implements Expr{
         switch(token.type){
             case TOKEN_STRING:{}
             case TOKEN_FLOAT_LITERAL:{
-                symbolTable.addConstant(token.literal);
+                symbolTable.addConstant(token.literal, type.type);
                 break;
             }
             default :{}
         }
 
-        quad.add(new Quad(QuadOp.LOAD_IMM, immediateSymbol, null, resultSymbol));
+        quad.addQuad(QuadOp.LOAD_IMM, immediateSymbol, null, resultSymbol);
         return quad;
     }
 }

@@ -2,9 +2,8 @@ package se.liu.albhe576.project;
 
 
 import java.util.List;
-import java.util.Stack;
 
-public class ExprStmt implements  Stmt{
+public class ExprStmt extends Stmt{
 
     @Override
     public String toString() {
@@ -12,12 +11,13 @@ public class ExprStmt implements  Stmt{
     }
 
     private final Expr expr;
-    public ExprStmt(Expr expr){
+    public ExprStmt(Expr expr, int line){
+        super(line);
         this.expr = expr;
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
         return expr.compile(symbolTable);
     }
 }

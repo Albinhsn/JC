@@ -10,8 +10,9 @@ public class Stack {
         private final DataType type;
         private final String name;
         private int getFieldOffset(List<Struct> structs, String name) throws UnknownSymbolException {
+            // ToDo wtf are you doing
             if(type.type != DataTypes.STRUCT){
-                return 8;
+                return 0;
             }
             Struct struct = SymbolTable.lookupStruct(structs, this.type.name);
             int size = 0;
@@ -51,20 +52,14 @@ public class Stack {
         return String.format("mov rax, [rax + %d]", offset);
     }
     public String storeField(Symbol variableSymbol, Symbol memberSymbol) throws UnknownSymbolException{
-
         StackSymbol variable = this.findSymbol(variableSymbol.name);
         int offset = variable.getFieldOffset(structs, memberSymbol.name);
-        if(memberSymbol.type.type == DataTypes.FLOAT){
-            if(offset != 0){
-                return String.format("movss [rax + %d], xmm0", offset);
-            }
-            return "movss [rax], xmm0";
-        }else{
-            if(offset != 0){
-                return String.format("mov [rax + %d], rcx", offset);
-            }
-            return "mov [rax], rcx";
+        String move = memberSymbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
+        String register = this.getRegisterFromType(memberSymbol.type.type, 0);
+        if(offset != 0){
+            return String.format("%s [rax + %d], %s", move, offset, register);
         }
+        return String.format("%s [rax], %s", move, register);
     }
     private boolean symbolExists(String name){
         for(StackSymbol stackSymbol : this.stackSymbols){
@@ -129,41 +124,55 @@ public class Stack {
         if(structSize > 8){
             return String.format("sub rsp, %d", structSize);
         }
+        if(type.type == DataTypes.FLOAT){
+            return "sub rsp, 8\nmovss [rsp], xmm0";
+        }
         return "push rax";
     }
 
     private String loadArgument(StackSymbol symbol, QuadOp prevOp){
         int offset = this.getStackPointerOffset(symbol);
-        if(prevOp == QuadOp.LOAD_IMM || prevOp == QuadOp.LOAD){
-            return String.format("mov rcx, [rbp + %d]", offset);
-        }
-        return String.format("mov rax, [rbp + %d]", offset);
+        int registerIndex = (prevOp == QuadOp.LOAD_IMM || prevOp == QuadOp.LOAD) ? 1 : 0;
+        String move = symbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
+        String register = this.getRegisterFromType(symbol.type.type, registerIndex);
+
+        return String.format("%s %s, [rbp + %d]", move, register, offset);
 
     }
     private String storeArgument(StackSymbol symbol){
         int offset = this.getStackPointerOffset(symbol);
-        return String.format("mov [rbp + %d], rax", offset);
+        String move = symbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
+        String register = this.getRegisterFromType(symbol.type.type, 0);
+        return String.format("%s [rbp + %d], %s", move, offset, register);
+    }
+    private String getRegisterFromType(DataTypes type, int registerIndex){
+        final String[] floatRegisters = new String[]{"xmm0", "xmm1"};
+        final String[] generalRegisters = new String[]{"rax", "rcx"};
+        if(type == DataTypes.FLOAT){
+            return floatRegisters[registerIndex];
+        }
+        return generalRegisters[registerIndex];
     }
 
     private String loadLocal(StackSymbol symbol, QuadOp prevOp){
         int offset = this.getStackPointerOffset(symbol);
-        if(prevOp == QuadOp.LOAD_IMM || prevOp == QuadOp.LOAD){
-            if(offset == 0){
-                return "mov rcx, [rbp]";
-            }
-            return String.format("mov rcx, [rbp %d]", offset);
-        } else if(offset == 0){
-            return "mov rax, [rbp]";
+        int registerIndex = (prevOp == QuadOp.LOAD_IMM || prevOp == QuadOp.LOAD) ? 1 : 0;
+        String move = symbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
+        String register = this.getRegisterFromType(symbol.type.type, registerIndex);
+        if(offset == 0){
+            return String.format("%s %s, [rbp]", move, register);
         }
-        return String.format("mov rax, [rbp %d]", offset);
-
+        return String.format("%s %s, [rbp %d]", move, register, offset);
     }
+
     private String storeLocal(StackSymbol symbol){
         int offset = this.getStackPointerOffset(symbol);
+        String move = symbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
+        String register = this.getRegisterFromType(symbol.type.type, 0);
         if(offset == 0){
-            return "mov [rsp], rax";
+            return String.format("%s [rsp], %s", move, register);
         }
-        return String.format("mov [rbp %d], rax", offset);
+        return String.format("%s [rbp %d], %s", move, offset, register);
     }
 
     private int getStackPointerOffset(StackSymbol symbol){

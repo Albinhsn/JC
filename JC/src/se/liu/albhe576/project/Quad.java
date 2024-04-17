@@ -1,6 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.nio.channels.FileLock;
 import java.util.List;
 import java.util.Map;
 
@@ -19,16 +18,6 @@ public class Quad {
     public Symbol operand2;
     public Symbol result;
 
-    public static Symbol getLastResult(List<Quad> quads){
-        return quads.get(quads.size() - 1).result;
-    }
-    public static Symbol getLastOperand1(List<Quad> quads){
-        return quads.get(quads.size() - 1).operand1;
-    }
-
-    public static Quad insertLabel(Symbol label){
-        return new Quad(QuadOp.LABEL, label, null, null);
-    }
 
     public Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result){
         this.op = op;
@@ -38,20 +27,19 @@ public class Quad {
 
     }
 
-
-    public static void insertBooleanComparison(List<Quad> quads, String immediateLiteral){
+    public static void insertBooleanComparison(QuadList quads, String immediateLiteral){
         Symbol immediateSymbol = Compiler.generateImmediateSymbol(DataType.getInt(), immediateLiteral);
         Symbol immLoadResult = Compiler.generateSymbol(DataType.getInt());
-        quads.add(new Quad(QuadOp.PUSH, null, null, null));
-        quads.add(new Quad(QuadOp.LOAD_IMM, immediateSymbol, null, immLoadResult));
-        quads.add(new Quad(QuadOp.MOV_REG_CA, null, null, null));
-        quads.add(new Quad(QuadOp.POP, null, null, null));
-        quads.add(new Quad(QuadOp.CMP, null, null,null));
+        quads.addQuad(QuadOp.PUSH, null, null, Compiler.generateSymbol(DataType.getInt()));
+        quads.addQuad(QuadOp.LOAD_IMM, immediateSymbol, null, immLoadResult);
+        quads.addQuad(QuadOp.MOV_REG_CA, null, null, null);
+        quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(DataType.getInt()));
+        quads.addQuad(QuadOp.CMP, null, null,null);
     }
 
-    public static void insertJMPOnComparisonCheck(List<Quad> quads, Symbol jmpLocation, boolean jumpIfTrue){
+    public static void insertJMPOnComparisonCheck(QuadList quads, Symbol jmpLocation, boolean jumpIfTrue){
         insertBooleanComparison(quads, jumpIfTrue ? "1" : "0");
-        quads.add(new Quad(QuadOp.JE, jmpLocation, null, null));
+        quads.addQuad(QuadOp.JE, jmpLocation, null, null);
     }
 
     public String getRegisterFromType(DataTypes type, int registerIndex){
@@ -62,21 +50,34 @@ public class Quad {
         }
         return generalRegisters[registerIndex];
     }
+    public String setupFloatingPointBinary(){
+        StringBuilder builder = new StringBuilder();
+        // This means rax is not floating point
+        // That means we have to both transfer it to xmm0 and cast it
+        if(operand1.type.type != DataTypes.FLOAT){
+            builder.append("cvtsi2ss xmm0, rax\n");
+        // Same but for rcx
+        }else if(operand2.type.type != DataTypes.FLOAT){
+            builder.append("cvtsi2ss xmm1, rcx\n");
+        }
 
-    public String emit(Stack stack, Quad prevQuad, List<Function> functions, Map<String, String> constants) throws UnknownSymbolException {
+        return builder.toString();
+    }
+
+    public String emit(Stack stack, Quad prevQuad, List<Function> functions, Map<String, Constant> constants) throws UnknownSymbolException {
         QuadOp prevOp = prevQuad == null ? null : prevQuad.op;
         switch(this.op){
             case LOAD_IMM -> {
                 ImmediateSymbol imm = (ImmediateSymbol) this.operand1;
-                if(prevOp == QuadOp.LOAD_IMM || prevOp == QuadOp.LOAD){
-                    return String.format("mov %s, %s", getRegisterFromType(operand1.type.type,1), imm.value);
-                }
+                int registerIndex = (prevOp == QuadOp.LOAD_IMM || prevOp == QuadOp.LOAD) ? 1 :0;
+                String register = this.getRegisterFromType(operand1.type.type, registerIndex);
 
                 switch(imm.type.type){
-                    case INT -> {return String.format("mov rax, %s", imm.value);}
+                    case INT -> {return String.format("mov %s, %s", register, imm.value);}
+                    case BYTE_POINTER -> {return String.format("mov %s, %s", register,constants.get(imm.value).label);}
                     case FLOAT-> {
                         if(constants.containsKey(imm.value)){
-                            return String.format("movss xmm0,[%s]", constants.get(imm.value));
+                            return String.format("movss %s,[%s]", register, constants.get(imm.value).label);
                         }
                         throw new UnknownSymbolException(String.format("Couldn't find constant '%s'", imm.value));
                     }
@@ -93,25 +94,34 @@ public class Quad {
                 return "add rax, rcx";
             }
             case FADD -> {
-                return "addss xmm0, xmm1\nmovq rax, xmm0";
+                String setup = this.setupFloatingPointBinary();
+                return setup + "addss xmm0, xmm1";
             }
             case SUB -> {
                 return "sub rax, rcx";
             }
             case FSUB -> {
-                return "subss xmm0, xmm1\nmovq rax, xmm0";
+                String setup = this.setupFloatingPointBinary();
+                return setup + "subss xmm0, xmm1";
             }
             case MUL -> {
                 return "mul rcx";
             }
             case CVTTSS2SI -> {
-                return "movq xmm0, rax\ncvttss2si rax, xmm0";
+                return "cvttss2si rax, xmm0";
             }
-            case CVTDQ2PD-> {
-                return "movq xmm0, rax\ncvtdq2pd xmm0, xmm0\nmovq rax, xmm0";
+            case CVTSI2SS-> {
+                return "cvtsi2ss xmm0, rax";
+            }
+            case POP_RBP-> {
+                return "pop rbp";
+            }
+            case PUSH_RBP-> {
+                return "push rbp";
             }
             case FMUL -> {
-                return "mulss xmm0, xmm1\nmovq rax, xmm0";
+                String setup = this.setupFloatingPointBinary();
+                return setup + "mulss xmm0, xmm1";
             }
             case DIV -> {
                 return "idiv rcx";
@@ -120,13 +130,14 @@ public class Quad {
                 return "cdq\nidiv rcx\nmov rax, rdx\n";
             }
             case FDIV -> {
-                return "divss xmm0, xmm1\nmovq rax, xmm0";
+                String setup = this.setupFloatingPointBinary();
+                return setup + "divss xmm0, xmm1";
             }
             case LOAD_POINTER ->{
                 return stack.loadStructPointer(operand1.name);
             }
             case INDEX ->{
-                return "mov rax, [rax + rcx]";
+                return "lea rax, [rax + rcx]";
             }
             case DEREFERENCE ->{
                 return "mov rax, [rax]";
@@ -177,7 +188,7 @@ public class Quad {
                 return "setl al\nmovzx rax, al";
             }
             case PUSH ->{
-                if(prevQuad.result.type.type == DataTypes.FLOAT){
+                if(prevQuad.result != null && prevQuad.result.type.type == DataTypes.FLOAT){
                     return "sub rsp, 8\nmovss [rsp], xmm0";
                 }
                 return "push rax";
@@ -197,14 +208,20 @@ public class Quad {
             case MOV_REG_AC ->{
                 return "mov rax, rcx";
             }
-            case MOV_REG_DA ->{
-                return "mov rdx, rax";
-            }
-            case MOV_REG_AD ->{
-                return "mov rax, rdx";
-            }
             case MOV_RDI->{
                 return "mov rdi, rax";
+            }
+            case MOV_RSI->{
+                return "mov rsi, rax";
+            }
+            case MOV_RDX->{
+                return "mov rdx, rax";
+            }
+            case MOV_R8->{
+                return "mov r8, rax";
+            }
+            case MOV_R9->{
+                return "mov r9, rax";
             }
             case CALL ->{
                 int argSize = 1;

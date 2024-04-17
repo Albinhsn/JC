@@ -3,7 +3,7 @@ package se.liu.albhe576.project;
 import java.util.List;
 import java.util.Stack;
 
-public class ComparisonExpr implements Expr {
+public class ComparisonExpr extends Expr {
 
     @Override
     public String toString() {
@@ -13,25 +13,26 @@ public class ComparisonExpr implements Expr {
     public Expr left;
     public Expr right;
     public Token op;
-    public ComparisonExpr(Expr left, Expr right, Token op){
+    public ComparisonExpr(Expr left, Expr right, Token op, int line){
+        super(line);
         this.left = left;
         this.right = right;
         this.op = op;
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
-        List<Quad> l = left.compile(symbolTable);
-        List<Quad> r = right.compile(symbolTable);
+    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+        QuadList l = left.compile(symbolTable);
+        QuadList r = right.compile(symbolTable);
 
-        Symbol lSymbol = Quad.getLastResult(l);
-        Symbol rSymbol = Quad.getLastResult(r);
-        l.add(new Quad(QuadOp.PUSH, null, null, null));
-        l.addAll(r);
-        l.add(new Quad(QuadOp.MOV_REG_CA, null, null, null));
-        l.add(new Quad(QuadOp.POP, null, null, null));
-        l.add(new Quad(QuadOp.CMP, lSymbol, rSymbol, null));
-        l.add(new Quad(QuadOp.fromToken(op), null, null, Compiler.generateSymbol(DataType.getInt())));
+        Symbol lSymbol = l.getLastResult();
+        Symbol rSymbol = r.getLastResult();
+        l.addQuad(QuadOp.PUSH, null, null, Compiler.generateSymbol(lSymbol.type));
+        l.concat(r);
+        l.addQuad(QuadOp.MOV_REG_CA, null, null, null);
+        l.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(lSymbol.type));
+        l.addQuad(QuadOp.CMP, lSymbol, rSymbol, null);
+        l.addQuad(QuadOp.fromToken(op), null, null, Compiler.generateSymbol(DataType.getInt()));
         return l;
     }
 }

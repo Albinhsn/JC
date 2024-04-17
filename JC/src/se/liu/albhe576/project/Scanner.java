@@ -72,6 +72,8 @@ public class Scanner {
                 }
                 case '.':{
                 }
+                case '#':{
+                }
                 case '^':{
                 }
                 case ',':{
@@ -223,6 +225,15 @@ public class Scanner {
             case ':' -> this.createToken(TokenType.TOKEN_COLON, ":");
             case '%' -> this.createToken(TokenType.TOKEN_MOD, "%");
             case ',' -> this.createToken(TokenType.TOKEN_COMMA, ",");
+            case '#' ->
+            {
+                int len = "include".length();
+                if(!this.input.substring(this.index, this.index + len).equals("include")){
+                    throw new IllegalCharacterException(String.format("Tried to parse include but failed at line %d\n", line));
+                }
+                this.index += len;
+                yield this.createToken(TokenType.TOKEN_INCLUDE, "#include");
+            }
             case '.' -> this.createToken(TokenType.TOKEN_DOT, ".");
             case '(' -> this.createToken(TokenType.TOKEN_LEFT_PAREN, "(");
             case ')' -> this.createToken(TokenType.TOKEN_RIGHT_PAREN, ")");

@@ -1,9 +1,8 @@
 package se.liu.albhe576.project;
 
 import java.util.List;
-import java.util.Stack;
 
-public class AssignExpr implements  Expr{
+public class AssignExpr extends Expr{
     @Override
     public String toString() {
         return String.format("%s = %s",variable, value);
@@ -11,43 +10,56 @@ public class AssignExpr implements  Expr{
     private final Expr variable;
     private final Expr value;
 
-    public AssignExpr(Expr variable, Expr value){
+    public AssignExpr(Expr variable, Expr value, int line){
+        super(line);
         this.variable = variable;
         this.value = value;
     }
 
+    private QuadList compileStoreField(SymbolTable symbolTable, QuadList valueQuads, QuadList variableQuads) throws UnknownSymbolException {
+        Quad lastQuad =  variableQuads.getLastQuad();
+        variableQuads.removeLastQuad();
+        Symbol struct = lastQuad.operand1;
+        Symbol result = lastQuad.result;
+        Symbol memberSymbol = symbolTable.getMemberSymbol(struct, lastQuad.operand2.name);
+
+
+        Symbol pushed = Compiler.generateSymbol(result.type);
+        variableQuads.addQuad(QuadOp.PUSH, result, null, pushed);
+        variableQuads.concat(valueQuads);
+        Symbol valResult = valueQuads.getLastResult();
+
+        if(memberSymbol.type.type != DataTypes.FLOAT){
+            variableQuads.addQuad(QuadOp.MOV_REG_CA, valResult, null, Compiler.generateSymbol(valResult.type));
+        }
+
+        Symbol popped = Compiler.generateSymbol(result.type);
+        variableQuads.addQuad(QuadOp.POP, pushed, null, popped);
+        variableQuads.addQuad(QuadOp.SET_FIELD, popped, memberSymbol, struct);
+
+        return variableQuads;
+    }
+
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
-        List<Quad> val = value.compile(symbolTable);
-        List<Quad> targetVariable = variable.compile(symbolTable);
+    public QuadList compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
+        QuadList valueQuads = value.compile(symbolTable);
+        QuadList variableQuads = variable.compile(symbolTable);
 
 
-        if(variable instanceof DotExpr dotExpr){
-            targetVariable.remove(targetVariable.size() - 1);
-            Symbol operand1 = Quad.getLastOperand1(targetVariable);
-            Symbol result = Quad.getLastResult(targetVariable);
-            Symbol memberSymbol = symbolTable.getMemberSymbol(result, dotExpr.member.literal);
-
-
-            targetVariable.add(new Quad(QuadOp.PUSH, result, null, null));
-            targetVariable.addAll(val);
-            Symbol valResult = Quad.getLastResult(val);
-            if(memberSymbol.type.type != DataTypes.FLOAT){
-                targetVariable.add(new Quad(QuadOp.MOV_REG_CA, valResult, null, Compiler.generateSymbol(valResult.type)));
-            }
-            targetVariable.add(new Quad(QuadOp.POP, null, null, Compiler.generateSymbol(result.type)));
-            targetVariable.add(new Quad(QuadOp.SET_FIELD, null, memberSymbol, operand1));
-
-            return targetVariable;
+        // There is a difference when assinging a value whose location is on the stack
+        // versus something that's accessed through a pointer to something
+        // This is just looking essentially if the last thing in the variable is a get field
+        if(variableQuads.getLastOp() == QuadOp.GET_FIELD){
+            return this.compileStoreField(symbolTable, valueQuads, variableQuads);
 
         }
 
         // Figure out if legal?
-        Symbol res = Quad.getLastResult(val);
+        Symbol res = valueQuads.getLastResult();
 
-        val.addAll(targetVariable);
-        val.add(new Quad(QuadOp.STORE, res, null, Quad.getLastResult(targetVariable)));
+        valueQuads.concat(variableQuads);
+        valueQuads.addQuad(QuadOp.STORE, res, null, variableQuads.getLastResult());
 
-        return val;
+        return valueQuads;
     }
 }

@@ -10,7 +10,7 @@ public class SymbolTable {
     public final List<Struct> structs;
     private final List<Function> functions;
     private final List<Function> libraryFunctions;
-    private final Map<String, String> constants;
+    private final Map<String, Constant> constants;
     private final java.util.Stack<List<Symbol>> localSymbolTable;
 
     public void enterScope(){
@@ -30,7 +30,7 @@ public class SymbolTable {
     public List<Function> getFunctions(){
         return this.functions;
     }
-    public Map<String, String> getConstants(){
+    public Map<String, Constant> getConstants(){
         return this.constants;
     }
     public void addSymbol(Symbol symbol){
@@ -54,9 +54,9 @@ public class SymbolTable {
         throw new UnknownSymbolException(String.format("Can't find function %s", name));
     }
 
-    public void addConstant(String constant){
+    public void addConstant(String constant, DataTypes type){
         String constName = "const" + constants.size();
-        constants.put(constant, constName);
+        constants.put(constant, new Constant(constName, type));
     }
 
     public boolean isLibraryFunction(String name){
@@ -109,15 +109,20 @@ public class SymbolTable {
     private void addLibraryFunctions(){
         List<StructField> mallocArgs = new ArrayList<>();
         mallocArgs.add(new StructField("size", DataType.getInt(), "int"));
-        Function malloc = new Function("malloc", mallocArgs, DataType.getVoidPointer(), new ArrayList<>());
+        Function malloc = new Function("malloc", mallocArgs, DataType.getVoidPointer(), new QuadList());
 
         this.libraryFunctions.add(malloc);
 
         List<StructField> freeArgs = new ArrayList<>();
         freeArgs.add(new StructField("pointer", DataType.getVoidPointer(), "void *"));
-        Function free = new Function("free", freeArgs, DataType.getVoid(), new ArrayList<>());
+        Function free = new Function("free", freeArgs, DataType.getVoid(), new QuadList());
 
         this.libraryFunctions.add(free);
+
+        List<StructField> printArgs = new ArrayList<>();
+        Function print = new Function("printf", printArgs, DataType.getVoid(), new QuadList());
+
+        this.libraryFunctions.add(print);
     }
 
     public SymbolTable(){

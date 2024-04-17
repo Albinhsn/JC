@@ -2,9 +2,8 @@ package se.liu.albhe576.project;
 
 
 import java.util.List;
-import java.util.Stack;
 
-public class DotExpr implements  Expr{
+public class DotExpr extends Expr{
     @Override
     public String toString() {
         return String.format("%s.%s", variable,member.literal);
@@ -13,21 +12,22 @@ public class DotExpr implements  Expr{
     public Expr variable;
     public Token member;
 
-    public DotExpr(Expr variable, Token member){
+    public DotExpr(Expr variable, Token member, int line){
+        super(line);
         this.variable = variable;
         this.member = member;
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
         // feels like this can be solved in the parser
         // we don't know whether we're supposed to load this value or not
         // The question if whether we need to
-        List<Quad> quads = variable.compile(symbolTable);
-        Symbol lastSymbol = Quad.getLastResult(quads);
-        Symbol lastOperand= Quad.getLastOperand1(quads);
+        QuadList quads = variable.compile(symbolTable);
+        Symbol lastSymbol = quads.getLastResult();
+        Symbol lastOperand= quads.getLastOperand1();
         Symbol memberSymbol = symbolTable.getMemberSymbol(lastSymbol, this.member.literal);
-        quads.add(new Quad(QuadOp.GET_FIELD, lastOperand, memberSymbol, Compiler.generateSymbol(memberSymbol.type)));
+        quads.addQuad(QuadOp.GET_FIELD, lastOperand, memberSymbol, Compiler.generateSymbol(memberSymbol.type));
         return quads;
     }
 }

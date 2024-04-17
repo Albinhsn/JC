@@ -10,6 +10,7 @@ public enum TokenType {
     TOKEN_LEFT_BRACKET,
     TOKEN_RIGHT_BRACKET,
     TOKEN_COMMA,
+    TOKEN_INCLUDE,
     TOKEN_DOT,
     TOKEN_MINUS,
     TOKEN_PLUS,

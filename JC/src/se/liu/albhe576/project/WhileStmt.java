@@ -2,9 +2,8 @@ package se.liu.albhe576.project;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 
-public class WhileStmt implements  Stmt{
+public class WhileStmt extends Stmt{
 
     @Override
     public String toString() {
@@ -18,27 +17,28 @@ public class WhileStmt implements  Stmt{
 
     public Expr condition;
     public List<Stmt> body;
-    public WhileStmt(Expr condition, List<Stmt> body){
+    public WhileStmt(Expr condition, List<Stmt> body, int line){
+        super(line);
         this.condition = condition;
         this.body = body;
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
-        List<Quad> out  = new ArrayList<>();
+    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
+        QuadList out  = new QuadList();
         Symbol condLabel = Compiler.generateLabel();
-        out.add(Quad.insertLabel(condLabel));
-        out.addAll(condition.compile(symbolTable));
+        out.insertLabel(condLabel);
+        out.concat(condition.compile(symbolTable));
 
         Symbol mergeLabel = Compiler.generateLabel();
         Quad.insertJMPOnComparisonCheck(out, mergeLabel, false);
 
         symbolTable.enterScope();
         for(Stmt stmt : body){
-            out.addAll(stmt.compile(symbolTable));
+            out.concat(stmt.compile(symbolTable));
         }
-        out.add(new Quad(QuadOp.JMP, condLabel, null, null));
-        out.add(Quad.insertLabel(mergeLabel));
+        out.addQuad(QuadOp.JMP, condLabel, null, null);
+        out.insertLabel(mergeLabel);
         symbolTable.exitScope();
 
         return out;

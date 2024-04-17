@@ -3,7 +3,7 @@ package se.liu.albhe576.project;
 import java.util.List;
 import java.util.Stack;
 
-public class IndexExpr implements Expr{
+public class IndexExpr extends Expr{
 
     @Override
     public String toString() {
@@ -12,26 +12,31 @@ public class IndexExpr implements Expr{
 
     private final Expr value;
     private final Expr index;
-    public IndexExpr(Expr value, Expr index){
+    public IndexExpr(Expr value, Expr index, int line){
+        super(line);
         this.value = value;
         this.index = index;
 
     }
 
     @Override
-    public List<Quad> compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
-        List<Quad> idx = value.compile(symbolTable);
-        Symbol idxOperand = Quad.getLastOperand1(idx);
-        Symbol idxSymbol = Quad.getLastResult(idx);
-        idx.add(new Quad(QuadOp.PUSH, null, null, null));
+    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+        QuadList idx = value.compile(symbolTable);
+        Symbol idxOperand = idx.getLastOperand1();
+        Symbol idxSymbol = idx.getLastResult();
 
-        List<Quad> val = index.compile(symbolTable);
-        Symbol valSymbol = Quad.getLastResult(val);
+        Symbol pushedSymbol = Compiler.generateSymbol(idxSymbol.type);
+        idx.addQuad(QuadOp.PUSH, idxSymbol, null, pushedSymbol);
 
-        idx.addAll(val);
-        idx.add(new Quad(QuadOp.MOV_REG_CA, null, null, null));
-        idx.add(new Quad(QuadOp.POP, null, null, null));
-        idx.add(new Quad(QuadOp.INDEX, idxOperand, valSymbol, Compiler.generateSymbol(DataType.getTypeFromPointer(idxSymbol.type))));
+        QuadList val = index.compile(symbolTable);
+        Symbol valSymbol = val.getLastResult();
+
+        idx.concat(val);
+        idx.addQuad(QuadOp.MOV_REG_CA, null, null, null);
+
+        Symbol poppedSymbol = Compiler.generateSymbol(pushedSymbol.type);
+        idx.addQuad(QuadOp.POP, pushedSymbol, null, poppedSymbol);
+        idx.addQuad(QuadOp.INDEX, idxOperand, valSymbol, Compiler.generateSymbol(DataType.getTypeFromPointer(idxSymbol.type)));
         return idx;
     }
 }
