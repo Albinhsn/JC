@@ -1,9 +1,6 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class SymbolTable {
 
@@ -20,11 +17,20 @@ public class SymbolTable {
     public void exitScope(){
         this.scopeDepth--;
     }
-    public void compileFunction(String name){
-        this.localSymbolTable.put(name, new HashMap<>());
-    }
     public void compileFunction(String name, Map<String, VariableSymbol> arguments){
         this.localSymbolTable.put(name, arguments);
+    }
+
+    public boolean isDeclaredStruct(String name){
+        final String[] internal = new String[]{
+                "int",
+                "float",
+                "String",
+        };
+        if(Arrays.stream(internal).anyMatch(i -> i.equals(name))){
+            return true;
+        }
+        return this.structs.containsKey(name);
     }
 
     public int getStructSize(DataType type){

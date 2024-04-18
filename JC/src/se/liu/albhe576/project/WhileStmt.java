@@ -1,6 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class WhileStmt extends Stmt{
@@ -24,23 +23,20 @@ public class WhileStmt extends Stmt{
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
-        QuadList out  = new QuadList();
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
         Symbol condLabel = Compiler.generateLabel();
-        out.insertLabel(condLabel);
-        out.concat(condition.compile(symbolTable));
+        quads.insertLabel(condLabel);
+        condition.compile(symbolTable, quads);
 
         Symbol mergeLabel = Compiler.generateLabel();
-        Quad.insertJMPOnComparisonCheck(out, mergeLabel, false);
+        Quad.insertJMPOnComparisonCheck(quads, mergeLabel, false);
 
         symbolTable.enterScope();
         for(Stmt stmt : body){
-            out.concat(stmt.compile(symbolTable));
+            stmt.compile(symbolTable, quads);
         }
-        out.addQuad(QuadOp.JMP, condLabel, null, null);
-        out.insertLabel(mergeLabel);
+        quads.addQuad(QuadOp.JMP, condLabel, null, null);
+        quads.insertLabel(mergeLabel);
         symbolTable.exitScope();
-
-        return out;
     }
 }

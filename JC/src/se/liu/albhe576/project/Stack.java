@@ -118,13 +118,13 @@ public class Stack {
     }
     public String storeField(DataType type, Symbol memberSymbol) throws UnknownSymbolException{
         String move = memberSymbol.type.type == DataTypes.FLOAT ? "movsd" : "mov";
-        String register = this.getRegisterFromType(memberSymbol.type.type, 1);
+        String register = this.getRegisterFromType(memberSymbol.type.type, 0);
         Struct struct  = this.structs.get(type.name);
         int offset = this.getFieldOffset(struct, memberSymbol.name);
         if(offset != 0){
-            return String.format("%s [rax + %d], %s", move, offset, register);
+            return String.format("%s [rcx + %d], %s", move, offset, register);
         }
-        return String.format("%s [rax], %s", move, register);
+        return String.format("%s [rcx], %s", move, register);
     }
     public int getLocalSize() {
         List<VariableSymbol> symbols = this.stackSymbols.values().stream().toList();

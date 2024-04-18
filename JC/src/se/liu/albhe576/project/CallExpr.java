@@ -25,21 +25,7 @@ public class CallExpr extends Expr{
        this.args = args;
    }
 
-   private QuadList handleSizeOf(SymbolTable symbolTable) throws CompileException, UnknownSymbolException {
-       QuadList quads = new QuadList();
-       if(args.size() != 1){
-           throw new CompileException(String.format("Can't do sizeof with anything other then 1 arg on line %d", name.line));
-       }
-       Expr arg = args.get(0);
-       if(!(arg instanceof VarExpr varExpr)){
-           throw new CompileException(String.format("Can't do sizeof on something other then a var expression on line %d", name.line));
-       }
-       Struct struct = symbolTable.structs.get(varExpr.token.literal);
-       int size = struct.getSize(symbolTable.structs);
-       quads.addQuad(QuadOp.LOAD_IMM,  Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(size)),null, Compiler.generateSymbol(DataType.getInt()));
-       return quads;
-   }
-   private QuadList callExternFunction(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
+   private void callExternFunction(SymbolTable symbolTable, QuadList quads) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
 
        Function function = symbolTable.getExternFunction(this.name.literal);
        QuadOp[] argLocations = new QuadOp[]{
@@ -65,43 +51,36 @@ public class CallExpr extends Expr{
        int generalCount = 0;
        int floatCount = 0;
 
-       QuadList out = new QuadList();
        Symbol floatType = Compiler.generateSymbol(DataType.getFloat());
        for (Expr arg : args) {
-           QuadList argQuad = arg.compile(symbolTable);
-           Symbol result = argQuad.getLastResult();
+           arg.compile(symbolTable, quads);
+           Symbol result = quads.getLastResult();
            if (result.type.type == DataTypes.FLOAT) {
                if(floatCount > 1){
-                   argQuad.addQuad(QuadOp.PUSH, floatType, null, floatType);
+                   quads.addQuad(QuadOp.PUSH, floatType, null, floatType);
                }
-               argQuad.addQuad(floatLocations[floatCount], null, null, null);
+               quads.addQuad(floatLocations[floatCount], null, null, null);
                if(floatCount > 1){
-                   argQuad.addQuad(QuadOp.POP, floatType, null, floatType);
+                   quads.addQuad(QuadOp.POP, floatType, null, floatType);
                }
                floatCount++;
            } else {
-               argQuad.addQuad(argLocations[generalCount], null, null, null);
+               quads.addQuad(argLocations[generalCount], null, null, null);
                generalCount++;
            }
 
-           out.concat(argQuad);
        }
 
-       out.addQuad(QuadOp.CALL, function.getFunctionSymbol(), null, Compiler.generateSymbol(function.returnType));
-       return out;
+       quads.addQuad(QuadOp.CALL, function.getFunctionSymbol(), null, Compiler.generateSymbol(function.returnType));
    }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException, UnknownSymbolException, InvalidOperation, UnexpectedTokenException {
 
-        if(name.literal.equals("sizeof")){
-            return this.handleSizeOf(symbolTable);
-        }
         if(symbolTable.isExternFunction(name.literal) || symbolTable.isExternFunction(name.literal)){
-            return this.callExternFunction(symbolTable);
+            this.callExternFunction(symbolTable, quads);
+            return;
         }
-
-        QuadList quads = new QuadList();
 
         Function function = symbolTable.getFunction(this.name.literal);
         List<StructField> functionArguments = function.arguments;
@@ -112,15 +91,13 @@ public class CallExpr extends Expr{
         for(int i = args.size() - 1; i >= 0; i--){
             Expr arg = args.get(i);
 
-            QuadList argQuad = arg.compile(symbolTable);
-            Quad lastQuad = argQuad.getLastQuad();
+            arg.compile(symbolTable, quads);
+            Quad lastQuad = quads.getLastQuad();
             Symbol argSymbol = lastQuad.result;
             DataType funcArgType = functionArguments.get(i).type;
             if(!argSymbol.type.isSameType(funcArgType)){
                 throw new CompileException(String.format("Function parameter type mismatch expected %s got %s on line %d", argSymbol.type.name, funcArgType.name, name.line));
             }
-            quads.concat(argQuad);
-
             if(argSymbol.type.type == DataTypes.STRUCT){
                 quads.addQuad(QuadOp.PUSH_STRUCT, argSymbol, null, null);
             }else{
@@ -130,7 +107,5 @@ public class CallExpr extends Expr{
         }
 
         quads.addQuad(QuadOp.CALL, function.getFunctionSymbol(), null, Compiler.generateSymbol(function.returnType));
-
-        return quads;
     }
 }

@@ -1,8 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class PostfixExpr extends Expr{
     @Override
     public String toString() {
@@ -19,8 +16,7 @@ public class PostfixExpr extends Expr{
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException {
-        QuadList quads = new QuadList();
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException {
         Symbol symbol = symbolTable.findSymbol(literal.literal);
 
         Symbol loadedSymbol = Compiler.generateSymbol(symbol.type);
@@ -36,6 +32,5 @@ public class PostfixExpr extends Expr{
             quads.addQuad(QuadOp.ADD, loadedSymbol, null, increasedSymbol);
         }
         quads.addQuad(QuadOp.STORE, increasedSymbol, null, symbol);
-        return quads;
     }
 }

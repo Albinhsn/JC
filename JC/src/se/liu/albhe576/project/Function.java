@@ -9,7 +9,6 @@ public class Function {
     public DataType returnType;
     public QuadList intermediates;
     public final boolean varArgs;
-
     public Symbol getFunctionSymbol(){
         return new Symbol(name, null);
     }

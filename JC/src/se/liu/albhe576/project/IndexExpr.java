@@ -1,8 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.List;
-import java.util.Stack;
-
 public class IndexExpr extends Expr{
 
     @Override
@@ -20,30 +17,25 @@ public class IndexExpr extends Expr{
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
         // index = 1
         // value = arr
-        QuadList val = value.compile(symbolTable);
-        Symbol valResult = val.getLastResult();
-        Symbol valOperand = val.getLastOperand1();
+        value.compile(symbolTable, quads);
+        Symbol valResult = quads.getLastResult();
+        Symbol valOperand = quads.getLastOperand1();
+        quads.addQuad(QuadOp.PUSH, null, null, null);
 
-        QuadList idx = index.compile(symbolTable);
-        Symbol idxResult = idx.getLastResult();
+        index.compile(symbolTable, quads);
+        Symbol idxResult = quads.getLastResult();
 
-
-        val.addQuad(QuadOp.PUSH, null, null, null);
-
-
-        val.concat(idx);
-        val.addQuad(QuadOp.MOV_REG_CA, idxResult, null, Compiler.generateSymbol(idxResult.type));
+        quads.addQuad(QuadOp.MOV_REG_CA, idxResult, null, Compiler.generateSymbol(idxResult.type));
         ImmediateSymbol immSymbol = Compiler.generateImmediateSymbol(DataType.getInt(), "8");
-        val.addQuad(QuadOp.LOAD_IMM, immSymbol, null, Compiler.generateSymbol(DataType.getInt()));
-        val.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), Compiler.generateSymbol(idxResult.type), Compiler.generateSymbol(DataType.getInt()));
-        val.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
-        val.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(DataType.getInt()));
-        val.addQuad(QuadOp.ADD, null, null, Compiler.generateSymbol(DataType.getInt()));
-        val.addQuad(QuadOp.INDEX, idxResult, valOperand, Compiler.generateSymbol(valResult.type.getTypeFromPointer()));
+        quads.addQuad(QuadOp.LOAD_IMM, immSymbol, null, Compiler.generateSymbol(DataType.getInt()));
+        quads.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), Compiler.generateSymbol(idxResult.type), Compiler.generateSymbol(DataType.getInt()));
+        quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
+        quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(DataType.getInt()));
+        quads.addQuad(QuadOp.ADD, null, null, Compiler.generateSymbol(DataType.getInt()));
+        quads.addQuad(QuadOp.INDEX, idxResult, valOperand, Compiler.generateSymbol(valResult.type.getTypeFromPointer()));
 
-        return val;
     }
 }

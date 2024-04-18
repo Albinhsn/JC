@@ -5,10 +5,8 @@
 
 #include "resources/tests.jc"
 
-
 int main() {
-
+    Baz baz;
     run_tests();
-    return 0;
 }
 

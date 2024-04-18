@@ -1,8 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.List;
-import java.util.Stack;
-
 public class ComparisonExpr extends Expr {
 
     @Override
@@ -21,18 +18,17 @@ public class ComparisonExpr extends Expr {
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
-        QuadList l = left.compile(symbolTable);
-        QuadList r = right.compile(symbolTable);
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+        left.compile(symbolTable, quads);
 
-        Symbol lSymbol = l.getLastResult();
-        Symbol rSymbol = r.getLastResult();
-        l.addQuad(QuadOp.PUSH, null, null, Compiler.generateSymbol(lSymbol.type));
-        l.concat(r);
-        l.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
-        l.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(lSymbol.type));
-        l.addQuad(QuadOp.CMP, lSymbol, rSymbol, null);
-        l.addQuad(QuadOp.fromToken(op), null, null, Compiler.generateSymbol(DataType.getInt()));
-        return l;
+        Symbol lSymbol = quads.getLastResult();
+        quads.addQuad(QuadOp.PUSH, null, null, Compiler.generateSymbol(lSymbol.type));
+        right.compile(symbolTable, quads);
+        Symbol rSymbol = quads.getLastResult();
+        quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
+        quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(lSymbol.type));
+        quads.addQuad(QuadOp.CMP, lSymbol, rSymbol, null);
+        quads.addQuad(QuadOp.fromToken(op), null, null, Compiler.generateSymbol(DataType.getInt()));
+
     }
 }

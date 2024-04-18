@@ -1,7 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.List;
-
 public class GroupedExpr extends Expr{
     @Override
     public String toString() {
@@ -15,7 +13,7 @@ public class GroupedExpr extends Expr{
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
-        return expr.compile(symbolTable);
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+        expr.compile(symbolTable, quads);
     }
 }

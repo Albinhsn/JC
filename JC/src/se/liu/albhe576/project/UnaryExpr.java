@@ -16,8 +16,8 @@ public class UnaryExpr extends Expr{
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
-        QuadList quads = expr.compile(symbolTable);
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
+        expr.compile(symbolTable, quads);
         Symbol symbol = quads.getLastResult();
         Symbol result = Compiler.generateSymbol(symbol.type);
         QuadOp quadOp;
@@ -53,7 +53,7 @@ public class UnaryExpr extends Expr{
                     quads.addQuad(QuadOp.MOV_REG_CA, immSymbol, null, movedImm);
                     quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(result.type));
                     quads.addQuad(QuadOp.ADD, Compiler.generateSymbol(result.type), movedImm, Compiler.generateSymbol(result.type));
-                    return quads;
+                    return;
                 }
                 quadOp = QuadOp.fromToken(op);
                 break;
@@ -68,7 +68,7 @@ public class UnaryExpr extends Expr{
                     quads.addQuad(QuadOp.MOV_REG_CA, immSymbol, null, movedImm);
                     quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(result.type));
                     quads.addQuad(QuadOp.SUB, Compiler.generateSymbol(result.type), movedImm, Compiler.generateSymbol(result.type));
-                    return quads;
+                    return;
                 }
                 quadOp = QuadOp.fromToken(op);
                 break;
@@ -79,6 +79,5 @@ public class UnaryExpr extends Expr{
         }
 
         quads.addQuad(quadOp, symbol, null, result);
-        return quads;
     }
 }

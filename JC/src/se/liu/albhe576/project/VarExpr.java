@@ -17,21 +17,15 @@ public class VarExpr extends Expr {
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException {
-
-        QuadList quads = new QuadList();
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException {
 
         // ToDo check that the variable exist?
         Symbol symbol = symbolTable.findSymbol(token.literal);
         if(symbol == null){
             throw new UnknownSymbolException(String.format("Can't find symbol %s at line %s", token.literal, line));
         }
-        if(symbol.type.type == DataTypes.STRUCT){
-            quads.addQuad(QuadOp.LOAD_POINTER, symbol, null, Compiler.generateSymbol(symbol.type));
-            return quads;
-        }
 
-        quads.addQuad(QuadOp.LOAD, symbol, null, Compiler.generateSymbol(symbol.type));
-        return quads;
+        QuadOp op = symbol.type.type == DataTypes.STRUCT ? QuadOp.LOAD_POINTER : QuadOp.LOAD;
+        quads.addQuad(op, symbol, null, Compiler.generateSymbol(symbol.type));
     }
 }

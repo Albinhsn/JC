@@ -3,6 +3,11 @@
 ## Features remaining
 
 
+* grab out every function differently 
+* remove struct stmt?
+* type check struct declarations?
+* fix macros that are functions, aka sizeof
+
 * return struct without pointer?
     * essentially leave it on the stack afterwards
 

@@ -23,23 +23,19 @@ public class AugmentedExpr extends Expr{
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, InvalidOperation, UnexpectedTokenException {
-        QuadList targetQuads = target.compile(symbolTable);
-        Symbol targetSymbol = targetQuads.getLastOperand1();
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException, UnknownSymbolException, InvalidOperation, UnexpectedTokenException {
+        target.compile(symbolTable, quads);
+        Symbol targetSymbol = quads.getLastOperand1();
 
-        QuadList valueQuads = value.compile(symbolTable);
-        Symbol valueSymbol = valueQuads.getLastResult();
+        value.compile(symbolTable, quads);
+        Symbol valueSymbol = quads.getLastResult();
 
-
-        targetQuads.concat(valueQuads);
         QuadOp op = QuadOp.fromToken(this.op);
         if(targetSymbol.type.type == DataTypes.FLOAT || valueSymbol.type.type == DataTypes.FLOAT){
             op = op.convertToFloat();
         }
 
-        targetQuads.addQuad(op, targetSymbol, valueSymbol, targetSymbol);
-        targetQuads.addQuad(QuadOp.STORE, null, null, targetSymbol);
-
-        return targetQuads;
+        quads.addQuad(op, targetSymbol, valueSymbol, targetSymbol);
+        quads.addQuad(QuadOp.STORE, null, null, targetSymbol);
     }
 }

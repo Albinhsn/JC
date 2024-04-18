@@ -1,7 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.List;
-
 public class LogicalExpr extends Expr{
 
     @Override
@@ -20,46 +18,41 @@ public class LogicalExpr extends Expr{
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
-        QuadList l = left.compile(symbolTable);
-        QuadList r = right.compile(symbolTable);
-
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
+        left.compile(symbolTable, quads);
 
         Symbol shortCircuitLabel = Compiler.generateLabel();
         Symbol mergeLabel = Compiler.generateLabel();
         switch(op.type){
             case TOKEN_AND_LOGICAL:{
                 // check first one, jump to mergeFalse, if false
-                Quad.insertJMPOnComparisonCheck(l, shortCircuitLabel, false);
-                l.concat(r);
-                Quad.insertJMPOnComparisonCheck(l, shortCircuitLabel, false);
-                l.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "1"), null,Compiler.generateSymbol(DataType.getInt()));
-                l.addQuad(QuadOp.JMP, mergeLabel, null, null);
-                l.insertLabel(shortCircuitLabel);
-                l.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "0"), null,Compiler.generateSymbol(DataType.getInt()));
-                l.insertLabel(mergeLabel);
+                Quad.insertJMPOnComparisonCheck(quads, shortCircuitLabel, false);
+                right.compile(symbolTable, quads);
+                Quad.insertJMPOnComparisonCheck(quads, shortCircuitLabel, false);
+                quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "1"), null,Compiler.generateSymbol(DataType.getInt()));
+                quads.addQuad(QuadOp.JMP, mergeLabel, null, null);
+                quads.insertLabel(shortCircuitLabel);
+                quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "0"), null,Compiler.generateSymbol(DataType.getInt()));
+                quads.insertLabel(mergeLabel);
                 break;
             }
             case TOKEN_OR_LOGICAL:{
                 // check first one, jump to mergeTrue, if true
                 // second one jumps over mergeTrue to merge if false
                     // remember to set it to 0 :)
-                Quad.insertJMPOnComparisonCheck(l, shortCircuitLabel, true);
-                l.concat(r);
-                Quad.insertJMPOnComparisonCheck(l, shortCircuitLabel, true);
-                l.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "0"), null,Compiler.generateSymbol(DataType.getInt()));
-                l.addQuad(QuadOp.JMP, mergeLabel, null, null);
-                l.insertLabel(shortCircuitLabel);
-                l.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "1"), null,Compiler.generateSymbol(DataType.getInt()));
-                l.insertLabel(mergeLabel);
+                Quad.insertJMPOnComparisonCheck(quads, shortCircuitLabel, true);
+                right.compile(symbolTable, quads);
+                Quad.insertJMPOnComparisonCheck(quads, shortCircuitLabel, true);
+                quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "0"), null,Compiler.generateSymbol(DataType.getInt()));
+                quads.addQuad(QuadOp.JMP, mergeLabel, null, null);
+                quads.insertLabel(shortCircuitLabel);
+                quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "1"), null,Compiler.generateSymbol(DataType.getInt()));
+                quads.insertLabel(mergeLabel);
                 break;
             }
             default: {
-                Symbol lSymbol = l.getLastResult();
-                Symbol rSymbol = r.getLastResult();
-                l.addQuad(QuadOp.fromToken(op), lSymbol, rSymbol, Compiler.generateSymbol(DataType.getInt()));
+                throw new CompileException("How could this happen to me");
             }
         }
-        return l;
     }
 }

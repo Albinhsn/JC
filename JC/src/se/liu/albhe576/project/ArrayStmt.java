@@ -1,6 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class ArrayStmt extends Stmt {
@@ -31,8 +30,7 @@ public class ArrayStmt extends Stmt {
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
-        QuadList quads = new QuadList();
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
         DataType itemType = type.getTypeFromPointer();
 
         int offset = symbolTable.getCurrentScopeSize();
@@ -47,12 +45,11 @@ public class ArrayStmt extends Stmt {
         symbolTable.addSymbol(arraySymbol);
 
         for(Expr item : this.items){
-            quads.concat(item.compile(symbolTable));
+            item.compile(symbolTable, quads);
             quads.addQuad(QuadOp.PUSH, null, null, quads.getLastResult());
             if(!itemType.isSameType(quads.getLastResult().type)){
                 throw new CompileException(String.format("Can't have different types in array declaration on line %d", this.line));
             }
         }
-        return quads;
     }
 }

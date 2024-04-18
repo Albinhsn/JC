@@ -148,7 +148,7 @@ public class Quad {
                 return stack.loadVariable(operand1.name, prevOp);
             }
             case SET_FIELD -> {
-                return stack.storeField(operand1.type, operand2);
+                return stack.storeField(operand2.type, operand1);
             }
             case GET_FIELD -> {
                 return stack.loadField(operand1.type, operand2.name);

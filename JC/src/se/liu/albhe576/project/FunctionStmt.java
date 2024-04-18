@@ -1,6 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,9 +40,8 @@ public class FunctionStmt extends Stmt{
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
-        QuadList out = new QuadList();
-        symbolTable.addFunction(new Function(name, arguments, returnType, out));
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+        symbolTable.addFunction(new Function(name, arguments, returnType, quads));
 
         Map<String, VariableSymbol> localSymbols =new HashMap<>();
         int offset = 16;
@@ -55,10 +53,8 @@ public class FunctionStmt extends Stmt{
         symbolTable.compileFunction(name, localSymbols);
         symbolTable.enterScope();
         for(Stmt stmt : body){
-            out.concat(stmt.compile(symbolTable));
+            stmt.compile(symbolTable, quads);
         }
         symbolTable.exitScope();
-
-        return out;
     }
 }

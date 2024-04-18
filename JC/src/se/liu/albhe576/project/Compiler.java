@@ -35,7 +35,8 @@ public class Compiler {
 
     public void generateIntermediate() throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
         for(Stmt stmt : stmts){
-            stmt.compile(symbolTable);
+            QuadList quads = new QuadList();
+            stmt.compile(symbolTable, quads);
         }
 
         List<Function> functions = symbolTable.getFunctions();
@@ -103,7 +104,7 @@ public class Compiler {
             Stack stack = new Stack(this.symbolTable.getLocals(function.name), this.symbolTable.structs);
             System.out.printf("FUNCTION %s\n", function.name);
 
-            for (Quad intermediate : function.intermediates.getQuads()) {
+            for (Quad intermediate : function.intermediates) {
                 // fileWriter.write("; " + intermediate + "\n");
                 fileWriter.write(intermediate.emit(stack, prev, functions, constants) + "\n");
                 prev = intermediate;

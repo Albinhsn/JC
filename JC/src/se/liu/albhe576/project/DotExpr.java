@@ -19,14 +19,13 @@ public class DotExpr extends Expr{
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
         // feels like this can be solved in the parser
         // we don't know whether we're supposed to load this value or not
         // The question if whether we need to
-        QuadList quads = variable.compile(symbolTable);
+        variable.compile(symbolTable, quads);
         Symbol lastSymbol = quads.getLastResult();
         Symbol memberSymbol = symbolTable.getMemberSymbol(lastSymbol, this.member.literal);
         quads.addQuad(QuadOp.GET_FIELD, lastSymbol, memberSymbol, Compiler.generateSymbol(memberSymbol.type));
-        return quads;
     }
 }

@@ -1,8 +1,6 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
 
 public class IfStmt extends Stmt{
     @Override
@@ -39,14 +37,14 @@ public class IfStmt extends Stmt{
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
-        QuadList out = condition.compile(symbolTable);
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+        condition.compile(symbolTable, quads);
 
         // insert conditional check
         QuadList ifQuad = new QuadList();
         symbolTable.enterScope();
         for(Stmt stmt : ifBody){
-            ifQuad.concat(stmt.compile(symbolTable));
+            stmt.compile(symbolTable, ifQuad);
         }
         symbolTable.exitScope();
 
@@ -54,20 +52,20 @@ public class IfStmt extends Stmt{
         QuadList elseQuad = new QuadList();
         symbolTable.enterScope();
         for(Stmt stmt : elseBody){
-            elseQuad.concat(stmt.compile(symbolTable));
+            stmt.compile(symbolTable, elseQuad);
         }
         symbolTable.exitScope();
 
         Symbol elseLabel = Compiler.generateLabel();
         Symbol mergeLabel = Compiler.generateLabel();
 
-        Quad.insertJMPOnComparisonCheck(out, elseLabel, false);
-        out.concat(ifQuad);
-        out.addQuad(QuadOp.JMP, mergeLabel, null, null);
-        out.addQuad(QuadOp.LABEL, elseLabel, null, null);
-        out.concat(elseQuad);
-        out.addQuad(QuadOp.LABEL, mergeLabel, null, null);
-
-        return out;
+        Quad.insertJMPOnComparisonCheck(quads, elseLabel, false);
+        quads.addAll(ifQuad);
+        //if(!elseBody.isEmpty()){
+            quads.addQuad(QuadOp.JMP, mergeLabel, null, null);
+            quads.addQuad(QuadOp.LABEL, elseLabel, null, null);
+            quads.addAll(elseQuad);
+        //}
+        quads.addQuad(QuadOp.LABEL, mergeLabel, null, null);
     }
 }

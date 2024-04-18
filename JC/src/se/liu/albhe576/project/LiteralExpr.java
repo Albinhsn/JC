@@ -19,10 +19,7 @@ public class LiteralExpr extends Expr{
     }
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnexpectedTokenException {
-        QuadList quad = new QuadList();
-
-
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnexpectedTokenException {
         DataType type = DataType.getDataTypeFromToken(token);
         Symbol immediateSymbol = Compiler.generateImmediateSymbol(type, token.literal);
 
@@ -36,8 +33,7 @@ public class LiteralExpr extends Expr{
             default :{}
         }
 
-        quad.addQuad(QuadOp.LOAD_IMM, immediateSymbol, null, resultSymbol);
-        return quad;
+        quads.addQuad(QuadOp.LOAD_IMM, immediateSymbol, null, resultSymbol);
     }
 }
 

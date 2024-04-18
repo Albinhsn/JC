@@ -1,9 +1,6 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Stack;
-
 public class ForStmt extends Stmt{
     @Override
     public String toString() {
@@ -22,9 +19,9 @@ public class ForStmt extends Stmt{
 
 
     @Override
-    public QuadList compile(SymbolTable symbolTable) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
 
-        QuadList quads = init.compile(symbolTable);
+        init.compile(symbolTable, quads);
 
         Symbol conditionLabel = Compiler.generateLabel();
         Symbol mergeLabel = Compiler.generateLabel();
@@ -32,22 +29,20 @@ public class ForStmt extends Stmt{
         // Compile condition
         symbolTable.enterScope();
         quads.insertLabel(conditionLabel);
-        quads.concat(condition.compile(symbolTable));
+        condition.compile(symbolTable, quads);
 
         // check if we jump
         Quad.insertJMPOnComparisonCheck(quads, mergeLabel, false);
         // Compile body
         for(Stmt stmt : body){
-            quads.concat(stmt.compile(symbolTable));
+            stmt.compile(symbolTable, quads);
         }
 
         // Compile update and jumps
-        quads.concat(update.compile(symbolTable));
+        update.compile(symbolTable, quads);
         quads.addQuad(QuadOp.JMP, conditionLabel,null, null);
         quads.insertLabel(mergeLabel);
         symbolTable.exitScope();
-
-        return quads;
     }
 
     public ForStmt(Stmt init, Stmt condition, Stmt update, List<Stmt> body, int line){
