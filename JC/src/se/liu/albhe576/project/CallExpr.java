@@ -87,7 +87,7 @@ public class CallExpr extends Expr{
            out.concat(argQuad);
        }
 
-       out.addQuad(QuadOp.CALL_LIBRARY, function.getFunctionSymbol(), null, Compiler.generateSymbol(function.returnType));
+       out.addQuad(QuadOp.CALL, function.getFunctionSymbol(), null, Compiler.generateSymbol(function.returnType));
        return out;
    }
 

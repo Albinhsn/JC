@@ -42,25 +42,15 @@ int run_tests(){
     bar.foo.b = 2;
     printf("%d = 5?", rec_struct(bar));
 
-    // int result = arr_conversions();
-    // printf("%d = 33?", result);
+
+    int result = arr_conversions();
+    printf("%d = 33?", result);
+
+    segfaults();
 }
 
-void segfaults(){
-    float * arrf = malloc(16);
-    arrf[0] = 1;
-    printf("%ld %f", arrf, arrf[0]);
-}
 
 int main() {
-
-    float * arrf = malloc(16);
-    arrf[0] = 1;
-    arrf[1] = 2.0;
-    int * arri = malloc(16);
-    arri[0] = 10;
-    arri[1] = 20.0;
-
-    return arrf[0] + arrf[1] + arri[0] + arri[1];
+    run_tests();
 }
 

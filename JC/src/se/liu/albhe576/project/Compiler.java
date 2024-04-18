@@ -91,14 +91,15 @@ public class Compiler {
             Function function = functions.get(i);
             fileWriter.write("\n\n" + function.name + ":\npush rbp\nmov rbp, rsp\n");
             int scopeSize = this.symbolTable.getScopeSize(function.name);
+            scopeSize += scopeSize % 16 == 0 ? 0 : 8;
             if(scopeSize != 0){
+                System.out.println("SCOPE " + scopeSize);
                 fileWriter.write(String.format("sub rsp, %d\n", scopeSize));
             }
 
             Quad prev = null;
             Stack stack = new Stack(this.symbolTable.getLocals(function.name), this.symbolTable.structs);
             System.out.printf("FUNCTION %s\n", function.name);
-            stack.debug();
 
             for (Quad intermediate : function.intermediates.getQuads()) {
                 // fileWriter.write("; " + intermediate + "\n");

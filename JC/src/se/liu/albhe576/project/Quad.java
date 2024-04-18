@@ -97,9 +97,6 @@ public class Quad {
             case ADD -> {
                 return "add rax, rcx";
             }
-            case LEA_RSP -> {
-                return "lea rax, [rsp]";
-            }
             case FADD -> {
                 String setup = this.setupFloatingPointBinary();
                 return setup + "addsd xmm0, xmm1";
@@ -258,12 +255,6 @@ public class Quad {
             case MOV_R9->{
                 return "mov r9, rax";
             }
-            case CALL_LIBRARY -> {
-                if(stack.getLocalSize() % 16 != 0){
-                    return String.format("sub rsp, 8\ncall %s\nadd rsp, 8", operand1.name);
-                }
-                return String.format("call %s", operand1.name);
-            }
             case CALL ->{
                 int argSize = 0;
                 for(Function function : functions){
@@ -280,10 +271,19 @@ public class Quad {
                     }
                 }
 
-                if(argSize != 0){
-                    return String.format("call %s\nadd rsp, %d", operand1.name, argSize);
+                StringBuilder out = new StringBuilder();
+                if((stack.getLocalSize() + argSize) % 16 != 0){
+                    // out.append("sub rsp, 8\n");
                 }
-                return String.format("call %s", operand1.name);
+
+                if(argSize != 0){
+                    out.append(String.format("call %s\nadd rsp, %d", operand1.name, argSize));
+                }else{
+                    out.append(String.format("call %s", operand1.name));
+                }
+
+                return out.toString();
+
             }
             case LOGICAL_NOT ->{
                 return "xor rax, 1";
