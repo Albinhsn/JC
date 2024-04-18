@@ -26,7 +26,7 @@ public class StructStmt extends Stmt{
 
     @Override
     public QuadList compile(SymbolTable symbolTable) {
-        symbolTable.structs.add(new Struct(name.literal, fields));
+        symbolTable.structs.put(name.literal, new Struct(name.literal, fields));
         return new QuadList();
     }
 }

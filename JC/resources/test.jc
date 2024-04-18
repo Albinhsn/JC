@@ -1,9 +1,15 @@
 
 #include "resources/foo.jc"
 
+int fib(Bar bar){
+    return bar.foo.b + bar.foo.a + bar.c;
+}
+
 int main() {
-    Bar * bar = malloc(24);
+    Bar bar;
+    bar.c = 1;
     bar.foo.a = 5;
-    return bar.foo.a;
+    bar.foo.b = 2;
+    return fib(bar);
 }
 

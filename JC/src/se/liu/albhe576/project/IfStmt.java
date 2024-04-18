@@ -44,19 +44,19 @@ public class IfStmt extends Stmt{
 
         // insert conditional check
         QuadList ifQuad = new QuadList();
+        symbolTable.enterScope();
         for(Stmt stmt : ifBody){
-            symbolTable.enterScope();
             ifQuad.concat(stmt.compile(symbolTable));
-            symbolTable.exitScope();
         }
+        symbolTable.exitScope();
 
         // insert unconditional jump
         QuadList elseQuad = new QuadList();
+        symbolTable.enterScope();
         for(Stmt stmt : elseBody){
-            symbolTable.enterScope();
             elseQuad.concat(stmt.compile(symbolTable));
-            symbolTable.exitScope();
         }
+        symbolTable.exitScope();
 
         Symbol elseLabel = Compiler.generateLabel();
         Symbol mergeLabel = Compiler.generateLabel();

@@ -116,12 +116,6 @@ public class Quad {
             case CVTSI2SS-> {
                 return "cvtsi2ss xmm0, rax";
             }
-            case POP_RBP-> {
-                return "pop rbp";
-            }
-            case PUSH_RBP-> {
-                return "push rbp";
-            }
             case FMUL -> {
                 String setup = this.setupFloatingPointBinary();
                 return setup + "mulss xmm0, xmm1";
@@ -155,7 +149,7 @@ public class Quad {
                 return stack.loadField(operand1.type, operand2.name);
             }
             case STORE -> {
-                return stack.storeVariable(result.type, result.name);
+                return stack.storeVariable(result.name);
             }
             case CMP -> {
                 return "cmp rax, rcx";
@@ -209,7 +203,13 @@ public class Quad {
                 return "mov rcx, rax";
             }
             case MOV_REG_AC ->{
+                if(prevQuad.result.type.type == DataTypes.FLOAT){
+                    return "movss xmm0, xmm1";
+                }
                 return "mov rax, rcx";
+            }
+            case PUSH_STRUCT ->{
+                return stack.pushStruct(operand1);
             }
             case MOV_RDI->{
                 return "mov rdi, rax";
@@ -233,15 +233,18 @@ public class Quad {
                 return String.format("call %s", operand1.name);
             }
             case CALL ->{
-                int argSize = 1;
+                int argSize = 0;
                 for(Function function : functions){
                     if(function.name.equals(operand1.name)){
-                        argSize *= function.arguments.size();
+                        for(StructField field : function.arguments){
+                            Struct struct = stack.getStruct(field.type.name);
+                            argSize += struct.getSize(stack.structs);
+                        }
                         break;
                     }
                 }
 
-                if(argSize != 1){
+                if(argSize != 0){
                     return String.format("call %s\nadd rsp, %d", operand1.name, argSize);
                 }
                 return String.format("call %s", operand1.name);

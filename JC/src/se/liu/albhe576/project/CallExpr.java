@@ -35,8 +35,8 @@ public class CallExpr extends Expr{
        if(!(arg instanceof VarExpr varExpr)){
            throw new CompileException(String.format("Can't do sizeof on something other then a var expression on line %d", name.line));
        }
-       Struct struct = SymbolTable.lookupStruct(symbolTable.structs, varExpr.token.literal);
-       int size = struct.getSize();
+       Struct struct = symbolTable.structs.get(varExpr.token.literal);
+       int size = struct.getSize(symbolTable.structs);
        quads.addQuad(QuadOp.LOAD_IMM,  Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(size)),null, Compiler.generateSymbol(DataType.getInt()));
        return quads;
    }
@@ -97,20 +97,8 @@ public class CallExpr extends Expr{
             }
             quads.concat(argQuad);
 
-            // This will have only loaded the pointer into rax, but we need to get every field onto the arg
-            // Should be recursive once we support struct in struct
             if(argSymbol.type.type == DataTypes.STRUCT){
-                Symbol varPointer = lastQuad.operand1;
-                quads.addQuad(QuadOp.MOV_REG_CA,null, null, null);
-
-                Struct struct = SymbolTable.lookupStruct(symbolTable.structs, argSymbol.type.name);
-
-                for(int j = struct.fields.size() - 1; j >= 0; j--){
-                    StructField field = struct.fields.get(j);
-                    quads.addQuad(QuadOp.GET_FIELD, varPointer, new Symbol(field.name, field.type), Compiler.generateSymbol(field.type));
-                    quads.addQuad(QuadOp.PUSH, null, null, null);
-                    quads.addQuad(QuadOp.MOV_REG_AC, null, null, null);
-                }
+                quads.addQuad(QuadOp.PUSH_STRUCT, argSymbol, null, null);
             }else{
                 quads.addQuad(QuadOp.PUSH, argSymbol, null, null);
             }
@@ -118,6 +106,7 @@ public class CallExpr extends Expr{
         }
 
         quads.addQuad(QuadOp.CALL, function.getFunctionSymbol(), null, Compiler.generateSymbol(function.returnType));
+
         return quads;
     }
 }

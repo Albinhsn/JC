@@ -8,7 +8,6 @@ public class Compiler {
 
     private final List<Stmt> stmts;
     private final SymbolTable symbolTable;
-
     private static int resultCount;
     private static int labelCount;
 
@@ -88,14 +87,21 @@ public class Compiler {
         final Map<String, Constant> constants = this.symbolTable.getConstants();
         FileWriter fileWriter = initOutput(name, constants);
 
-        for(Function function : functions){
+        for(int i = 0; i < functions.size(); i++){
+            Function function = functions.get(i);
             fileWriter.write("\n\n" + function.name + ":\npush rbp\nmov rbp, rsp\n");
+            int scopeSize = this.symbolTable.getScopeSize(function.name);
+            if(scopeSize != 0){
+                fileWriter.write(String.format("sub rsp, %d\n", scopeSize));
+            }
 
             Quad prev = null;
-            Stack stack = new Stack(function.arguments, this.symbolTable.structs);
+            Stack stack = new Stack(this.symbolTable.getLocals(function.name), this.symbolTable.structs);
+            System.out.printf("FUNCTION %s\n", function.name);
+            stack.debug();
 
             for (Quad intermediate : function.intermediates.getQuads()) {
-                fileWriter.write("; " + intermediate + "\n");
+                //fileWriter.write("; " + intermediate + "\n");
                 fileWriter.write(intermediate.emit(stack, prev, functions, constants) + "\n");
                 prev = intermediate;
             }

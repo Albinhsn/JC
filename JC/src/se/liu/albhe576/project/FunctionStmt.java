@@ -1,7 +1,9 @@
 package se.liu.albhe576.project;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class FunctionStmt extends Stmt{
 
@@ -43,12 +45,15 @@ public class FunctionStmt extends Stmt{
         QuadList out = new QuadList();
         symbolTable.addFunction(new Function(name, arguments, returnType, out));
 
-        List<Symbol> localSymbols =new ArrayList<>();
+        Map<String, VariableSymbol> localSymbols =new HashMap<>();
+        int offset = 16;
         for(StructField arg : arguments){
-           localSymbols.add(new Symbol(arg.name, arg.type));
+           localSymbols.put(arg.name, new VariableSymbol(arg.name, arg.type, offset, 0));
+           offset += symbolTable.getStructSize(arg.type.name);
         }
 
-        symbolTable.enterScope(localSymbols);
+        symbolTable.compileFunction(name, localSymbols);
+        symbolTable.enterScope();
         for(Stmt stmt : body){
             out.concat(stmt.compile(symbolTable));
         }

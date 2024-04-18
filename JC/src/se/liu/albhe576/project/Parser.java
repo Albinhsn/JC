@@ -270,6 +270,10 @@ public class Parser {
         if(matchType(TokenType.TOKEN_EQUAL)){
             if(type.type == DataTypes.VOID){
                 error("Can't declare a variable of type void");
+            }else if(matchType(TokenType.TOKEN_LEFT_BRACKET)){
+                Stmt out = array(type, name);
+                consume(TokenType.TOKEN_SEMICOLON, String.format("Expected semicolon after declaring an array on line %d", line));
+                return out;
             }
 
             Expr value = parseExpr(new EmptyExpr(line), Precedence.ASSIGNMENT);

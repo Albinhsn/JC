@@ -49,9 +49,8 @@ public class VariableStmt extends Stmt{
             this.checkValidTypes(lastSymbol, lastOperand, valueQuads);
         }
 
-        Symbol variable = new Symbol(name, type);
+        VariableSymbol variable = symbolTable.addSymbol(name, type);
         valueQuads.addQuad(QuadOp.STORE, lastSymbol, null, variable);
-        symbolTable.addSymbol(variable);
         return valueQuads;
     }
 }

@@ -23,7 +23,7 @@ public class AssignExpr extends Expr{
         Symbol struct = lastQuad.operand1;
         Symbol op2 = lastQuad.operand2;
         Symbol result = lastQuad.result;
-        Symbol memberSymbol = symbolTable.getMemberSymbol(struct, lastQuad.operand2.name);
+        Symbol memberSymbol = symbolTable.getMemberSymbol(struct, op2.name);
 
 
         Symbol pushed = Compiler.generateSymbol(struct.type);

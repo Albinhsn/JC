@@ -2,6 +2,7 @@
 
 ## Features remaining
 
+* don't label else if there isn't any :)
 
 ## Bugs
 ### Compiler

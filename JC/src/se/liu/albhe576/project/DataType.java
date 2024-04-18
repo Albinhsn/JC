@@ -13,14 +13,6 @@ public class DataType {
         return (type == other.type) || (type.isPointer() && other.type.isPointer());
     }
 
-    public int getSize(){
-        if(type.isStruct()){
-
-        }
-        return 0;
-    }
-
-
     public DataType getTypeFromPointer() throws CompileException {
         return switch (type) {
             case INT_POINTER -> getInt();

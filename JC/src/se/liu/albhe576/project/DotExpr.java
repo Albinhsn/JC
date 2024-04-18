@@ -25,8 +25,6 @@ public class DotExpr extends Expr{
         // The question if whether we need to
         QuadList quads = variable.compile(symbolTable);
         Symbol lastSymbol = quads.getLastResult();
-        Symbol lastOperand= quads.getLastOperand1();
-        Symbol lastOperand2= quads.getLastOperand2();
         Symbol memberSymbol = symbolTable.getMemberSymbol(lastSymbol, this.member.literal);
         quads.addQuad(QuadOp.GET_FIELD, lastSymbol, memberSymbol, Compiler.generateSymbol(memberSymbol.type));
         return quads;
