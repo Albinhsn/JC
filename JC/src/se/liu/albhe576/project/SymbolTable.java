@@ -55,6 +55,10 @@ public class SymbolTable {
         getCurrentLocals().put(name, variableSymbol);
         return variableSymbol;
     }
+    public VariableSymbol addSymbol(VariableSymbol symbol){
+        getCurrentLocals().put(symbol.name, symbol);
+        return symbol;
+    }
 
     public int getScopeSize(String name){
         Map<String, VariableSymbol> locals = getLocals(name);
@@ -63,6 +67,13 @@ public class SymbolTable {
             size = Math.min(variableSymbol.offset, size);
         }
         return -size;
+    }
+
+    public int getCurrentScopeSize(){
+        return this.getScopeSize(this.getCurrentFunction().name);
+    }
+    public int getDepth(){
+        return this.scopeDepth;
     }
     public void addFunction(Function function){
         this.functions.add(function);
@@ -80,6 +91,9 @@ public class SymbolTable {
     }
 
     public void addConstant(String constant, DataTypes type){
+        if(constants.containsKey(constant)){
+            return;
+        }
         String constName = "const" + constants.size();
         constants.put(constant, new Constant(constName, type));
     }
@@ -121,10 +135,10 @@ public class SymbolTable {
         this.libraryFunctions.put("printf",print);
     }
 
-    public SymbolTable(){
+    public SymbolTable(Map<String, Constant> constants){
         this.scopeDepth = 0;
-        this.constants = new HashMap<>();
         this.structs = new HashMap<>();
+        this.constants =constants;
         this.functions = new ArrayList<>();
         this.libraryFunctions = new HashMap<>();
         this.addLibraryFunctions();

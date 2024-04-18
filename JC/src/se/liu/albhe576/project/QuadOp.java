@@ -1,7 +1,7 @@
 package se.liu.albhe576.project;
 
 public enum QuadOp {
-    PUSH_STRUCT, CALL_LIBRARY, LEA_RSP, CVTSI2SS, CVTTSS2SI, MOD, MOV_R8, MOV_R9, MOV_RDX, MOV_RSI, MOV_RDI, DEREFERENCE, FADD, FMUL, FDIV, FSUB, NOT, LOGICAL_NOT, SETNE, SETLE, SETL, SETG, SETGE, SETE, LABEL, INDEX, POP, LOAD_POINTER, LOAD_IMM, INC,DEC, ADD, JE, SUB, MUL, DIV, LOAD, STORE, CMP, JMP, JNZ, AND, OR, XOR, PUSH,CALL, GET_FIELD, SET_FIELD, MOV_REG_AC, MOV_REG_CA, RET, SHL, SHR;
+    MOV_XMM0, MOV_XMM1, MOV_XMM2, MOV_XMM3, MOV_XMM4, MOV_XMM5, STORE_INDEX, PUSH_STRUCT, CALL_LIBRARY, LEA_RSP, CVTSI2SD, CVTTSD2SI, MOD, MOV_R8, MOV_R9, MOV_RDX, MOV_RSI, MOV_RDI, DEREFERENCE, FADD, FMUL, FDIV, FSUB, NOT, LOGICAL_NOT, SETNE, SETLE, SETL, SETG, SETGE, SETE, LABEL, INDEX, POP, LOAD_POINTER, LOAD_IMM, INC,DEC, ADD, JE, SUB, MUL, DIV, LOAD, STORE, CMP, JMP, JNZ, AND, OR, XOR, PUSH,CALL, GET_FIELD, SET_FIELD, MOV_REG_AC, MOV_REG_CA, RET, SHL, SHR;
 
     public boolean isLoad(){
         return this == LOAD || this == LOAD_IMM || this == LOAD_POINTER;
@@ -72,10 +72,10 @@ public enum QuadOp {
 
     public QuadOp convertToFloat() throws InvalidOperation {
         switch(this){
-            case ADD -> {return FADD;}
-            case SUB -> {return FSUB;}
-            case DIV -> {return FDIV;}
-            case MUL -> {return FMUL;}
+            case ADD, FADD -> {return FADD;}
+            case SUB, FSUB -> {return FSUB;}
+            case DIV, FDIV -> {return FDIV;}
+            case MUL, FMUL -> {return FMUL;}
         }
 
         throw new InvalidOperation(String.format("Can't convert op %s to float op?", this.name()));

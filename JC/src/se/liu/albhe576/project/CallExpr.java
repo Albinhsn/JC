@@ -1,6 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class CallExpr extends Expr{
@@ -51,15 +50,40 @@ public class CallExpr extends Expr{
                QuadOp.MOV_R8,
                QuadOp.MOV_R9,
        };
+       QuadOp[] floatLocations = new QuadOp[]{
+               QuadOp.MOV_XMM0,
+               QuadOp.MOV_XMM1,
+               QuadOp.MOV_XMM2,
+               QuadOp.MOV_XMM3,
+               QuadOp.MOV_XMM4,
+               QuadOp.MOV_XMM5,
+       };
        if(this.args.size() > argLocations.length){
            throw new CompileException(String.format("Can't call library function with more then 6 arguments on line %d", this.line));
        }
 
+       int generalCount = 0;
+       int floatCount = 0;
+
        QuadList out = new QuadList();
-       for(int i = 0; i < args.size(); i++){
-           Expr arg = args.get(i);
+       Symbol floatType = Compiler.generateSymbol(DataType.getFloat());
+       for (Expr arg : args) {
            QuadList argQuad = arg.compile(symbolTable);
-           argQuad.addQuad(argLocations[i], null, null, null);
+           Symbol result = argQuad.getLastResult();
+           if (result.type.type == DataTypes.FLOAT) {
+               if(floatCount > 1){
+                   argQuad.addQuad(QuadOp.PUSH, floatType, null, floatType);
+               }
+               argQuad.addQuad(floatLocations[floatCount], null, null, null);
+               if(floatCount > 1){
+                   argQuad.addQuad(QuadOp.POP, floatType, null, floatType);
+               }
+               floatCount++;
+           } else {
+               argQuad.addQuad(argLocations[generalCount], null, null, null);
+               generalCount++;
+           }
+
            out.concat(argQuad);
        }
 

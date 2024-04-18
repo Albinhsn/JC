@@ -25,9 +25,9 @@ public class ReturnStmt extends Stmt{
             out.concat(expr.compile(symbolTable));
             Symbol returnSymbol = out.getLastResult();
             if(returnSymbol.type.type.isInteger() && currentFunction.returnType.type == DataTypes.FLOAT){
-                out.addQuad(QuadOp.CVTSI2SS, null, null, null);
+                out.addQuad(QuadOp.CVTSI2SD, null, null, null);
             }else if(currentFunction.returnType.type.isInteger() && returnSymbol.type.type == DataTypes.FLOAT){
-                out.addQuad(QuadOp.CVTTSS2SI, null, null, null);
+                out.addQuad(QuadOp.CVTTSD2SI, null, null, null);
             }
             else if(!returnSymbol.type.isSameType(currentFunction.returnType)){
                 throw new CompileException(String.format("Mismatch in return type in function %s, expected %s got %s", currentFunction.name, currentFunction.returnType.name, returnSymbol.type.name));

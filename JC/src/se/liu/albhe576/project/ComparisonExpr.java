@@ -29,7 +29,7 @@ public class ComparisonExpr extends Expr {
         Symbol rSymbol = r.getLastResult();
         l.addQuad(QuadOp.PUSH, null, null, Compiler.generateSymbol(lSymbol.type));
         l.concat(r);
-        l.addQuad(QuadOp.MOV_REG_CA, null, null, null);
+        l.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
         l.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(lSymbol.type));
         l.addQuad(QuadOp.CMP, lSymbol, rSymbol, null);
         l.addQuad(QuadOp.fromToken(op), null, null, Compiler.generateSymbol(DataType.getInt()));

@@ -31,7 +31,7 @@ public class PostfixExpr extends Expr{
             quads.addQuad(QuadOp.INC, loadedSymbol, null, increasedSymbol);
         }else{
             int structSize = symbolTable.getStructSize(loadedSymbol.type.name);
-            quads.addQuad(QuadOp.MOV_REG_CA, null, null, null);
+            quads.addQuad(QuadOp.MOV_REG_CA, loadedSymbol, null, null);
             quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, null);
             quads.addQuad(QuadOp.ADD, loadedSymbol, null, increasedSymbol);
         }

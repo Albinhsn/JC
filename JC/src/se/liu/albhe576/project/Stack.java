@@ -92,7 +92,7 @@ public class Stack {
         throw new UnknownSymbolException(String.format("Couldn't find struct %s of type %s", type.name, memberName));
     }
     public String storeField(DataType type, Symbol memberSymbol) throws UnknownSymbolException{
-        String move = memberSymbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
+        String move = memberSymbol.type.type == DataTypes.FLOAT ? "movsd" : "mov";
         String register = this.getRegisterFromType(memberSymbol.type.type, 1);
         Struct struct  = this.structs.get(type.name);
         int offset = this.getFieldOffset(struct, memberSymbol.name);
@@ -127,14 +127,14 @@ public class Stack {
     private String loadArgument(VariableSymbol symbol, QuadOp prevOp){
         int offset = this.getStackPointerOffset(symbol);
         int registerIndex = prevOp != null && prevOp.isLoad() ? 1 : 0;
-        String move = symbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
+        String move = symbol.type.type == DataTypes.FLOAT ? "movsd" : "mov";
         String register = this.getRegisterFromType(symbol.type.type, registerIndex);
 
         return String.format("%s %s, [rbp + %d]", move, register, offset);
     }
     private String storeArgument(VariableSymbol symbol){
         int offset = this.getStackPointerOffset(symbol);
-        String move = symbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
+        String move = symbol.type.type == DataTypes.FLOAT ? "movsd" : "mov";
         String register = this.getRegisterFromType(symbol.type.type, 0);
         return String.format("%s [rbp + %d], %s", move, offset, register);
     }
@@ -149,7 +149,7 @@ public class Stack {
 
     private String loadLocal(VariableSymbol symbol, QuadOp prevOp){
         int registerIndex = prevOp.isLoad() ? 1 : 0;
-        String move = symbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
+        String move = symbol.type.type == DataTypes.FLOAT ? "movsd" : "mov";
         String register = this.getRegisterFromType(symbol.type.type, registerIndex);
         if(symbol.offset == 0){
             return String.format("%s %s, [rbp]", move, register);
@@ -159,7 +159,7 @@ public class Stack {
 
     private String storeLocal(VariableSymbol symbol){
         int offset = this.getStackPointerOffset(symbol);
-        String move = symbol.type.type == DataTypes.FLOAT ? "movss" : "mov";
+        String move = symbol.type.type == DataTypes.FLOAT ? "movsd" : "mov";
         String register = this.getRegisterFromType(symbol.type.type, 0);
         if(offset == 0){
             return String.format("%s [rsp], %s", move, register);

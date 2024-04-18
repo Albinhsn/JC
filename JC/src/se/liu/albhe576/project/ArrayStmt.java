@@ -34,6 +34,18 @@ public class ArrayStmt extends Stmt {
     public QuadList compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
         QuadList quads = new QuadList();
         DataType itemType = type.getTypeFromPointer();
+
+        int offset = symbolTable.getCurrentScopeSize();
+        if(itemType.type == DataTypes.STRUCT){
+            Struct struct = symbolTable.structs.get(itemType.name);
+            offset -= struct.getSize(symbolTable.structs) * this.items.size();
+        }else{
+            offset -= 8 * this.items.size();
+        }
+        int depth = symbolTable.getDepth();
+        VariableSymbol arraySymbol = new VariableSymbol(name, type, offset, depth);
+        symbolTable.addSymbol(arraySymbol);
+
         for(Expr item : this.items){
             quads.concat(item.compile(symbolTable));
             quads.addQuad(QuadOp.PUSH, null, null, quads.getLastResult());
@@ -41,8 +53,6 @@ public class ArrayStmt extends Stmt {
                 throw new CompileException(String.format("Can't have different types in array declaration on line %d", this.line));
             }
         }
-
-        symbolTable.addSymbol(name, type);
         return quads;
     }
 }

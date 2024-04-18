@@ -2,6 +2,7 @@ package se.liu.albhe576.project;
 
 public class Constant {
 
+
     public final String label;
     public final DataTypes type;
 

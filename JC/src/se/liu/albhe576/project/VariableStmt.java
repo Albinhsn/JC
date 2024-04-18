@@ -21,11 +21,11 @@ public class VariableStmt extends Stmt{
 
     private void checkValidTypes(Symbol lastResult, Symbol lastOperand, QuadList quads) throws CompileException {
         if(lastResult.type.type == DataTypes.FLOAT && type.type.isInteger()){
-            quads.addQuad(QuadOp.CVTTSS2SI, lastResult, null, Compiler.generateSymbol(DataType.getInt()));
+            quads.addQuad(QuadOp.CVTTSD2SI, lastResult, null, Compiler.generateSymbol(DataType.getInt()));
             return;
         }
         if(lastResult.type.type.isInteger() && type.type == DataTypes.FLOAT){
-            quads.addQuad(QuadOp.CVTSI2SS, lastResult, null, Compiler.generateSymbol(DataType.getFloat()));
+            quads.addQuad(QuadOp.CVTSI2SD, lastResult, null, Compiler.generateSymbol(DataType.getFloat()));
             return;
         }
 

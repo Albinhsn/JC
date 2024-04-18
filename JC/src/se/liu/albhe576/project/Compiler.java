@@ -6,6 +6,7 @@ import java.util.*;
 
 public class Compiler {
 
+    private final Map<String, Constant> constants;
     private final List<Stmt> stmts;
     private final SymbolTable symbolTable;
     private static int resultCount;
@@ -32,9 +33,8 @@ public class Compiler {
 
 
     public void generateIntermediate() throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
-        QuadList quads = new QuadList();
         for(Stmt stmt : stmts){
-            quads.concat(stmt.compile(symbolTable));
+            stmt.compile(symbolTable);
         }
 
         List<Function> functions = symbolTable.getFunctions();
@@ -65,7 +65,7 @@ public class Compiler {
             if(value.type == DataTypes.STRING){
                 header.append(String.format("%s db \"%s\", 10, 0\n", value.label, entry.getKey()));
             }else{
-                header.append(String.format("%s dd %s\n", entry.getValue(), entry.getKey()));
+                header.append(String.format("%s dq %s\n", value.label, entry.getKey()));
             }
         }
         header.append("\n\nsection .text\n");
@@ -101,7 +101,7 @@ public class Compiler {
             stack.debug();
 
             for (Quad intermediate : function.intermediates.getQuads()) {
-                //fileWriter.write("; " + intermediate + "\n");
+                // fileWriter.write("; " + intermediate + "\n");
                 fileWriter.write(intermediate.emit(stack, prev, functions, constants) + "\n");
                 prev = intermediate;
             }
@@ -119,6 +119,7 @@ public class Compiler {
 
     public Compiler(List<Stmt> stmts){
         this.stmts = stmts;
-        this.symbolTable = new SymbolTable();
+        this.constants = new HashMap<>();
+        this.symbolTable = new SymbolTable(this.constants);
     }
 }

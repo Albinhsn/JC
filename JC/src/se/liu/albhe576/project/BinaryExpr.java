@@ -27,7 +27,7 @@ public class BinaryExpr extends Expr{
         Symbol rResult = r.getLastResult();
 
         l.concat(r);
-        l.addQuad(QuadOp.MOV_REG_CA, null, null, null);
+        l.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
         l.addQuad(QuadOp.POP, null, null, lResult);
 
         if(lResult.type.type == DataTypes.INT && rResult.type.type == DataTypes.INT){
@@ -62,12 +62,12 @@ public class BinaryExpr extends Expr{
             resultType = lType.isPointer() ? lResult.type : rResult.type;
             if(lType.isPointer()){
                 int structSize = symbolTable.getStructSize(lResult.type.name);
-                r.addQuad(QuadOp.MOV_REG_CA, null, null, Compiler.generateSymbol(DataType.getInt()));
+                r.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
                 r.addQuad(QuadOp.LOAD_IMM,Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, Compiler.generateSymbol(DataType.getInt()));
                 r.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
             }else{
                 int structSize = symbolTable.getStructSize(rResult.type.name);
-                l.addQuad(QuadOp.MOV_REG_CA, null, null, Compiler.generateSymbol(DataType.getInt()));
+                l.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
                 l.addQuad(QuadOp.LOAD_IMM,Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, Compiler.generateSymbol(DataType.getInt()));
                 l.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
 
@@ -79,10 +79,11 @@ public class BinaryExpr extends Expr{
             throw new InvalidOperation(String.format("Can't do operation '%s' on pointer with type %s on line %d", op.literal, lResult.type.name, op.line));
         }
 
-        l.addQuad(QuadOp.PUSH, null, null, null);
+        Symbol out = Compiler.generateSymbol(resultType);
+        l.addQuad(QuadOp.PUSH, out, null, out);
         l.concat(r);
-        l.addQuad(QuadOp.MOV_REG_CA, null, null, null);
-        l.addQuad(QuadOp.POP, null, null, lResult);
+        l.addQuad(QuadOp.MOV_REG_CA, rResult, null,rResult);
+        l.addQuad(QuadOp.POP, lResult, null, lResult);
         l.addQuad(quadOp, lResult, rResult, Compiler.generateSymbol(resultType));
         return l;
     }

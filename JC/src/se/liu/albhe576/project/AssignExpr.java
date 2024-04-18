@@ -60,6 +60,39 @@ public class AssignExpr extends Expr{
             Symbol res = valueQuads.getLastResult();
             valueQuads.addQuad(QuadOp.STORE, res, null, variableQuads.getLastResult());
             return valueQuads;
+        }if(variableQuads.getLastOp() == QuadOp.INDEX){
+            Symbol res = variableQuads.getLastOperand2();
+            Symbol toStore = valueQuads.getLastResult();
+
+
+            valueQuads.addQuad(QuadOp.PUSH, toStore, null, toStore);
+
+
+            DataType resType = res.type.getTypeFromPointer();
+            variableQuads.removeLastQuad();
+            variableQuads.addQuad(QuadOp.MOV_REG_CA, variableQuads.getLastResult(), null, Compiler.generateSymbol(DataType.getInt()));
+            // ToDo check if they can be converted
+            if(!resType.isSameType(toStore.type)){
+                variableQuads.addQuad(QuadOp.POP, toStore, null, toStore);
+                if(resType.type == DataTypes.FLOAT){
+                    Symbol newToStore = Compiler.generateSymbol(DataType.getFloat());
+                    variableQuads.addQuad(QuadOp.CVTSI2SD, toStore, null, newToStore);
+                    toStore = newToStore;
+                }else if(toStore.type.type == DataTypes.FLOAT){
+                    Symbol newToStore = Compiler.generateSymbol(DataType.getInt());
+                    variableQuads.addQuad(QuadOp.CVTTSD2SI, toStore, null, newToStore);
+                    toStore = newToStore;
+                }else{
+                    throw new CompileException("What are you trying to do?");
+                }
+            }else{
+                variableQuads.addQuad(QuadOp.POP, toStore, null, toStore);
+            }
+
+            valueQuads.concat(variableQuads);
+            valueQuads.addQuad(QuadOp.STORE_INDEX, Compiler.generateSymbol(res.type.getTypeFromPointer()), toStore, res);
+
+            return valueQuads;
         }
 
         // Figure out if legal?
