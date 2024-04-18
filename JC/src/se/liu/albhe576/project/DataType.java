@@ -38,6 +38,11 @@ public class DataType {
                     PointerDataType dataType = (PointerDataType)  type;
                     yield getStructPointer(type.name, dataType.depth + 1);
                 }
+                case VOID -> getVoidPointer(1);
+                case VOID_POINTER -> {
+                    PointerDataType dataType = (PointerDataType)  type;
+                    yield getVoidPointer(dataType.depth + 1);
+                }
                 default -> throw new CompileException(String.format("Can't get pointer from %s", type.name));
             };
     }
@@ -50,8 +55,8 @@ public class DataType {
     public static PointerDataType getFloatPointer(int depth){
         return new PointerDataType("float", DataTypes.FLOAT_POINTER, depth);
     }
-    public static DataType getVoidPointer(){
-        return new DataType("void", DataTypes.VOID_POINTER);
+    public static PointerDataType getVoidPointer(int depth){
+        return new PointerDataType("void", DataTypes.VOID_POINTER, depth);
     }
     public static DataType getString(){
         return new DataType("string", DataTypes.STRING);

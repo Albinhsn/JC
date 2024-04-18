@@ -1,7 +1,7 @@
 package se.liu.albhe576.project;
 
 public enum DataTypes {
-    STRING, INT, FLOAT, INT_POINTER, FLOAT_POINTER, STRUCT, STRUCT_POINTER, VOID, VOID_POINTER, ARRAY;
+    STRING, INT, FLOAT, INT_POINTER, FLOAT_POINTER, STRUCT, STRUCT_POINTER, VOID, VOID_POINTER;
 
     public boolean isFloat(){
         return this == DataTypes.FLOAT;

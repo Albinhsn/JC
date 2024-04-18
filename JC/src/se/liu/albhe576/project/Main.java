@@ -11,7 +11,7 @@ public class Main {
         System.out.println(s);
         Scanner scanner = new Scanner(s);
         Parser parser = new Parser(scanner);
-        Compiler compiler = new Compiler(parser.parse());
+        Compiler compiler = new Compiler(parser.parse(), parser.getExtern());
         compiler.Compile("out.asm");
     }
 }

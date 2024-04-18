@@ -1,7 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.List;
-
 public class AssignExpr extends Expr{
     @Override
     public String toString() {
@@ -17,7 +15,6 @@ public class AssignExpr extends Expr{
     }
 
     private QuadList compileStoreField(SymbolTable symbolTable, QuadList valueQuads, QuadList variableQuads) throws UnknownSymbolException {
-        // Check whether or not the thing we're assigning to is a struct dotExpr already?
         Quad lastQuad =  variableQuads.getLastQuad();
         variableQuads.removeLastQuad();
         Symbol struct = lastQuad.operand1;
@@ -41,58 +38,96 @@ public class AssignExpr extends Expr{
 
         return variableQuads;
     }
+    private QuadList compileStoreDereference(QuadList valueQuads, QuadList variableQuads) throws CompileException {
+
+        Symbol dereferenced = variableQuads.getLastOperand1();
+        Symbol valueSymbol = valueQuads.getLastResult();
+        variableQuads.removeLastQuad();
+
+        // rax is value
+        valueQuads.addQuad(QuadOp.PUSH, valueSymbol, null, valueSymbol);
+
+        // rcx is pointer
+        valueQuads.concat(variableQuads);
+        valueQuads.addQuad(QuadOp.MOV_REG_CA, dereferenced, null, dereferenced);
+        valueQuads.addQuad(QuadOp.POP, valueSymbol, null, valueSymbol);
+        valueQuads.addQuad(QuadOp.STORE_INDEX, valueSymbol, dereferenced, null);
+
+        return valueQuads;
+    }
+
+    private QuadList compileStoreIndex(QuadList variableQuads, QuadList valueQuads) throws CompileException {
+        Symbol res = variableQuads.getLastOperand2();
+        Symbol toStore = valueQuads.getLastResult();
+
+
+        valueQuads.addQuad(QuadOp.PUSH, toStore, null, toStore);
+
+
+        DataType resType = res.type.getTypeFromPointer();
+        variableQuads.removeLastQuad();
+        variableQuads.addQuad(QuadOp.MOV_REG_CA, variableQuads.getLastResult(), null, Compiler.generateSymbol(DataType.getInt()));
+        // ToDo check if they can be converted
+        if(!resType.isSameType(toStore.type)){
+            variableQuads.addQuad(QuadOp.POP, toStore, null, toStore);
+            if(resType.type == DataTypes.FLOAT){
+                Symbol newToStore = Compiler.generateSymbol(DataType.getFloat());
+                variableQuads.addQuad(QuadOp.CVTSI2SD, toStore, null, newToStore);
+                toStore = newToStore;
+            }else if(toStore.type.type == DataTypes.FLOAT){
+                Symbol newToStore = Compiler.generateSymbol(DataType.getInt());
+                variableQuads.addQuad(QuadOp.CVTTSD2SI, toStore, null, newToStore);
+                toStore = newToStore;
+            }else{
+                throw new CompileException("What are you trying to do?");
+            }
+        }else{
+            variableQuads.addQuad(QuadOp.POP, toStore, null, toStore);
+        }
+
+        valueQuads.concat(variableQuads);
+        valueQuads.addQuad(QuadOp.STORE_INDEX, Compiler.generateSymbol(res.type.getTypeFromPointer()), toStore, res);
+
+        return valueQuads;
+    }
 
     @Override
     public QuadList compile(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
         QuadList valueQuads = value.compile(symbolTable);
         QuadList variableQuads = variable.compile(symbolTable);
 
+        QuadOp lastOp = variableQuads.getLastOp();
+        Symbol valueType = valueQuads.getLastOperand1();
+        Symbol variableType = variableQuads.getLastOperand1();
+
 
         // There is a difference when assinging a value whose location is on the stack
         // versus something that's accessed through a pointer to something
         // This is just looking essentially if the last thing in the variable is a get field
-        if(variableQuads.getLastOp() == QuadOp.GET_FIELD){
+        if(lastOp == QuadOp.GET_FIELD){
             return this.compileStoreField(symbolTable, valueQuads, variableQuads);
 
-        }else if(variableQuads.size() == 1){
+        }else if(lastOp == QuadOp.DEREFERENCE){
+            return this.compileStoreDereference(valueQuads, variableQuads);
+        }
+        else if (valueType.type.type == DataTypes.STRUCT){
+            valueQuads.addQuad(QuadOp.PUSH, valueType, null, valueType);
+            valueQuads.concat(variableQuads);
+            valueQuads.addQuad(QuadOp.MOV_REG_CA, variableType, null, variableType);
+            valueQuads.addQuad(QuadOp.POP, valueType, null, valueType);
+            valueQuads.addQuad(QuadOp.MOVE_STRUCT, valueType, variableType, null);
+
+            return valueQuads;
+
+        } else if(variableQuads.size() == 1){
             // If we're just storing a variable on the stack we don't care to load the variable at all
             // So just store it directly instead, ToDo type check though
+            // ... unless it's a struct :)
             Symbol res = valueQuads.getLastResult();
             valueQuads.addQuad(QuadOp.STORE, res, null, variableQuads.getLastResult());
             return valueQuads;
-        }if(variableQuads.getLastOp() == QuadOp.INDEX){
-            Symbol res = variableQuads.getLastOperand2();
-            Symbol toStore = valueQuads.getLastResult();
-
-
-            valueQuads.addQuad(QuadOp.PUSH, toStore, null, toStore);
-
-
-            DataType resType = res.type.getTypeFromPointer();
-            variableQuads.removeLastQuad();
-            variableQuads.addQuad(QuadOp.MOV_REG_CA, variableQuads.getLastResult(), null, Compiler.generateSymbol(DataType.getInt()));
-            // ToDo check if they can be converted
-            if(!resType.isSameType(toStore.type)){
-                variableQuads.addQuad(QuadOp.POP, toStore, null, toStore);
-                if(resType.type == DataTypes.FLOAT){
-                    Symbol newToStore = Compiler.generateSymbol(DataType.getFloat());
-                    variableQuads.addQuad(QuadOp.CVTSI2SD, toStore, null, newToStore);
-                    toStore = newToStore;
-                }else if(toStore.type.type == DataTypes.FLOAT){
-                    Symbol newToStore = Compiler.generateSymbol(DataType.getInt());
-                    variableQuads.addQuad(QuadOp.CVTTSD2SI, toStore, null, newToStore);
-                    toStore = newToStore;
-                }else{
-                    throw new CompileException("What are you trying to do?");
-                }
-            }else{
-                variableQuads.addQuad(QuadOp.POP, toStore, null, toStore);
-            }
-
-            valueQuads.concat(variableQuads);
-            valueQuads.addQuad(QuadOp.STORE_INDEX, Compiler.generateSymbol(res.type.getTypeFromPointer()), toStore, res);
-
-            return valueQuads;
+        } else if(lastOp == QuadOp.INDEX){
+            return this.compileStoreIndex(variableQuads, valueQuads);
         }
 
         // Figure out if legal?

@@ -7,9 +7,9 @@ import java.util.Map;
 
 public class SymbolTable {
 
+    private final List<Function> extern;
     public final Map<String, Struct> structs;
     private final List<Function> functions;
-    private final Map<String, Function> libraryFunctions;
     private final Map<String, Constant> constants;
     private final Map<String, Map<String, VariableSymbol>> localSymbolTable;
     private int scopeDepth;
@@ -27,10 +27,13 @@ public class SymbolTable {
         this.localSymbolTable.put(name, arguments);
     }
 
-    public int getStructSize(String name){
+    public int getStructSize(DataType type){
+        if(type.type.isPointer()){
+            return 8;
+        }
         // ToDo :)
-        if(this.structs.containsKey(name)){
-            return this.structs.get(name).getSize(this.structs);
+        if(this.structs.containsKey(type.name)){
+            return this.structs.get(type.name).getSize(this.structs);
         }
         return 8;
     }
@@ -50,14 +53,13 @@ public class SymbolTable {
         return this.constants;
     }
     public VariableSymbol addSymbol(String name, DataType type){
-        int offset = -this.getStructSize(type.name) - this.getScopeSize(getCurrentFunction().name);
+        int offset = -this.getStructSize(type) - this.getScopeSize(getCurrentFunction().name);
         VariableSymbol variableSymbol = new VariableSymbol(name, type, offset, scopeDepth);
         getCurrentLocals().put(name, variableSymbol);
         return variableSymbol;
     }
-    public VariableSymbol addSymbol(VariableSymbol symbol){
+    public void addSymbol(VariableSymbol symbol){
         getCurrentLocals().put(symbol.name, symbol);
-        return symbol;
     }
 
     public int getScopeSize(String name){
@@ -86,9 +88,6 @@ public class SymbolTable {
         }
         throw new UnknownSymbolException(String.format("Can't find function %s", name));
     }
-    public Function getLibraryFunction(String name) throws UnknownSymbolException{
-        return this.libraryFunctions.get(name);
-    }
 
     public void addConstant(String constant, DataTypes type){
         if(constants.containsKey(constant)){
@@ -98,8 +97,21 @@ public class SymbolTable {
         constants.put(constant, new Constant(constName, type));
     }
 
-    public boolean isLibraryFunction(String name){
-        return this.libraryFunctions.containsKey(name);
+    public boolean isExternFunction(String name){
+        for(Function function : extern){
+            if(function.name.equals(name)){
+                return true;
+            }
+        }
+        return false;
+    }
+    public Function getExternFunction(String name) throws UnknownSymbolException{
+        for(Function function : extern){
+            if(function.name.equals(name)){
+                return function;
+            }
+        }
+        throw new UnknownSymbolException(String.format("Can't find extern function %s", name));
     }
     public boolean symbolExists(String name) {
         return this.getCurrentLocals().containsKey(name);
@@ -116,32 +128,13 @@ public class SymbolTable {
         }
         throw new UnknownSymbolException(String.format("Tried to access member '%s' in struct '%s', doesnt exist", member, structSymbol.name));
     }
-    private void addLibraryFunctions(){
-        List<StructField> mallocArgs = new ArrayList<>();
-        mallocArgs.add(new StructField("size", DataType.getInt(), "int"));
-        Function malloc = new Function("malloc", mallocArgs, DataType.getVoidPointer(), new QuadList());
 
-        this.libraryFunctions.put("malloc", malloc);
-
-        List<StructField> freeArgs = new ArrayList<>();
-        freeArgs.add(new StructField("pointer", DataType.getVoidPointer(), "void *"));
-        Function free = new Function("free", freeArgs, DataType.getVoid(), new QuadList());
-
-        this.libraryFunctions.put("free", free);
-
-        List<StructField> printArgs = new ArrayList<>();
-        Function print = new Function("printf", printArgs, DataType.getVoid(), new QuadList());
-
-        this.libraryFunctions.put("printf",print);
-    }
-
-    public SymbolTable(Map<String, Constant> constants){
+    public SymbolTable(Map<String, Constant> constants, List<Function> extern){
         this.scopeDepth = 0;
         this.structs = new HashMap<>();
+        this.extern = extern;
         this.constants =constants;
         this.functions = new ArrayList<>();
-        this.libraryFunctions = new HashMap<>();
-        this.addLibraryFunctions();
         this.localSymbolTable = new HashMap<>();
     }
 }

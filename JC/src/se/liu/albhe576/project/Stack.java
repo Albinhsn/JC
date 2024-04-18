@@ -43,6 +43,31 @@ public class Stack {
         }
     }
 
+    public String moveStruct(Symbol value, Symbol target){
+        Struct valueStruct  = this.structs.get(value.type.name);
+
+        StringBuilder s = new StringBuilder();
+        int size = valueStruct.getSize(this.structs);
+
+        s.append("mov rbx, [rax]\n");
+        s.append("mov [rcx], rbx\n");
+
+        int sizeInBytes = size / 8;
+
+        for(int i = 1; i < sizeInBytes; i++){
+            int offset = i * 8;
+            s.append(String.format("mov rbx, [rax + %d]\n", offset));
+            s.append(String.format("mov [rcx + %d], rbx", offset));
+
+            if(i != sizeInBytes - 1){
+                s.append("\n");
+            }
+        }
+
+        return s.toString();
+
+    }
+
     public String pushStruct(Symbol structSymbol){
         Struct struct = this.structs.get(structSymbol.type.name);
         StringBuilder s = new StringBuilder();

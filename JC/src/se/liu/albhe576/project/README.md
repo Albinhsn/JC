@@ -2,17 +2,15 @@
 
 ## Features remaining
 
-* move struct
+
 * return struct without pointer?
-
-
-* do a walkthrough of legit everything and do refactors
-* don't label else if there isn't any :)
+    * essentially leave it on the stack afterwards
 
 ## Bugs
 ### Compiler
+* do a walkthrough of legit everything and do refactors
+* don't label else if there isn't any :)
 
-* #extern ""
 
 ### Parser
 * allow Foo * foo and a * b

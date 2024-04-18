@@ -6,6 +6,7 @@ import java.util.*;
 
 public class Compiler {
 
+    private final List<Function> extern;
     private final Map<String, Constant> constants;
     private final List<Stmt> stmts;
     private final SymbolTable symbolTable;
@@ -28,7 +29,7 @@ public class Compiler {
         this.generateIntermediate();
 
         // Output intel assembly
-        this.generateAssembly(name);
+        this.generateAssembly(name, extern);
     }
 
 
@@ -51,13 +52,14 @@ public class Compiler {
 
     }
 
-    private static FileWriter initOutput(String name, Map<String, Constant> constants) throws IOException {
+    private static FileWriter initOutput(String name, Map<String, Constant> constants, List<Function> extern) throws IOException {
         StringBuilder header = new StringBuilder();
         header.append("global _start\n");
 
-        header.append("extern malloc\n");
-        header.append("extern free\n");
         header.append("extern printf\n");
+        for(Function function : extern){
+            header.append(String.format("extern %s\n", function.name));
+        }
 
         header.append("\n\nsection .data\n");
         for(Map.Entry<String, Constant> entry : constants.entrySet()){
@@ -82,10 +84,10 @@ public class Compiler {
 
 
 
-    public void generateAssembly(String name) throws IOException, UnknownSymbolException {
+    public void generateAssembly(String name, List<Function> extern) throws IOException, UnknownSymbolException {
         final List<Function> functions = this.symbolTable.getFunctions();
         final Map<String, Constant> constants = this.symbolTable.getConstants();
-        FileWriter fileWriter = initOutput(name, constants);
+        FileWriter fileWriter = initOutput(name, constants, extern);
 
         for(int i = 0; i < functions.size(); i++){
             Function function = functions.get(i);
@@ -118,9 +120,10 @@ public class Compiler {
 
     }
 
-    public Compiler(List<Stmt> stmts){
+    public Compiler(List<Stmt> stmts, List<Function> extern){
         this.stmts = stmts;
         this.constants = new HashMap<>();
-        this.symbolTable = new SymbolTable(this.constants);
+        this.extern = extern;
+        this.symbolTable = new SymbolTable(this.constants, extern);
     }
 }

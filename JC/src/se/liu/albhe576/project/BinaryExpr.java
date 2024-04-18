@@ -61,12 +61,12 @@ public class BinaryExpr extends Expr{
         if((lType.isPointer() && rType.isInteger()) || (lType.isInteger() && rType.isPointer())){
             resultType = lType.isPointer() ? lResult.type : rResult.type;
             if(lType.isPointer()){
-                int structSize = symbolTable.getStructSize(lResult.type.name);
+                int structSize = symbolTable.getStructSize(lResult.type);
                 r.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
                 r.addQuad(QuadOp.LOAD_IMM,Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, Compiler.generateSymbol(DataType.getInt()));
                 r.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
             }else{
-                int structSize = symbolTable.getStructSize(rResult.type.name);
+                int structSize = symbolTable.getStructSize(rResult.type);
                 l.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
                 l.addQuad(QuadOp.LOAD_IMM,Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, Compiler.generateSymbol(DataType.getInt()));
                 l.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));

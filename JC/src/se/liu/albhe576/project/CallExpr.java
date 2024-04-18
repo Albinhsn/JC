@@ -39,9 +39,9 @@ public class CallExpr extends Expr{
        quads.addQuad(QuadOp.LOAD_IMM,  Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(size)),null, Compiler.generateSymbol(DataType.getInt()));
        return quads;
    }
-   private QuadList callLibrary(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
+   private QuadList callExternFunction(SymbolTable symbolTable) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
 
-       Function function = symbolTable.getLibraryFunction(this.name.literal);
+       Function function = symbolTable.getExternFunction(this.name.literal);
        QuadOp[] argLocations = new QuadOp[]{
               QuadOp.MOV_RDI,
                QuadOp.MOV_RSI,
@@ -97,8 +97,8 @@ public class CallExpr extends Expr{
         if(name.literal.equals("sizeof")){
             return this.handleSizeOf(symbolTable);
         }
-        if(symbolTable.isLibraryFunction(name.literal)){
-            return this.callLibrary(symbolTable);
+        if(symbolTable.isExternFunction(name.literal) || symbolTable.isExternFunction(name.literal)){
+            return this.callExternFunction(symbolTable);
         }
 
         QuadList quads = new QuadList();

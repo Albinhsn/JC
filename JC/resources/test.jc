@@ -1,56 +1,14 @@
 
-#include "resources/foo.jc"
+#extern void * malloc(int size)
+#extern void  free(void * ptr)
+#extern void  printf(...)
 
-int fib(int a){
-   if(a <= 2){
-        return 1;
-   }
-   return fib(a - 1) + fib(a - 2);
-}
-
-int for_sum(){
-    int sum = 0;
-    for(int i = 0; i < 10; i++){
-        sum += i;
-    }
-    return sum;
-}
-
-int rec_struct(Bar bar){
-    return bar.foo.a;
-}
-
-int arr_conversions(){
-    float * arrf = malloc(16);
-    arrf[0] = 1;
-    arrf[1] = 2.0;
-    int * arri = malloc(16);
-    arri[0] = 10;
-    arri[1] = 20.0;
-
-    return arrf[0] + arrf[1] + arri[0] + arri[1];
-
-}
-
-int run_tests(){
-    printf("%d = 8?", fib(6));
-    printf("%d = 45?", for_sum());
-
-    Bar bar;
-    bar.c = 3;
-    bar.foo.a = 5;
-    bar.foo.b = 2;
-    printf("%d = 5?", rec_struct(bar));
-
-
-    int result = arr_conversions();
-    printf("%d = 33?", result);
-
-    segfaults();
-}
+#include "resources/tests.jc"
 
 
 int main() {
+
     run_tests();
+    return 0;
 }
 

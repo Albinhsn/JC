@@ -222,6 +222,9 @@ public class Quad {
             case PUSH_STRUCT ->{
                 return stack.pushStruct(operand1);
             }
+            case MOVE_STRUCT ->{
+                return stack.moveStruct(operand1, operand2);
+            }
             case MOV_RDI->{
                 return "mov rdi, rax";
             }
@@ -271,19 +274,11 @@ public class Quad {
                     }
                 }
 
-                StringBuilder out = new StringBuilder();
-                if((stack.getLocalSize() + argSize) % 16 != 0){
-                    // out.append("sub rsp, 8\n");
-                }
 
                 if(argSize != 0){
-                    out.append(String.format("call %s\nadd rsp, %d", operand1.name, argSize));
-                }else{
-                    out.append(String.format("call %s", operand1.name));
+                    return String.format("call %s\nadd rsp, %d", operand1.name, argSize);
                 }
-
-                return out.toString();
-
+                return String.format("call %s", operand1.name);
             }
             case LOGICAL_NOT ->{
                 return "xor rax, 1";

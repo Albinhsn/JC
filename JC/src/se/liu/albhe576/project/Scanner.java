@@ -227,14 +227,27 @@ public class Scanner {
             case ',' -> this.createToken(TokenType.TOKEN_COMMA, ",");
             case '#' ->
             {
-                int len = "include".length();
-                if(!this.input.substring(this.index, this.index + len).equals("include")){
-                    throw new IllegalCharacterException(String.format("Tried to parse include but failed at line %d\n", line));
+                if(this.input.startsWith("include", this.index)){
+                    this.index += "include".length();
+                    yield this.createToken(TokenType.TOKEN_INCLUDE, "#include");
                 }
-                this.index += len;
-                yield this.createToken(TokenType.TOKEN_INCLUDE, "#include");
+                if(this.input.startsWith("extern", this.index)){
+                    this.index += "extern".length();
+                    yield this.createToken(TokenType.TOKEN_EXTERN, "#extern");
+                }
+                if(this.input.startsWith("define", this.index)){
+                    this.index += "define".length();
+                    yield this.createToken(TokenType.TOKEN_DEFINE, "#define");
+                }
+                throw new IllegalCharacterException(String.format("tried to parse #smth but failed at line %d\n", line));
             }
-            case '.' -> this.createToken(TokenType.TOKEN_DOT, ".");
+            case '.' ->{
+                if(this.input.startsWith("..", this.index)){
+                    this.index += "..".length();
+                    yield this.createToken(TokenType.TOKEN_ELLIPSIS, "...");
+                }
+                yield this.createToken(TokenType.TOKEN_DOT, ".");
+            }
             case '(' -> this.createToken(TokenType.TOKEN_LEFT_PAREN, "(");
             case ')' -> this.createToken(TokenType.TOKEN_RIGHT_PAREN, ")");
             case '^' -> {

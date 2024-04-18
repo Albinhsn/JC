@@ -7,9 +7,9 @@ public class Token {
         return String.format("%s: %s at %d", type, literal, line);
     }
 
-    public final TokenType type;
+    public TokenType type;
     public final int line;
-    public final String literal;
+    public String literal;
 
     public Token(TokenType type, int line, String literal){
         this.type       = type;

@@ -8,11 +8,11 @@ import java.util.*;
 public class Parser {
     @FunctionalInterface
     private interface InfixRule{
-        public Expr infix(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException;
+        Expr infix(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException;
     }
     @FunctionalInterface
     private interface PrefixRule{
-        public Expr prefix(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException;
+        Expr prefix(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException;
     }
     private static class ParseFunction{
         PrefixRule prefixRule;
@@ -26,6 +26,13 @@ public class Parser {
         }
     }
 
+    private final Map<String, Token> defined;
+    private final List<String> included;
+    private final List<Function> extern;
+    public List<Function> getExtern(){
+        return this.extern;
+    }
+
     private final EnumMap<TokenType, ParseFunction> parseFunctions;
     private final Scanner scanner;
     private Token current;
@@ -33,10 +40,22 @@ public class Parser {
 
     private List<Stmt> stmts;
 
+    private void updateCurrent(){
+        for(Map.Entry<String, Token> entry : this.defined.entrySet()){
+            String key = entry.getKey();
+            Token value = entry.getValue();
+            if(key.equals(this.current.literal) && this.current.type == TokenType.TOKEN_IDENTIFIER){
+                this.current.type = value.type;
+                this.current.literal = value.literal;
+                break;
+            }
+        }
+    }
 
     private void advance() throws IllegalCharacterException, UnterminatedStringException {
         previous = current;
         current = scanner.parseToken();
+        this.updateCurrent();
     }
 
 
@@ -232,23 +251,44 @@ public class Parser {
         }
         return body;
     }
-    private List<StructField> parseArguments() throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException {
+    private List<StructField> parseArguments() throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException, CompileException {
         List<StructField> args = new ArrayList<>();
         if(this.current.type != TokenType.TOKEN_RIGHT_PAREN){
             do{
                 Token type = this.current;
+                DataType dataType = DataType.getDataTypeFromToken(type);
                 advance();
+                if(matchType(TokenType.TOKEN_STAR)){
+                    dataType = DataType.getPointerFromType(dataType);
+                    while(matchType(TokenType.TOKEN_STAR)){
+                        dataType = DataType.getPointerFromType(dataType);
+                    }
+                }
                 if(!matchType(TokenType.TOKEN_IDENTIFIER)){
                     throw new UnexpectedTokenException(String.format("Expected identifier as argument but got %s", this.current.type));
                 }
                 String name = this.previous.literal;
-                args.add(new StructField(name, DataType.getDataTypeFromToken(type), type.literal));
+                args.add(new StructField(name, dataType, type.literal));
 
             }while(matchType(TokenType.TOKEN_COMMA));
         }
 
         return args;
     }
+
+    private Stmt function(DataType type, String name, int line) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, CompileException {
+        List<StructField> args = this.parseArguments();
+        if(!matchType(TokenType.TOKEN_RIGHT_PAREN)){
+            throw new UnexpectedTokenException(String.format("Expected right paren after arguments but got %s", this.current.type));
+        }
+        if(!matchType(TokenType.TOKEN_LEFT_BRACE)){
+            throw new UnexpectedTokenException(String.format("Expected { to start function body but got %s", this.current.type));
+        }
+
+        List<Stmt> body = this.parseBody();
+        return new FunctionStmt(type, name,args, body, line);
+    }
+
     private Stmt variableDeclaration() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, CompileException {
         int line = this.current.line;
         DataType type = DataType.getDataTypeFromToken(this.current);
@@ -281,16 +321,8 @@ public class Parser {
             return new VariableStmt(type, name,value, line);
 
         }else if(matchType(TokenType.TOKEN_LEFT_PAREN)){
-            List<StructField> args = this.parseArguments();
-            if(!matchType(TokenType.TOKEN_RIGHT_PAREN)){
-                throw new UnexpectedTokenException(String.format("Expected right paren after arguments but got %s", this.current.type));
-            }
-            if(!matchType(TokenType.TOKEN_LEFT_BRACE)){
-                throw new UnexpectedTokenException(String.format("Expected { to start function body but got %s", this.current.type));
-            }
 
-            List<Stmt> body = this.parseBody();
-            return new FunctionStmt(type, name,args, body, line);
+            return this.function(type, name, line);
         }else if(matchType(TokenType.TOKEN_SEMICOLON)){
             return new VariableStmt(type, name, null, line);
         }
@@ -340,13 +372,54 @@ public class Parser {
 
     private void parseInclude() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, IOException {
         consume(TokenType.TOKEN_STRING, "Expected string after include?");
-        String s = Files.readString(Path.of(this.previous.literal));
+        String fileName = this.previous.literal;
+        if(this.included.stream().anyMatch(i -> i.equals(fileName))){
+            return;
+        }
+        this.included.add(fileName);
+        String s = Files.readString(Path.of(fileName));
+
         Parser includeParser = new Parser(new Scanner(s));
         List<Stmt> included = includeParser.parse();
         included.addAll(this.stmts);
         this.stmts = included;
     }
 
+    private void parseDefine() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+        consume(TokenType.TOKEN_IDENTIFIER, "expected identifier after define");
+        String name = this.previous.literal;
+        Token defined = this.current;
+        advance();
+        this.defined.put(name, defined);
+    }
+    private void parseExtern() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, CompileException {
+        DataType type;
+        if(isVariableType()){
+            type = DataType.getDataTypeFromToken(this.current);
+            advance();
+        }else{
+            consume(TokenType.TOKEN_IDENTIFIER, "Expected identifier for function name after #extern");
+            type = DataType.getDataTypeFromToken(this.previous);
+        }
+        if(matchType(TokenType.TOKEN_STAR)){
+            type = DataType.getPointerFromType(type);
+            while(matchType(TokenType.TOKEN_STAR)){
+                type = DataType.getPointerFromType(type);
+            }
+        }
+
+        consume(TokenType.TOKEN_IDENTIFIER, "Expected identifier for function name after #extern");
+        String funcName = this.previous.literal;
+        consume(TokenType.TOKEN_LEFT_PAREN, "Expected ( for function args after function name in extern");
+        if(matchType(TokenType.TOKEN_ELLIPSIS)){
+            this.extern.add(new Function(funcName, type, null));
+        }else{
+            List<StructField> args = this.parseArguments();
+            this.extern.add(new Function(funcName, args, type, null));
+        }
+        consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ) after function args in extern");
+
+    }
 
     public List<Stmt> parse(){
         try{
@@ -354,8 +427,14 @@ public class Parser {
             while(!matchType(TokenType.TOKEN_EOF)){
                 if(matchType(TokenType.TOKEN_INCLUDE)){
                     this.parseInclude();
-                }else{
+                }else if(matchType(TokenType.TOKEN_DEFINE)){
+                    this.parseDefine();
+                }else if(matchType(TokenType.TOKEN_EXTERN)){
+                    this.parseExtern();
+                }
+                else{
                     this.stmts.add(parseStmt());
+
                 }
             }
         }catch(IllegalCharacterException | UnterminatedStringException | UnexpectedTokenException | CompileException |
@@ -404,7 +483,8 @@ public class Parser {
             unaryExpr.expr = new UnaryExpr(new EmptyExpr(line), op, line);
             unaryExpr = (UnaryExpr) unaryExpr.expr;
         }
-        unaryExpr.expr = parseExpr(new EmptyExpr(line), Precedence.ASSIGNMENT);
+        Precedence precedence = canAssign ? Precedence.ASSIGNMENT : Precedence.OR;
+        unaryExpr.expr = parseExpr(new EmptyExpr(line), precedence);
         return unaryExpr;
     }
 
@@ -513,10 +593,14 @@ public class Parser {
         this.parseFunctions.put(TokenType.TOKEN_INCREMENT, new ParseFunction(this::unary, null, Precedence.TERM));
         this.parseFunctions.put(TokenType.TOKEN_DECREMENT, new ParseFunction(this::unary, null, Precedence.TERM));
         this.parseFunctions.put(TokenType.TOKEN_MOD, new ParseFunction(null, this::binary, Precedence.TERM));
+        this.parseFunctions.put(TokenType.TOKEN_ELLIPSIS, new ParseFunction(null, null, Precedence.NONE));
     }
 
     public Parser(Scanner scanner){
         this.stmts = new ArrayList<>();
+        this.defined = new HashMap<>();
+        this.extern = new ArrayList<>();
+        this.included = new ArrayList<>();
         this.scanner = scanner;
         this.current = null;
         this.previous = null;
