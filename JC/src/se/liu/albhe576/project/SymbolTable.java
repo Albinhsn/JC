@@ -34,7 +34,7 @@ public class SymbolTable {
     }
 
     public int getStructSize(DataType type){
-        if(type.type.isPointer()){
+        if(type.isPointer()){
             return 8;
         }
         // ToDo :)
@@ -135,9 +135,9 @@ public class SymbolTable {
         throw new UnknownSymbolException(String.format("Tried to access member '%s' in struct '%s', doesnt exist", member, structSymbol.name));
     }
 
-    public SymbolTable(Map<String, Constant> constants, List<Function> extern){
+    public SymbolTable(Map<String, Struct> structs, Map<String, Constant> constants, List<Function> extern){
         this.scopeDepth = 0;
-        this.structs = new HashMap<>();
+        this.structs = structs;
         this.extern = extern;
         this.constants =constants;
         this.functions = new ArrayList<>();

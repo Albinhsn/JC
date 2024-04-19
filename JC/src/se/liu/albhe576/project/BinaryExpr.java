@@ -22,7 +22,7 @@ public class BinaryExpr extends Expr{
     private void bitwise(SymbolTable symbolTable, QuadList quads) throws InvalidOperation, CompileException, UnexpectedTokenException, UnknownSymbolException {
         left.compile(symbolTable, quads);
         Symbol lResult = quads.getLastResult();
-        quads.addQuad(QuadOp.PUSH, null, null, null);
+        quads.addQuad(QuadOp.PUSH, lResult, null, lResult);
         right.compile(symbolTable, quads);
         Symbol rResult = quads.getLastResult();
 
@@ -38,21 +38,21 @@ public class BinaryExpr extends Expr{
 
         left.compile(symbolTable, quads);
         Symbol lResult = quads.getLastResult();
-        DataTypes lType = lResult.type.type;
+        DataType lType = lResult.type;
 
         QuadList r = new QuadList();
         right.compile(symbolTable, r);
         Symbol rResult = r.getLastResult();
-        DataTypes rType = rResult.type.type;
+        DataType rType = rResult.type;
 
-        if(lResult.type.type == DataTypes.STRUCT || rResult.type.type == DataTypes.STRUCT){
+        if(lResult.type.isStruct() || rResult.type.isStruct()){
             throw new InvalidOperation(String.format("Can't do operation '%s' on struct on line %d", op.literal, op.line));
         }
 
         DataType resultType = lResult.type;
         QuadOp quadOp = QuadOp.fromToken(op);
 
-        if(lType == DataTypes.FLOAT || rType == DataTypes.FLOAT){
+        if(lType.isFloatingPoint() || rType.isFloatingPoint()){
             quadOp = quadOp.convertToFloat();
         }
 
@@ -70,10 +70,12 @@ public class BinaryExpr extends Expr{
                 quads.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
 
             }
-        }else if((lType.isFloat() && rType.isInteger()) || (lType.isInteger() && rType.isFloat())){
+        }else if((lType.isFloatingPoint() && rType.isInteger()) || (lType.isInteger() && rType.isFloatingPoint())){
             quadOp = quadOp.convertToFloat();
             resultType = DataType.getFloat();
-        }else if(lType != rType){
+        }else if(!lType.isSameType(rType)){
+            System.out.println(lType);
+            System.out.println(rType);
             throw new InvalidOperation(String.format("Can't do operation '%s' on pointer with type %s on line %d", op.literal, lResult.type.name, op.line));
         }
 

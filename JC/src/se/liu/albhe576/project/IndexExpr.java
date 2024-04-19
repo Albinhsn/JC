@@ -23,7 +23,7 @@ public class IndexExpr extends Expr{
         value.compile(symbolTable, quads);
         Symbol valResult = quads.getLastResult();
         Symbol valOperand = quads.getLastOperand1();
-        quads.addQuad(QuadOp.PUSH, null, null, null);
+        quads.addQuad(QuadOp.PUSH, valResult, null, null);
 
         index.compile(symbolTable, quads);
         Symbol idxResult = quads.getLastResult();
@@ -35,7 +35,7 @@ public class IndexExpr extends Expr{
         quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
         quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(DataType.getInt()));
         quads.addQuad(QuadOp.ADD, null, null, Compiler.generateSymbol(DataType.getInt()));
-        quads.addQuad(QuadOp.INDEX, idxResult, valOperand, Compiler.generateSymbol(valResult.type.getTypeFromPointer()));
+        quads.addQuad(QuadOp.INDEX, idxResult, valResult, Compiler.generateSymbol(valResult.type.getTypeFromPointer()));
 
     }
 }

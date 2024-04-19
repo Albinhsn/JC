@@ -25,7 +25,7 @@ public class VarExpr extends Expr {
             throw new UnknownSymbolException(String.format("Can't find symbol %s at line %s", token.literal, line));
         }
 
-        QuadOp op = symbol.type.type == DataTypes.STRUCT ? QuadOp.LOAD_POINTER : QuadOp.LOAD;
+        QuadOp op = (symbol.type.isStruct() || symbol.type.isArray()) ? QuadOp.LOAD_POINTER : QuadOp.LOAD;
         quads.addQuad(op, symbol, null, Compiler.generateSymbol(symbol.type));
     }
 }

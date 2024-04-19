@@ -23,7 +23,7 @@ public class PostfixExpr extends Expr{
         Symbol increasedSymbol = Compiler.generateSymbol(symbol.type);
 
         quads.addQuad(QuadOp.LOAD, symbol, null, loadedSymbol);
-        if(!loadedSymbol.type.type.isPointer()){
+        if(!loadedSymbol.type.isPointer()){
             quads.addQuad(QuadOp.INC, loadedSymbol, null, increasedSymbol);
         }else{
             int structSize = symbolTable.getStructSize(loadedSymbol.type);

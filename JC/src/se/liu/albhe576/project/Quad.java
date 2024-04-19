@@ -30,7 +30,7 @@ public class Quad {
     public static void insertBooleanComparison(QuadList quads, String immediateLiteral){
         Symbol immediateSymbol = Compiler.generateImmediateSymbol(DataType.getInt(), immediateLiteral);
         Symbol immLoadResult = Compiler.generateSymbol(DataType.getInt());
-        quads.addQuad(QuadOp.PUSH, null, null, Compiler.generateSymbol(DataType.getInt()));
+        quads.addQuad(QuadOp.PUSH, immLoadResult, null, Compiler.generateSymbol(DataType.getInt()));
         quads.addQuad(QuadOp.LOAD_IMM, immediateSymbol, null, immLoadResult);
         quads.addQuad(QuadOp.MOV_REG_CA, immLoadResult, null, immLoadResult);
         quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(DataType.getInt()));
@@ -42,10 +42,10 @@ public class Quad {
         quads.addQuad(QuadOp.JE, jmpLocation, null, null);
     }
 
-    public String getRegisterFromType(DataTypes type, int registerIndex){
+    public static String getRegisterFromType(DataType type, int registerIndex){
         final String[] floatRegisters = new String[]{"xmm0", "xmm1"};
         final String[] generalRegisters = new String[]{"rax", "rcx"};
-        if(type == DataTypes.FLOAT){
+        if(type.isFloatingPoint()){
             return floatRegisters[registerIndex];
         }
         return generalRegisters[registerIndex];
@@ -64,8 +64,8 @@ public class Quad {
         return builder.toString();
     }
 
-    private String getMovOpFromType(DataType type){
-        return  type.type == DataTypes.FLOAT ? "movsd" : "mov";
+    public static String getMovOpFromType(DataType type){
+        return  type.isFloatingPoint() ? "movsd" : "mov";
     }
 
     public String emit(Stack stack, Quad prevQuad, List<Function> functions, Map<String, Constant> constants) throws UnknownSymbolException {
@@ -74,7 +74,7 @@ public class Quad {
             case LOAD_IMM -> {
                 ImmediateSymbol imm = (ImmediateSymbol) this.operand1;
                 int registerIndex = prevOp != null && prevOp.isLoad() ? 1 :0;
-                String register = this.getRegisterFromType(operand1.type.type, registerIndex);
+                String register = getRegisterFromType(operand1.type, registerIndex);
 
                 switch(imm.type.type){
                     case INT -> {return String.format("mov %s, %s", register, imm.value);}
@@ -132,16 +132,16 @@ public class Quad {
                 return setup + "divsd xmm0, xmm1";
             }
             case LOAD_POINTER ->{
-                return stack.loadStructPointer(operand1.name);
+                return stack.loadVariablePointer(operand1.name);
             }
             case DEREFERENCE ->{
-                String movOp = this.getMovOpFromType(operand1.type);
-                String register = this.getRegisterFromType(operand1.type.type, 0);
+                String movOp = getMovOpFromType(operand1.type);
+                String register = getRegisterFromType(operand1.type, 0);
                 return String.format("%s %s, [rax]", movOp, register);
             }
             case INDEX ->{
-                String movOp = this.getMovOpFromType(result.type);
-                String register = this.getRegisterFromType(result.type.type, 0);
+                String movOp = getMovOpFromType(result.type);
+                String register = getRegisterFromType(result.type, 0);
                 return String.format("%s %s, [rax]", movOp, register);
             }
             case LOAD ->{
@@ -157,8 +157,8 @@ public class Quad {
                 return stack.storeVariable(result.name);
             }
             case STORE_INDEX -> {
-                String movOp = this.getMovOpFromType(operand1.type);
-                String register = this.getRegisterFromType(operand1.type.type, 0);
+                String movOp = getMovOpFromType(operand1.type);
+                String register = getRegisterFromType(operand1.type, 0);
                 return String.format("%s [rcx], %s", movOp, register);
             }
             case CMP -> {
@@ -195,35 +195,35 @@ public class Quad {
                 return "setl al\nmovzx rax, al";
             }
             case PUSH ->{
-                if(prevQuad.result != null && prevQuad.result.type.type == DataTypes.FLOAT){
+                if(operand1.type.isFloatingPoint()){
                     return "sub rsp, 8\nmovsd [rsp], xmm0";
                 }
                 return "push rax";
             }
             case POP ->{
-                if(this.result.type.type == DataTypes.FLOAT){
+                if(this.result.type.isFloatingPoint()){
                     return "movsd xmm0, [rsp]\nadd rsp, 8";
                 }
                 return "pop rax";
             }
             case MOV_REG_CA ->{
 
-                String movOp = this.getMovOpFromType(operand1.type);
-                String register1 = this.getRegisterFromType(operand1.type.type, 0);
-                String register2 = this.getRegisterFromType(operand1.type.type, 1);
+                String movOp = getMovOpFromType(operand1.type);
+                String register1 = getRegisterFromType(operand1.type, 0);
+                String register2 = getRegisterFromType(operand1.type, 1);
                 return String.format("%s %s, %s", movOp, register2, register1);
             }
             case MOV_REG_AC ->{
-                String movOp = this.getMovOpFromType(operand1.type);
-                String register1 = this.getRegisterFromType(operand1.type.type, 0);
-                String register2 = this.getRegisterFromType(operand1.type.type, 1);
+                String movOp = getMovOpFromType(operand1.type);
+                String register1 = getRegisterFromType(operand1.type, 0);
+                String register2 = getRegisterFromType(operand1.type, 1);
                 return String.format("%s %s, %s", movOp, register1, register2);
             }
             case PUSH_STRUCT ->{
                 return stack.pushStruct(operand1);
             }
             case MOVE_STRUCT ->{
-                return stack.moveStruct(operand1, operand2);
+                return stack.moveStruct(operand1);
             }
             case MOV_RDI->{
                 return "mov rdi, rax";

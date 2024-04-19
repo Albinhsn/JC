@@ -2,76 +2,71 @@ package se.liu.albhe576.project;
 
 public class DataType {
 
+    @Override
+    public String toString() {
+        return String.format("%s %s %d", name, type.name(), depth);
+    }
+
     public String name;
     public DataTypes type;
+    public int depth;
+
+    public boolean isFloatingPoint(){
+        return this.type == DataTypes.FLOAT && depth == 0;
+    }
+    public boolean isInteger(){
+        return this.type == DataTypes.INT && depth == 0;
+    }
+    public boolean isStruct(){
+        return this.type == DataTypes.STRUCT && depth == 0;
+    }
+    public boolean isArray(){
+        return this.type == DataTypes.ARRAY && depth == 0;
+    }
+
+    public boolean isPointer(){
+        return this.depth > 0;
+    }
 
     public boolean isSameType(DataType other){
-        if(other.type.isStruct()  && type.isStruct()){
+        if(other.isStruct() && this.isStruct()){
             return other.name.equals(name);
         }
 
-        return (type == other.type) || (type.isPointer() && other.type.isPointer());
+        return ((type == other.type && depth == 0 && other.depth == 0)) || (depth > 0 && other.depth > 0);
     }
 
     public DataType getTypeFromPointer() throws CompileException {
-        return switch (type) {
-            case INT_POINTER -> getInt();
-            case FLOAT_POINTER -> getFloat();
-            case STRUCT_POINTER -> getStruct(name);
-            default -> throw new CompileException(String.format("Can't get pointer from %s", name));
-        };
+        // ToDo check depth < 0?
+        if(depth == 0){
+            throw new CompileException("How could this happen to me");
+        }
+        return new DataType(this.name, this.type, this.depth - 1);
     }
-    public static PointerDataType getPointerFromType(DataType type) throws CompileException {
-            return switch (type.type) {
-                case INT -> DataType.getIntPointer(1);
-                case INT_POINTER -> {
-                   PointerDataType dataType = (PointerDataType)  type;
-                   yield DataType.getIntPointer(dataType.depth + 1);
-                }
-                case FLOAT -> getFloatPointer(1);
-                case FLOAT_POINTER -> {
-                    PointerDataType dataType = (PointerDataType)  type;
-                    yield getFloatPointer(dataType.depth + 1);
-                }
-                case STRUCT -> getStructPointer(type.name, 1);
-                case STRUCT_POINTER -> {
-                    PointerDataType dataType = (PointerDataType)  type;
-                    yield getStructPointer(type.name, dataType.depth + 1);
-                }
-                case VOID -> getVoidPointer(1);
-                case VOID_POINTER -> {
-                    PointerDataType dataType = (PointerDataType)  type;
-                    yield getVoidPointer(dataType.depth + 1);
-                }
-                default -> throw new CompileException(String.format("Can't get pointer from %s", type.name));
-            };
+    public static DataType getPointerFromType(DataType type){
+        if(type.type == DataTypes.ARRAY){
+            ArrayDataType arrayDataType = (ArrayDataType) type;
+            return new ArrayDataType(arrayDataType.name, arrayDataType.type, arrayDataType.itemType, arrayDataType.depth + 1);
+        }
+        return new DataType(type.name, type.type, type.depth + 1);
     }
     public static DataType getInt(){
-        return new DataType("int", DataTypes.INT);
+        return new DataType("int", DataTypes.INT, 0);
     }
-    public static PointerDataType getIntPointer(int depth){
-        return new PointerDataType("int", DataTypes.INT_POINTER, depth);
-    }
-    public static PointerDataType getFloatPointer(int depth){
-        return new PointerDataType("float", DataTypes.FLOAT_POINTER, depth);
-    }
-    public static PointerDataType getVoidPointer(int depth){
-        return new PointerDataType("void", DataTypes.VOID_POINTER, depth);
+    public static DataType getArray(DataType itemType){
+        return new ArrayDataType("array", DataTypes.ARRAY, itemType, 0);
     }
     public static DataType getString(){
-        return new DataType("string", DataTypes.STRING);
-    }
-    public static PointerDataType getStructPointer(String name, int depth){
-        return new PointerDataType(name, DataTypes.STRUCT_POINTER, depth);
+        return new DataType("string", DataTypes.STRING, 0);
     }
     public static DataType getFloat(){
-        return new DataType("float", DataTypes.FLOAT);
+        return new DataType("float", DataTypes.FLOAT, 0);
     }
     public static DataType getStruct(String name){
-        return new DataType(name, DataTypes.STRUCT);
+        return new DataType(name, DataTypes.STRUCT, 0);
     }
     public static DataType getVoid(){
-        return new DataType("void", DataTypes.VOID);
+        return new DataType("void", DataTypes.VOID, 0);
     }
 
     public static DataType getDataTypeFromToken(Token token) throws UnexpectedTokenException {
@@ -85,8 +80,9 @@ public class DataType {
         throw new UnexpectedTokenException(String.format("Can't parse value type from %s", token));
     }
 
-    public DataType(String name, DataTypes type){
+    public DataType(String name, DataTypes type, int depth){
         this.name = name;
         this.type = type;
+        this.depth = depth;
     }
 }

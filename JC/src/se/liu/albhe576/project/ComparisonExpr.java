@@ -22,7 +22,8 @@ public class ComparisonExpr extends Expr {
         left.compile(symbolTable, quads);
 
         Symbol lSymbol = quads.getLastResult();
-        quads.addQuad(QuadOp.PUSH, null, null, Compiler.generateSymbol(lSymbol.type));
+
+        quads.addQuad(QuadOp.PUSH, lSymbol, null, Compiler.generateSymbol(lSymbol.type));
         right.compile(symbolTable, quads);
         Symbol rSymbol = quads.getLastResult();
         quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));

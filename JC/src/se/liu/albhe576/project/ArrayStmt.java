@@ -40,14 +40,30 @@ public class ArrayStmt extends Stmt {
         }else{
             offset -= 8 * this.items.size();
         }
+
         int depth = symbolTable.getDepth();
-        VariableSymbol arraySymbol = new VariableSymbol(name, type, offset, depth);
+        VariableSymbol arraySymbol = new VariableSymbol(name, DataType.getArray(itemType), offset, depth);
         symbolTable.addSymbol(arraySymbol);
 
-        for(Expr item : this.items){
+        for(int i = this.items.size() - 1; i >= 0; i--){
+            Expr item = this.items.get(i);
             item.compile(symbolTable, quads);
-            quads.addQuad(QuadOp.PUSH, null, null, quads.getLastResult());
-            if(!itemType.isSameType(quads.getLastResult().type)){
+            Symbol result = quads.getLastResult();
+            quads.addQuad(QuadOp.PUSH, result, null, result);
+
+
+            ImmediateSymbol immSymbol = Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(8 * i));
+            quads.addQuad(QuadOp.LOAD_IMM, immSymbol, null, Compiler.generateSymbol(DataType.getInt()));
+            quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
+            Symbol offsetSymbol = Compiler.generateSymbol(DataType.getInt());
+            quads.addQuad(QuadOp.LOAD_POINTER, arraySymbol, null, Compiler.generateSymbol(arraySymbol.type));
+            quads.addQuad(QuadOp.ADD, arraySymbol, offsetSymbol, arraySymbol);
+
+
+            quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(arraySymbol.type), null, Compiler.generateSymbol(arraySymbol.type));
+            quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(itemType));
+            quads.addQuad(QuadOp.STORE_INDEX, Compiler.generateSymbol(itemType), null, null);
+            if(!itemType.isSameType(result.type)){
                 throw new CompileException(String.format("Can't have different types in array declaration on line %d", this.line));
             }
         }

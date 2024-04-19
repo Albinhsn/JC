@@ -4,7 +4,7 @@ package se.liu.albhe576.project;
 public class UnaryExpr extends Expr{
     @Override
     public String toString() {
-        return String.format("%s%s", op.literal, expr);
+        return String.format("%s(%s)", op.literal, expr);
     }
 
     public Expr expr;
@@ -37,6 +37,7 @@ public class UnaryExpr extends Expr{
             case TOKEN_STAR:{
                 quadOp = QuadOp.DEREFERENCE;
                 symbol = quads.getLastOperand1();
+                result = Compiler.generateSymbol(result.type.getTypeFromPointer());
                 break;
             }
             case TOKEN_MINUS:{
@@ -44,7 +45,7 @@ public class UnaryExpr extends Expr{
                break;
             }
             case TOKEN_INCREMENT:{
-                if(result.type.type.isPointer()){
+                if(result.type.isPointer()){
                     int structSize = symbolTable.getStructSize(result.type);
                     quads.addQuad(QuadOp.PUSH, result, null, Compiler.generateSymbol(result.type));
                     Symbol immSymbol = Compiler.generateSymbol(DataType.getInt());
@@ -59,7 +60,7 @@ public class UnaryExpr extends Expr{
                 break;
             }
             case TOKEN_DECREMENT:{
-                if(result.type.type.isPointer()){
+                if(result.type.isPointer()){
                     int structSize = symbolTable.getStructSize(result.type);
                     quads.addQuad(QuadOp.PUSH, result, null, Compiler.generateSymbol(result.type));
                     Symbol immSymbol = Compiler.generateSymbol(DataType.getInt());

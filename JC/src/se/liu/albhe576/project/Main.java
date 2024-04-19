@@ -3,6 +3,8 @@ package se.liu.albhe576.project;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Main {
 
@@ -10,8 +12,10 @@ public class Main {
         String s = Files.readString(Path.of("resources/test.jc"));
         System.out.println(s);
         Scanner scanner = new Scanner(s);
-        Parser parser = new Parser(scanner);
-        Compiler compiler = new Compiler(parser.parse(), parser.getExtern());
+        List<String> included = new ArrayList<>();
+        included.add("resources/test.jc");
+        Parser parser = new Parser(scanner, included);
+        Compiler compiler = new Compiler(parser.getStructs(), parser.parse(), parser.getExtern());
         compiler.Compile("out.asm");
     }
 }

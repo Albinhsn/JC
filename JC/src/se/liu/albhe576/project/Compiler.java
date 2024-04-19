@@ -7,7 +7,6 @@ import java.util.*;
 public class Compiler {
 
     private final List<Function> extern;
-    private final Map<String, Constant> constants;
     private final List<Stmt> stmts;
     private final SymbolTable symbolTable;
     private static int resultCount;
@@ -20,7 +19,7 @@ public class Compiler {
         return new ImmediateSymbol("T" + resultCount++, type, literal);
     }
     public static Symbol generateLabel(){
-        return new Symbol( String.format("label%d", labelCount++), new DataType("label", DataTypes.VOID));
+        return new Symbol( String.format("label%d", labelCount++), new DataType("label", DataTypes.VOID, 0));
     }
 
     public void Compile(String name) throws CompileException, IOException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
@@ -105,7 +104,7 @@ public class Compiler {
             System.out.printf("FUNCTION %s\n", function.name);
 
             for (Quad intermediate : function.intermediates) {
-                // fileWriter.write("; " + intermediate + "\n");
+                fileWriter.write("; " + intermediate + "\n");
                 fileWriter.write(intermediate.emit(stack, prev, functions, constants) + "\n");
                 prev = intermediate;
             }
@@ -121,10 +120,10 @@ public class Compiler {
 
     }
 
-    public Compiler(List<Stmt> stmts, List<Function> extern){
+    public Compiler(Map<String, Struct> structs, List<Stmt> stmts, List<Function> extern){
         this.stmts = stmts;
-        this.constants = new HashMap<>();
+        Map<String, Constant> constants = new HashMap<>();
         this.extern = extern;
-        this.symbolTable = new SymbolTable(this.constants, extern);
+        this.symbolTable = new SymbolTable(structs, constants, extern);
     }
 }

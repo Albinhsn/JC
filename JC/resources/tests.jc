@@ -1,4 +1,5 @@
 #include "resources/foo.jc"
+#include "resources/test.jc"
 
 int fib(int a){
    if(a <= 2){
@@ -51,6 +52,45 @@ void pointer_switchero(Foo ** foo, Foo * foo1){
     return;
 }
 
+int index_array(){
+    int * a = [1,2,3,4];
+    printf("%d == 4?", a[0] + a[2]);
+}
+
+
+void pointers_pointers_everywhere(){
+    int * a = [1,2,3,4];
+    int * b= &a;
+    int **c = &b;
+
+    (*c)[2] = 10;
+    printf("%d == 12?", (*c)[1] + (*c)[2]);
+}
+
+void pointer_fiesta(){
+    int a = 5;
+    int * b = &a;
+    int ** c = &b;
+    int *** d=  &c;
+    int **** e = &d;
+
+    printf("%d == 5?", ****e);
+}
+
+
+struct Baz{
+    int * a;
+}
+
+void pointer_in_struct(){
+    Baz foo;
+    int a = 5;
+    foo.a = &a;
+
+    *foo.a = 3;
+    printf("%d == 3?", a);
+}
+
 int run_tests(){
     printf("%d = 8?", fib(6));
     printf("%d = 45?", for_sum());
@@ -78,4 +118,10 @@ int run_tests(){
     foo1.a = 2;
     pointer_switchero(&foo, &foo1);
     printf("%d == 50?", foo.a + foo1.a);
+
+    index_array();
+    pointer_fiesta();
+    pointers_pointers_everywhere();
 }
+
+

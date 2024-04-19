@@ -330,6 +330,6 @@ public class Scanner {
     public Scanner(String input){
         this.input = input;
         this.index = 0;
-        this.line = 0;
+        this.line = 1;
     }
 }

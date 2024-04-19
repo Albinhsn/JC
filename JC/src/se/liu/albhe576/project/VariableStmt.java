@@ -1,7 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.List;
-
 public class VariableStmt extends Stmt{
 
     @Override
@@ -20,17 +18,17 @@ public class VariableStmt extends Stmt{
     }
 
     private void checkValidTypes(Symbol lastResult, Symbol lastOperand, QuadList quads) throws CompileException {
-        if(lastResult.type.type == DataTypes.FLOAT && type.type.isInteger()){
+        if(lastResult.type.isFloatingPoint() && type.isInteger()){
             quads.addQuad(QuadOp.CVTTSD2SI, lastResult, null, Compiler.generateSymbol(DataType.getInt()));
             return;
         }
-        if(lastResult.type.type.isInteger() && type.type == DataTypes.FLOAT){
+        if(lastResult.type.isInteger() && type.isFloatingPoint()){
             quads.addQuad(QuadOp.CVTSI2SD, lastResult, null, Compiler.generateSymbol(DataType.getFloat()));
             return;
         }
 
         if(!lastResult.type.isSameType(type) && !lastOperand.isNull()){
-            throw new CompileException(String.format("Trying to access type %s to type %s", lastResult.type.name, type.name));
+            throw new CompileException(String.format("Trying to access type %s to type %s on line %d", lastResult.type.name, type.name, this.line));
         }
     }
 

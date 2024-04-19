@@ -24,9 +24,9 @@ public class ReturnStmt extends Stmt{
         if(!(expr instanceof EmptyExpr)){
             expr.compile(symbolTable, quads);
             Symbol returnSymbol = quads.getLastResult();
-            if(returnSymbol.type.type.isInteger() && currentFunction.returnType.type == DataTypes.FLOAT){
+            if(returnSymbol.type.isInteger() && currentFunction.returnType.isFloatingPoint()){
                 quads.addQuad(QuadOp.CVTSI2SD, null, null, null);
-            }else if(currentFunction.returnType.type.isInteger() && returnSymbol.type.type == DataTypes.FLOAT){
+            }else if(currentFunction.returnType.isInteger() && returnSymbol.type.isFloatingPoint()){
                 quads.addQuad(QuadOp.CVTTSD2SI, null, null, null);
             }
             else if(!returnSymbol.type.isSameType(currentFunction.returnType)){

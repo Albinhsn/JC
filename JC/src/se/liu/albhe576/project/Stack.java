@@ -1,6 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.List;
 import java.util.Map;
 
 public class Stack {
@@ -11,7 +10,7 @@ public class Stack {
         return this.structs.get(name);
     }
 
-    public String loadStructPointer(String name) {
+    public String loadVariablePointer(String name) {
         VariableSymbol symbol = this.stackSymbols.get(name);
         if(symbol.offset < 0){
             return String.format("lea rax, [rbp %d]", symbol.offset);
@@ -20,30 +19,7 @@ public class Stack {
         }
     }
 
-    public void debug(){
-        if(stackSymbols.isEmpty()){
-            System.out.println("Empty stack");
-            return;
-        }
-        List<VariableSymbol> locals = new java.util.ArrayList<>(stackSymbols.values().stream().toList());
-        locals.sort(locals.get(0));
-        int prev = -1;
-        for(VariableSymbol local : locals){
-            if(prev != -1){
-                while(prev != local.offset){
-                    prev += 8;
-                    if(prev != local.offset){
-                        System.out.printf("%d XXX\n", prev);
-                    }
-                }
-            }
-            System.out.println(local.offset + " " + local.name);
-            prev = local.offset;
-
-        }
-    }
-
-    public String moveStruct(Symbol value, Symbol target){
+    public String moveStruct(Symbol value){
         Struct valueStruct  = this.structs.get(value.type.name);
 
         StringBuilder s = new StringBuilder();
@@ -106,7 +82,7 @@ public class Stack {
         Struct struct = this.structs.get(type.name);
         for(StructField field : struct.fields){
             if(field.name.equals(memberName)){
-                String op = field.type.type == DataTypes.STRUCT ? "lea" : "mov";
+                String op = field.type.isStruct() ? "lea" : "mov";
                 int offset = this.getFieldOffset(struct, memberName);
                 if(offset == 0){
                     return String.format("%s rax, [rax]", op);
@@ -117,8 +93,8 @@ public class Stack {
         throw new UnknownSymbolException(String.format("Couldn't find struct %s of type %s", type.name, memberName));
     }
     public String storeField(DataType type, Symbol memberSymbol) throws UnknownSymbolException{
-        String move = memberSymbol.type.type == DataTypes.FLOAT ? "movsd" : "mov";
-        String register = this.getRegisterFromType(memberSymbol.type.type, 0);
+        String move = Quad.getMovOpFromType(memberSymbol.type);
+        String register = Quad.getRegisterFromType(memberSymbol.type, 0);
         Struct struct  = this.structs.get(type.name);
         int offset = this.getFieldOffset(struct, memberSymbol.name);
         if(offset != 0){
@@ -126,14 +102,6 @@ public class Stack {
         }
         return String.format("%s [rcx], %s", move, register);
     }
-    public int getLocalSize() {
-        List<VariableSymbol> symbols = this.stackSymbols.values().stream().toList();
-        if(symbols.isEmpty()){
-            return 0;
-        }
-        return symbols.get(symbols.size() - 1).offset;
-    }
-
     public String loadVariable(String name, QuadOp prevOp) {
         VariableSymbol stackSymbol = this.stackSymbols.get(name);
         if(stackSymbol.offset < 0){
@@ -152,30 +120,22 @@ public class Stack {
     private String loadArgument(VariableSymbol symbol, QuadOp prevOp){
         int offset = this.getStackPointerOffset(symbol);
         int registerIndex = prevOp != null && prevOp.isLoad() ? 1 : 0;
-        String move = symbol.type.type == DataTypes.FLOAT ? "movsd" : "mov";
-        String register = this.getRegisterFromType(symbol.type.type, registerIndex);
+        String move = Quad.getMovOpFromType(symbol.type);
+        String register = Quad.getRegisterFromType(symbol.type, registerIndex);
 
         return String.format("%s %s, [rbp + %d]", move, register, offset);
     }
     private String storeArgument(VariableSymbol symbol){
         int offset = this.getStackPointerOffset(symbol);
-        String move = symbol.type.type == DataTypes.FLOAT ? "movsd" : "mov";
-        String register = this.getRegisterFromType(symbol.type.type, 0);
+        String move = Quad.getMovOpFromType(symbol.type);
+        String register = Quad.getRegisterFromType(symbol.type, 0);
         return String.format("%s [rbp + %d], %s", move, offset, register);
-    }
-    private String getRegisterFromType(DataTypes type, int registerIndex){
-        final String[] floatRegisters = new String[]{"xmm0", "xmm1"};
-        final String[] generalRegisters = new String[]{"rax", "rcx"};
-        if(type == DataTypes.FLOAT){
-            return floatRegisters[registerIndex];
-        }
-        return generalRegisters[registerIndex];
     }
 
     private String loadLocal(VariableSymbol symbol, QuadOp prevOp){
         int registerIndex = prevOp.isLoad() ? 1 : 0;
-        String move = symbol.type.type == DataTypes.FLOAT ? "movsd" : "mov";
-        String register = this.getRegisterFromType(symbol.type.type, registerIndex);
+        String move = Quad.getMovOpFromType(symbol.type);
+        String register = Quad.getRegisterFromType(symbol.type, registerIndex);
         if(symbol.offset == 0){
             return String.format("%s %s, [rbp]", move, register);
         }
@@ -184,8 +144,8 @@ public class Stack {
 
     private String storeLocal(VariableSymbol symbol){
         int offset = this.getStackPointerOffset(symbol);
-        String move = symbol.type.type == DataTypes.FLOAT ? "movsd" : "mov";
-        String register = this.getRegisterFromType(symbol.type.type, 0);
+        String move = Quad.getMovOpFromType(symbol.type);
+        String register = Quad.getRegisterFromType(symbol.type, 0);
         if(offset == 0){
             return String.format("%s [rsp], %s", move, register);
         }

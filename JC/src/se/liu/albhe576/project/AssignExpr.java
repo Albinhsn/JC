@@ -28,7 +28,7 @@ public class AssignExpr extends Expr{
         quads.addAll(variableQuads);
         Symbol valResult = quads.getLastResult();
 
-        if(memberSymbol.type.type != DataTypes.FLOAT){
+        if(!memberSymbol.type.isFloatingPoint()){
             quads.addQuad(QuadOp.MOV_REG_CA, valResult, null, Compiler.generateSymbol(valResult.type));
         }
 
@@ -37,7 +37,7 @@ public class AssignExpr extends Expr{
         quads.addQuad(QuadOp.SET_FIELD, memberSymbol, struct, result);
 
     }
-    private void compileStoreDereference(QuadList valueQuads, QuadList variableQuads) throws CompileException {
+    private void compileStoreDereference(QuadList valueQuads, QuadList variableQuads) {
 
         Symbol dereferenced = variableQuads.getLastOperand1();
         Symbol valueSymbol = valueQuads.getLastResult();
@@ -54,7 +54,7 @@ public class AssignExpr extends Expr{
 
     }
 
-    private void compileStoreIndex(QuadList quads, QuadList variableQuads) throws CompileException, UnexpectedTokenException, UnknownSymbolException, InvalidOperation {
+    private void compileStoreIndex(QuadList quads, QuadList variableQuads) throws CompileException{
         Symbol res = variableQuads.getLastOperand2();
         Symbol toStore = quads.getLastResult();
 
@@ -69,16 +69,16 @@ public class AssignExpr extends Expr{
         // ToDo check if they can be converted
         if(!resType.isSameType(toStore.type)){
             quads.addQuad(QuadOp.POP, toStore, null, toStore);
-            if(resType.type == DataTypes.FLOAT){
+            if(resType.isFloatingPoint()){
                 Symbol newToStore = Compiler.generateSymbol(DataType.getFloat());
                 quads.addQuad(QuadOp.CVTSI2SD, toStore, null, newToStore);
                 toStore = newToStore;
-            }else if(toStore.type.type == DataTypes.FLOAT){
+            }else if(toStore.type.isFloatingPoint()){
                 Symbol newToStore = Compiler.generateSymbol(DataType.getInt());
                 quads.addQuad(QuadOp.CVTTSD2SI, toStore, null, newToStore);
                 toStore = newToStore;
             }else{
-                throw new CompileException("What are you trying to do?");
+                throw new CompileException(String.format("What are you trying to do?, line %d", this.line));
             }
         }else{
             quads.addQuad(QuadOp.POP, toStore, null, toStore);
@@ -103,11 +103,10 @@ public class AssignExpr extends Expr{
         // This is just looking essentially if the last thing in the variable is a get field
         if(lastOp == QuadOp.GET_FIELD){
             this.compileStoreField(symbolTable, quads, variableQuads);
-
         }else if(lastOp == QuadOp.DEREFERENCE){
             this.compileStoreDereference(quads, variableQuads);
         }
-        else if (valueType.type.type == DataTypes.STRUCT){
+        else if (valueType.type.isStruct()){
             quads.addQuad(QuadOp.PUSH, valueType, null, valueType);
             quads.addAll(variableQuads);
             quads.addQuad(QuadOp.MOV_REG_CA, variableType, null, variableType);

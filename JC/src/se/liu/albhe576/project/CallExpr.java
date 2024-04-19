@@ -98,7 +98,7 @@ public class CallExpr extends Expr{
             if(!argSymbol.type.isSameType(funcArgType)){
                 throw new CompileException(String.format("Function parameter type mismatch expected %s got %s on line %d", argSymbol.type.name, funcArgType.name, name.line));
             }
-            if(argSymbol.type.type == DataTypes.STRUCT){
+            if(argSymbol.type.isStruct()){
                 quads.addQuad(QuadOp.PUSH_STRUCT, argSymbol, null, null);
             }else{
                 quads.addQuad(QuadOp.PUSH, argSymbol, null, null);
