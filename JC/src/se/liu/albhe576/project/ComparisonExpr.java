@@ -12,11 +12,11 @@ public class ComparisonExpr extends Expr {
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads)  throws CompileException{
         left.compile(symbolTable, quads);
         Symbol lSymbol = quads.getLastResult();
         Symbol rSymbol = quads.createSetupBinary(symbolTable, right, lSymbol);
-        quads.addQuad(QuadOp.CMP, lSymbol, rSymbol, null);
+        quads.createCmp(lSymbol, rSymbol);
         quads.addQuad(QuadOp.fromToken(op), null, null, Compiler.generateSymbol(DataType.getInt()));
 
     }

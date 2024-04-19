@@ -11,10 +11,10 @@ public class CallExpr extends Expr{
        this.args = args;
    }
 
-   private void callExternFunction(SymbolTable symbolTable, QuadList quads) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
+   private void callExternFunction(SymbolTable symbolTable, QuadList quads) throws CompileException {
 
        Function function = symbolTable.getExternFunction(this.name.literal);
-       QuadOp[] argLocations = new QuadOp[]{
+       QuadOp[] generalRegisters = new QuadOp[]{
               QuadOp.MOV_RDI,
                QuadOp.MOV_RSI,
                QuadOp.MOV_RDX,
@@ -22,7 +22,7 @@ public class CallExpr extends Expr{
                QuadOp.MOV_R8,
                QuadOp.MOV_R9,
        };
-       QuadOp[] floatLocations = new QuadOp[]{
+       QuadOp[] floatRegisters = new QuadOp[]{
                QuadOp.MOV_XMM0,
                QuadOp.MOV_XMM1,
                QuadOp.MOV_XMM2,
@@ -30,9 +30,6 @@ public class CallExpr extends Expr{
                QuadOp.MOV_XMM4,
                QuadOp.MOV_XMM5,
        };
-       if(this.args.size() > argLocations.length){
-           throw new CompileException(String.format("Can't call library function with more then 6 arguments on line %d", this.line));
-       }
 
        int generalCount = 0;
        int floatCount = 0;
@@ -41,27 +38,29 @@ public class CallExpr extends Expr{
        for (Expr arg : args) {
            arg.compile(symbolTable, quads);
            Symbol result = quads.getLastResult();
-           if (result.type.type == DataTypes.FLOAT) {
-               if(floatCount > 1){
-                   quads.createPush(floatType);
-               }
-               quads.addQuad(floatLocations[floatCount], null, null, null);
-               if(floatCount > 1){
-                   quads.createPop(floatType);
-               }
+           if (result.type.isFloatingPoint()) {
+
+               if(floatCount > 1){quads.createPush(floatType);}
+               quads.addQuad(floatRegisters[floatCount], null, null, null);
+               if(floatCount > 1){quads.createPop(floatType);}
+
                floatCount++;
            } else {
-               quads.addQuad(argLocations[generalCount], null, null, null);
+               quads.addQuad(generalRegisters[generalCount], null, null, null);
                generalCount++;
+           }
+
+           if(generalCount >= generalRegisters.length || floatCount >= floatRegisters.length){
+               this.error(String.format("Can't call library function with more then %d ints and %d floats, you called %d, %d", generalCount, floatCount, generalRegisters.length, floatRegisters.length));
            }
 
        }
 
-       quads.addQuad(QuadOp.CALL, function.getFunctionSymbol(), null, Compiler.generateSymbol(function.returnType));
+       quads.createCall(function.getFunctionSymbol(), Compiler.generateSymbol(function.returnType));
    }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException, UnknownSymbolException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
 
         if(symbolTable.isExternFunction(name.literal) || symbolTable.isExternFunction(name.literal)){
             this.callExternFunction(symbolTable, quads);
@@ -71,7 +70,7 @@ public class CallExpr extends Expr{
         Function function = symbolTable.getFunction(this.name.literal);
         List<StructField> functionArguments = function.arguments;
         if(args.size() != functionArguments.size()){
-            throw new CompileException(String.format("Function parameter mismatch expected %d got %d on line %d when calling %s", functionArguments.size(), args.size(), name.line, name.literal));
+            this.error(String.format("Function parameter mismatch expected %d got %d on line %d when calling %s", functionArguments.size(), args.size(), name.line, name.literal));
         }
 
         for(int i = args.size() - 1; i >= 0; i--){
@@ -82,16 +81,16 @@ public class CallExpr extends Expr{
             Symbol argSymbol = lastQuad.result;
             DataType funcArgType = functionArguments.get(i).type;
             if(!argSymbol.type.isSameType(funcArgType)){
-                throw new CompileException(String.format("Function parameter type mismatch expected %s got %s on line %d", argSymbol.type.name, funcArgType.name, name.line));
+                this.error(String.format("Function parameter type mismatch expected %s got %s", argSymbol.type.name, funcArgType.name));
             }
             if(argSymbol.type.isStruct()){
-                quads.addQuad(QuadOp.PUSH_STRUCT, argSymbol, null, null);
+                quads.createPushStruct(argSymbol);
             }else{
                 quads.createPush(argSymbol);
             }
 
         }
 
-        quads.addQuad(QuadOp.CALL, function.getFunctionSymbol(), null, Compiler.generateSymbol(function.returnType));
+        quads.createCall(function.getFunctionSymbol(), Compiler.generateSymbol(function.returnType));
     }
 }

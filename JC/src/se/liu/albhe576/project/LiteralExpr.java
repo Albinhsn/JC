@@ -19,21 +19,14 @@ public class LiteralExpr extends Expr{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
         DataType type = DataType.getDataTypeFromToken(token);
-        Symbol immediateSymbol = Compiler.generateImmediateSymbol(type, token.literal);
 
-        Symbol resultSymbol = Compiler.generateSymbol(type);
-        switch(token.type){
-            case TOKEN_STRING:{}
-            case TOKEN_FLOAT_LITERAL:{
-                symbolTable.addConstant(token.literal, type.type);
-                break;
-            }
-            default :{}
+        if(token.type == TokenType.TOKEN_STRING || token.type == TokenType.TOKEN_FLOAT_LITERAL){
+            symbolTable.addConstant(token.literal, type.type);
         }
 
-        quads.addQuad(QuadOp.LOAD_IMM, immediateSymbol, null, resultSymbol);
+        quads.createLoadImmediate(type, token.literal);
     }
 }
 

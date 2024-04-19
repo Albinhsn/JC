@@ -1,8 +1,6 @@
 package se.liu.albhe576.project;
 
 
-import java.util.List;
-
 public class DotExpr extends Expr{
     @Override
     public String toString() {
@@ -19,13 +17,12 @@ public class DotExpr extends Expr{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException {
         // feels like this can be solved in the parser
         // we don't know whether we're supposed to load this value or not
-        // The question if whether we need to
         variable.compile(symbolTable, quads);
         Symbol lastSymbol = quads.getLastResult();
         Symbol memberSymbol = symbolTable.getMemberSymbol(lastSymbol, this.member.literal);
-        quads.addQuad(QuadOp.GET_FIELD, lastSymbol, memberSymbol, Compiler.generateSymbol(memberSymbol.type));
+        quads.createGetField(memberSymbol, lastSymbol);
     }
 }

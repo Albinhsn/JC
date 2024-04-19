@@ -17,7 +17,7 @@ public class ExprStmt extends Stmt{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
         expr.compile(symbolTable, quads);
     }
 }

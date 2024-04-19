@@ -27,20 +27,6 @@ public class Quad {
 
     }
 
-    public static void insertBooleanComparison(QuadList quads, String immediateLiteral){
-        Symbol immediateSymbol = Compiler.generateImmediateSymbol(DataType.getInt(), immediateLiteral);
-        Symbol immLoadResult = Compiler.generateSymbol(DataType.getInt());
-        quads.createPush(immLoadResult);
-        quads.addQuad(QuadOp.LOAD_IMM, immediateSymbol, null, immLoadResult);
-        quads.addQuad(QuadOp.MOV_REG_CA, immLoadResult, null, immLoadResult);
-        quads.createPop(Compiler.generateSymbol(DataType.getInt()));
-        quads.addQuad(QuadOp.CMP, null, null,null);
-    }
-
-    public static void insertJMPOnComparisonCheck(QuadList quads, Symbol jmpLocation, boolean jumpIfTrue){
-        insertBooleanComparison(quads, jumpIfTrue ? "1" : "0");
-        quads.addQuad(QuadOp.JE, jmpLocation, null, null);
-    }
 
     public static String getRegisterFromType(DataType type, int registerIndex){
         final String[] floatRegisters = new String[]{"xmm0", "xmm1"};
@@ -68,7 +54,7 @@ public class Quad {
         return  type.isFloatingPoint() ? "movsd" : "mov";
     }
 
-    public String emit(Stack stack, List<Function> functions, Map<String, Constant> constants) throws UnknownSymbolException {
+    public String emit(Stack stack, List<Function> functions, Map<String, Constant> constants) throws CompileException {
         switch(this.op){
             case LOAD_IMM -> {
                 ImmediateSymbol imm = (ImmediateSymbol) this.operand1;
@@ -81,10 +67,10 @@ public class Quad {
                         if(constants.containsKey(imm.value)){
                             return String.format("movsd %s,[%s]", register, constants.get(imm.value).label);
                         }
-                        throw new UnknownSymbolException(String.format("Couldn't find constant '%s'", imm.value));
+                        throw new CompileException(String.format("Couldn't find constant '%s'", imm.value));
                     }
                 }
-                throw new UnknownSymbolException(String.format("Can't load this type? %s", imm.type.type));
+                throw new CompileException(String.format("Can't load this type? %s", imm.type.type));
             }
             case INC -> {
                 return "inc rax";
@@ -108,6 +94,10 @@ public class Quad {
             }
             case MUL -> {
                 return "mul rcx";
+            }
+            case IMUL -> {
+                ImmediateSymbol immediateSymbol = (ImmediateSymbol) this.operand1;
+                return String.format("imul rax, %s", immediateSymbol.value);
             }
             case CVTTSD2SI -> {
                 return "cvttsd2si rax, xmm0";
@@ -152,7 +142,7 @@ public class Quad {
                 return stack.loadField(operand1.type, operand2.name);
             }
             case STORE -> {
-                return stack.storeVariable(result.name);
+                return stack.storeVariable(operand1.name);
             }
             case STORE_INDEX -> {
                 String movOp = getMovOpFromType(operand1.type);
@@ -194,6 +184,21 @@ public class Quad {
             }
             case SETL -> {
                 return "setl al\nmovzx rax, al";
+            }
+            case SAL -> {
+                return "sal rax, cl";
+            }
+            case AND -> {
+                return "and rax, rcx";
+            }
+            case OR -> {
+                return "or rax, rcx";
+            }
+            case XOR -> {
+                return "xor rax, rcx";
+            }
+            case SAR -> {
+                return "sar rax, cl";
             }
             case PUSH ->{
                 if(operand1.type.isFloatingPoint()){
@@ -293,6 +298,6 @@ public class Quad {
                 return "mov rsp, rbp\npop rbp\nret";
             }
         }
-        throw new UnknownSymbolException(String.format("Don't know how to do %s", op));
+        throw new CompileException(String.format("Don't know how to do %s", op));
     }
 }

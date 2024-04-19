@@ -23,7 +23,7 @@ public class AugmentedExpr extends Expr{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException, UnknownSymbolException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
 
         target.compile(symbolTable, quads);
         Symbol targetSymbol = quads.getLastOperand1();
@@ -36,6 +36,6 @@ public class AugmentedExpr extends Expr{
         }
 
         quads.addQuad(op, targetSymbol, rSymbol, targetSymbol);
-        quads.addQuad(QuadOp.STORE, null, null, targetSymbol);
+        quads.createStore(targetSymbol);
     }
 }

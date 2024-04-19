@@ -29,13 +29,16 @@ public class Scanner {
             }
             switch(currentChar){
                 case '/':{
+                    advance();
                     if(this.matchNext('/')){
                         while(!this.isOutOfBounds() && this.getCurrentChar() != '\n'){
                             advance();
                         }
                         line++;
+                        break;
+                    }else{
+                        this.index--;
                     }
-                    break;
                 }
                 case '\"':{
                 }
@@ -91,7 +94,7 @@ public class Scanner {
         }
     }
 
-    private Token parseString() throws UnterminatedStringException {
+    private Token parseString() throws CompileException{
 
         int startIndex = this.index;
         int line = this.line;
@@ -101,7 +104,7 @@ public class Scanner {
         }
 
         if(isOutOfBounds()){
-            throw new UnterminatedStringException(String.format("Unterminated string at starting at line %d", line));
+            throw new CompileException(String.format("Unterminated string at starting at line %d", line));
         }
 
         String literal = this.input.substring(startIndex, this.index - 1);
@@ -183,7 +186,7 @@ public class Scanner {
         return this.index >= this.input.length();
     }
 
-    public Token parseToken() throws IllegalCharacterException, UnterminatedStringException {
+    public Token parseToken() throws CompileException{
         skipWhiteSpace();
 
         if(this.isOutOfBounds()){
@@ -233,7 +236,7 @@ public class Scanner {
                     this.index += "define".length();
                     yield this.createToken(TokenType.TOKEN_DEFINE, "#define");
                 }
-                throw new IllegalCharacterException(String.format("tried to parse #smth but failed at line %d\n", line));
+                throw new CompileException(String.format("tried to parse #smth but failed at line %d\n", line));
             }
             case '.' ->{
                 if(this.input.startsWith("..", this.index)){
@@ -316,7 +319,7 @@ public class Scanner {
             }
             case '\"' -> parseString();
             default ->
-                    throw new IllegalCharacterException(String.format("Illegal character '%c' at line %d\n", currentChar, line));
+                    throw new CompileException(String.format("Illegal character '%c' at line %d\n", currentChar, line));
         };
     }
 

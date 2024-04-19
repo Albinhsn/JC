@@ -16,21 +16,25 @@ public class PostfixExpr extends Expr{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         Symbol symbol = symbolTable.findSymbol(literal.literal);
 
         Symbol loadedSymbol = Compiler.generateSymbol(symbol.type);
-        Symbol increasedSymbol = Compiler.generateSymbol(symbol.type);
 
-        quads.addQuad(QuadOp.LOAD, symbol, null, loadedSymbol);
+        quads.createLoad(symbol);
         if(!loadedSymbol.type.isPointer()){
-            quads.addQuad(QuadOp.INC, loadedSymbol, null, increasedSymbol);
+            if(op.type == TokenType.TOKEN_INCREMENT){
+                quads.createIncrement(loadedSymbol);
+            }else{
+                quads.createDecrement(loadedSymbol);
+            }
         }else{
             int structSize = symbolTable.getStructSize(loadedSymbol.type);
-            quads.addQuad(QuadOp.MOV_REG_CA, loadedSymbol, null, null);
-            quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, null);
-            quads.addQuad(QuadOp.ADD, loadedSymbol, null, increasedSymbol);
+            quads.createMovRegisterAToC(loadedSymbol);
+            Symbol loadedImmediate = quads.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
+
+            quads.createAdd(loadedSymbol, loadedImmediate);
         }
-        quads.addQuad(QuadOp.STORE, increasedSymbol, null, symbol);
+        quads.createStore(symbol);
     }
 }

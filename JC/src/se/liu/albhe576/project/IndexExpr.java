@@ -17,7 +17,7 @@ public class IndexExpr extends Expr{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
         // index = 1
         // value = arr
         value.compile(symbolTable, quads);
@@ -27,14 +27,19 @@ public class IndexExpr extends Expr{
         index.compile(symbolTable, quads);
         Symbol idxResult = quads.getLastResult();
 
-        quads.addQuad(QuadOp.MOV_REG_CA, idxResult, null, Compiler.generateSymbol(idxResult.type));
-        ImmediateSymbol immSymbol = Compiler.generateImmediateSymbol(DataType.getInt(), "8");
-        quads.addQuad(QuadOp.LOAD_IMM, immSymbol, null, Compiler.generateSymbol(DataType.getInt()));
-        quads.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), Compiler.generateSymbol(idxResult.type), Compiler.generateSymbol(DataType.getInt()));
-        quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
-        quads.createPop(Compiler.generateSymbol(DataType.getInt()));
-        quads.addQuad(QuadOp.ADD, null, null, Compiler.generateSymbol(DataType.getInt()));
-        quads.addQuad(QuadOp.INDEX, idxResult, valResult, Compiler.generateSymbol(valResult.type.getTypeFromPointer()));
+        int structSize = symbolTable.getStructSize(idxResult.type);
+        quads.addQuad(QuadOp.IMUL, Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, Compiler.generateSymbol(DataType.getInt()));
 
+
+        Symbol right = Compiler.generateSymbol(DataType.getInt());
+        quads.createMovRegisterAToC(right);
+
+
+        Symbol left = Compiler.generateSymbol(DataType.getInt());
+        quads.createPop(left);
+
+        Symbol addResult = quads.createAdd(left, right);
+
+        quads.createIndex(addResult, valResult);
     }
 }

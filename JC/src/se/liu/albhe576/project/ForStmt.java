@@ -19,7 +19,7 @@ public class ForStmt extends Stmt{
 
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
 
         init.compile(symbolTable, quads);
 
@@ -32,7 +32,7 @@ public class ForStmt extends Stmt{
         condition.compile(symbolTable, quads);
 
         // check if we jump
-        Quad.insertJMPOnComparisonCheck(quads, mergeLabel, false);
+        quads.insertJMPOnComparisonCheck(mergeLabel, false);
         // Compile body
         for(Stmt stmt : body){
             stmt.compile(symbolTable, quads);

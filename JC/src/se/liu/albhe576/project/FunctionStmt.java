@@ -40,7 +40,7 @@ public class FunctionStmt extends Stmt{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
         symbolTable.addFunction(new Function(name, arguments, returnType, quads));
 
         Map<String, VariableSymbol> localSymbols =new HashMap<>();

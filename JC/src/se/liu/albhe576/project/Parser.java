@@ -8,11 +8,11 @@ import java.util.*;
 public class Parser {
     @FunctionalInterface
     private interface InfixRule{
-        Expr infix(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException;
+        Expr infix(Expr expr, boolean canAssign) throws CompileException;
     }
     @FunctionalInterface
     private interface PrefixRule{
-        Expr prefix(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException;
+        Expr prefix(Expr expr, boolean canAssign) throws CompileException;
     }
     private static class ParseFunction{
         PrefixRule prefixRule;
@@ -58,13 +58,13 @@ public class Parser {
         }
     }
 
-    private void advance() throws IllegalCharacterException, UnterminatedStringException {
+    private void advance() throws CompileException{
         previous = current;
         current = scanner.parseToken();
         this.updateCurrent();
     }
 
-    private boolean matchType(TokenType type) throws IllegalCharacterException, UnterminatedStringException {
+    private boolean matchType(TokenType type) throws CompileException{
         if(this.current.type != type){
            return false;
         }
@@ -73,7 +73,7 @@ public class Parser {
     }
 
     private void error(String s){
-        System.out.printf("ERROR: %s\n", s);
+        System.out.printf(String.format("%s:%d[%s]", this.getCurrentFile(),this.scanner.getLine(),s));
         System.exit(1);
     }
 
@@ -88,7 +88,7 @@ public class Parser {
         return false;
     }
 
-    private DataType parsePointerType(DataType type) throws IllegalCharacterException, UnterminatedStringException {
+    private DataType parsePointerType(DataType type) throws CompileException{
         if(matchType(TokenType.TOKEN_STAR)){
             type = DataType.getPointerFromType(type);
             while(matchType(TokenType.TOKEN_STAR)){
@@ -98,25 +98,25 @@ public class Parser {
         return type;
     }
 
-    private DataType parseType() throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException {
+    private DataType parseType() throws CompileException{
         Token type = this.current;
         DataType dataType = DataType.getDataTypeFromToken(type);
         advance();
         return this.parsePointerType(dataType);
     }
 
-    private StructField parseStructField() throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException, CompileException {
+    private StructField parseStructField() throws CompileException{
 
         Token type = this.current;
         DataType dataType = this.parseType();
         if(!matchType(TokenType.TOKEN_IDENTIFIER)){
-            throw new UnexpectedTokenException(String.format("Expected identifier as argument but got %s", this.current.type));
+            this.error(String.format("Expected identifier as argument but got %s", this.current.type));
         }
         String name = this.previous.literal;
         return new StructField(name, dataType, type.literal);
     }
 
-    private void structDeclaration() throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException, CompileException {
+    private void structDeclaration() throws CompileException {
         if(!matchType(TokenType.TOKEN_IDENTIFIER)){
             error(String.format("Expected identifier but got %s", this.current.type));
         }
@@ -129,22 +129,22 @@ public class Parser {
         while(!matchType(TokenType.TOKEN_RIGHT_BRACE)){
             fields.add(this.parseStructField());
             if(!matchType(TokenType.TOKEN_SEMICOLON)){
-                throw new UnexpectedTokenException(String.format("Expected semicolon after struct field but got %s", this.current.type));
+                this.error(String.format("Expected semicolon after struct field but got %s", this.current.type));
             }
         }
         this.structs.put(name.literal, new Struct(name.literal, fields));
     }
 
-    private void consume(TokenType type, String msg) throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException {
+    private void consume(TokenType type, String msg) throws CompileException{
         if(!matchType(type)){
-            throw new UnexpectedTokenException(msg);
+            throw new CompileException(msg);
         }
     }
     private Expr literal(Expr expr, boolean canAssign) {
         return new LiteralExpr(this.previous, this.previous.line, this.getCurrentFile());
     }
 
-    private Expr parseExpr(Expr expr, Precedence precedence) throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException {
+    private Expr parseExpr(Expr expr, Precedence precedence) throws CompileException{
 
         advance();
         ParseFunction prefix = this.parseFunctions.getOrDefault(this.previous.type, null);
@@ -170,8 +170,11 @@ public class Parser {
         return expr;
     }
 
-    private boolean matchAugmented() throws IllegalCharacterException, UnterminatedStringException {
+    private boolean matchAugmented() throws CompileException{
         return (
+                matchType(TokenType.TOKEN_AUGMENTED_XOR) ||
+                matchType(TokenType.TOKEN_AUGMENTED_AND)  ||
+                matchType(TokenType.TOKEN_AUGMENTED_OR) ||
                 matchType(TokenType.TOKEN_AUGMENTED_MINUS) ||
                 matchType(TokenType.TOKEN_AUGMENTED_STAR)  ||
                 matchType(TokenType.TOKEN_AUGMENTED_SLASH) ||
@@ -179,7 +182,7 @@ public class Parser {
         );
     }
 
-    private Stmt expressionStatement() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, CompileException {
+    private Stmt expressionStatement() throws CompileException {
         if(this.structs.containsKey(this.current.literal)){
             DataType type = this.parseType();
             consume(TokenType.TOKEN_IDENTIFIER, String.format("Expected identifier for type at line %d", this.current.line));
@@ -207,7 +210,7 @@ public class Parser {
         return new ExprStmt(expr, line, file);
     }
 
-    private Stmt returnStatement() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+    private Stmt returnStatement() throws CompileException{
         this.advance();
         if(matchType(TokenType.TOKEN_SEMICOLON)){
             return new ReturnStmt(null, this.previous.line, this.getCurrentFile());
@@ -216,7 +219,7 @@ public class Parser {
         consume(TokenType.TOKEN_SEMICOLON, String.format("Expected ';' after return stmt %s", out));
         return out;
     }
-    private Stmt forStatement() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, CompileException {
+    private Stmt forStatement() throws CompileException {
         this.advance();
         int line = this.previous.line;
         consume(TokenType.TOKEN_LEFT_PAREN, "Expected '(' after for");
@@ -233,7 +236,7 @@ public class Parser {
 
     }
 
-    private Stmt whileStatement() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, CompileException {
+    private Stmt whileStatement() throws CompileException {
         this.advance();
         int line = this.previous.line;
         consume(TokenType.TOKEN_LEFT_PAREN, "expected '(' after while");
@@ -246,14 +249,14 @@ public class Parser {
     }
 
 
-    private List<Stmt> parseBody() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, CompileException {
+    private List<Stmt> parseBody() throws CompileException {
         List<Stmt> body = new ArrayList<>();
         while(!matchType(TokenType.TOKEN_RIGHT_BRACE)) {
             body.add(parseStmt());
         }
         return body;
     }
-    private List<StructField> parseArguments() throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException, CompileException {
+    private List<StructField> parseArguments() throws CompileException {
         List<StructField> args = new ArrayList<>();
         if(this.current.type != TokenType.TOKEN_RIGHT_PAREN){
             do{
@@ -263,7 +266,7 @@ public class Parser {
         return args;
     }
 
-    private Stmt function(DataType type, String name, int line) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, CompileException {
+    private Stmt function(DataType type, String name, int line) throws CompileException {
         List<StructField> args = this.parseArguments();
 
         consume(TokenType.TOKEN_RIGHT_PAREN, String.format("Expected right paren after arguments but got %s", this.current.type));
@@ -273,7 +276,7 @@ public class Parser {
         return new FunctionStmt(type, name,args, body, line, this.getCurrentFile());
     }
 
-    private Stmt variableDeclaration() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, CompileException {
+    private Stmt variableDeclaration() throws CompileException {
         int line = this.current.line;
         DataType type = this.parseType();
 
@@ -297,10 +300,11 @@ public class Parser {
             return new VariableStmt(type, name, null, line, this.getCurrentFile());
         }
 
-        throw new UnexpectedTokenException(String.format("Expected '=' or '(' after variable but got %s", this.current.type));
-
+        this.error(String.format("Expected '=' or '(' after variable but got %s", this.current.type));
+        // unreachable
+        return null;
     }
-    private Stmt ifStatement() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, CompileException {
+    private Stmt ifStatement() throws CompileException {
         this.advance();
         int line = this.previous.line;
         consume(TokenType.TOKEN_LEFT_PAREN, "Expected '(' after if");
@@ -321,7 +325,7 @@ public class Parser {
 
         return new IfStmt(condition, ifBody, elseBody, line, this.getCurrentFile());
     }
-    private Stmt parseStmt() throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException, CompileException {
+    private Stmt parseStmt() throws CompileException {
         switch(this.current.type){
             case TOKEN_FOR -> {
                 return forStatement();
@@ -348,7 +352,7 @@ public class Parser {
     }
 
 
-    private void parseInclude() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, IOException, CompileException {
+    private void parseInclude() throws IOException, CompileException {
         consume(TokenType.TOKEN_STRING, "Expected string after include?");
         String fileName = this.previous.literal;
 
@@ -375,12 +379,12 @@ public class Parser {
         this.stmts = included;
     }
 
-    private void parseDefine() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+    private void parseDefine() throws CompileException {
         consume(TokenType.TOKEN_IDENTIFIER, "expected identifier after define");
         this.defined.put(this.previous.literal, this.current);
         advance();
     }
-    private void parseExtern() throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException, CompileException {
+    private void parseExtern() throws CompileException {
         DataType type;
         if(isVariableType()){
             type = DataType.getDataTypeFromToken(this.current);
@@ -428,26 +432,26 @@ public class Parser {
 
                 }
             }
-        }catch(IllegalCharacterException | UnterminatedStringException | UnexpectedTokenException | CompileException |
+        }catch(CompileException |
                IOException e){
             System.out.println(e.getMessage());
         }
         return this.stmts;
     }
-    private Expr grouping(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+    private Expr grouping(Expr expr, boolean canAssign) throws CompileException{
         int line = this.previous.line;
         Expr groupedExpr = parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT);
         consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ')' after grouped expression");
         return new GroupedExpr(groupedExpr, line, this.getCurrentFile());
     }
-    private Expr dot(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+    private Expr dot(Expr expr, boolean canAssign) throws CompileException{
         int line = this.previous.line;
         consume(TokenType.TOKEN_IDENTIFIER, "Expected identifier after dot");
         Token var = this.previous;
 
         return new DotExpr(expr, var, line, this.getCurrentFile());
     }
-    private Expr comparison(Expr left, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+    private Expr comparison(Expr left, boolean canAssign) throws CompileException{
         int line = this.previous.line;
         Token op = this.previous;
         ParseFunction rule = this.parseFunctions.get(op.type);
@@ -455,14 +459,14 @@ public class Parser {
         return new ComparisonExpr(left, right, op, line, this.getCurrentFile());
     }
 
-    private Expr binary(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+    private Expr binary(Expr expr, boolean canAssign) throws CompileException{
         Token op = this.previous;
         int line = this.previous.line;
         ParseFunction rule = this.parseFunctions.get(op.type);
         Expr newExpr = parseExpr(this.getEmptyExpr(line), Precedence.values()[rule.precedence.ordinal() + 1]);
         return new BinaryExpr(expr, op, newExpr, line, this.getCurrentFile());
     }
-    private Expr dereference(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+    private Expr dereference(Expr expr, boolean canAssign) throws CompileException{
         Token op = this.previous;
         int line = this.previous.line;
         UnaryExpr headExpr = new UnaryExpr(this.getEmptyExpr(line), op, line, this.getCurrentFile());
@@ -476,13 +480,13 @@ public class Parser {
         return headExpr;
     }
 
-    private Expr unary(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+    private Expr unary(Expr expr, boolean canAssign) throws CompileException{
         Token op = this.previous;
         int line = this.previous.line;
         Expr newExpr = parseExpr(this.getEmptyExpr(line), Precedence.UNARY);
         return new UnaryExpr(newExpr, op, line, this.getCurrentFile());
     }
-    private Expr parseCall(Token var) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+    private Expr parseCall(Token var) throws CompileException {
         int line = this.previous.line;
         List<Expr> args = new ArrayList<>();
         if(this.current.type != TokenType.TOKEN_RIGHT_PAREN){
@@ -493,7 +497,7 @@ public class Parser {
         consume(TokenType.TOKEN_RIGHT_PAREN, "Expect right paren after args");
         return new CallExpr(var, args, line, this.getCurrentFile());
     }
-    private Expr variable(Expr expr, boolean canAssign) throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException {
+    private Expr variable(Expr expr, boolean canAssign) throws CompileException{
         Token var = this.previous;
         int line = this.previous.line;
         if(matchType(TokenType.TOKEN_DECREMENT) || matchType(TokenType.TOKEN_INCREMENT)){
@@ -508,14 +512,14 @@ public class Parser {
         }
         return new VarExpr(var, line, this.getCurrentFile());
     }
-    private Expr logical(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+    private Expr logical(Expr expr, boolean canAssign) throws CompileException{
         Token op = this.previous;
         int line = this.previous.line;
         Expr newExpr = parseExpr(this.getEmptyExpr(line), Precedence.AND);
         return new LogicalExpr(expr, newExpr, op, line, this.getCurrentFile());
     }
 
-    private Stmt array(DataType type, String name) throws IllegalCharacterException, UnterminatedStringException, UnexpectedTokenException {
+    private Stmt array(DataType type, String name) throws CompileException{
         int line = this.previous.line;
         List<Expr> items = new ArrayList<>();
         if(!matchType(TokenType.TOKEN_RIGHT_BRACKET)){
@@ -531,7 +535,7 @@ public class Parser {
        return new ArrayStmt(type, name, items, line, this.getCurrentFile());
     }
 
-    private Expr index(Expr expr, boolean canAssign) throws UnexpectedTokenException, IllegalCharacterException, UnterminatedStringException {
+    private Expr index(Expr expr, boolean canAssign) throws CompileException{
         int line = this.previous.line;
         Expr out = new IndexExpr(expr, parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, this.getCurrentFile());
         consume(TokenType.TOKEN_RIGHT_BRACKET, "Expected ']' after index");
@@ -552,6 +556,9 @@ public class Parser {
         this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_STAR, new ParseFunction(null, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_MINUS, new ParseFunction(null, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_PLUS, new ParseFunction(null, null, Precedence.NONE));
+        this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_XOR, new ParseFunction(null, null, Precedence.NONE));
+        this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_OR, new ParseFunction(null, null, Precedence.NONE));
+        this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_AND, new ParseFunction(null, null, Precedence.NONE));
         this.parseFunctions.put(TokenType.TOKEN_MINUS, new ParseFunction(this::unary, this::binary, Precedence.TERM));
         this.parseFunctions.put(TokenType.TOKEN_PLUS, new ParseFunction(null, this::binary, Precedence.TERM));
         this.parseFunctions.put(TokenType.TOKEN_SEMICOLON, new ParseFunction(null, null, Precedence.NONE));

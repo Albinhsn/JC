@@ -5,9 +5,12 @@
 
 
 #include "resources/tests.jc"
-
+// #include "resources/foo.jc"
 
 int main(){
+
+
     run_tests();
+    return 0;
 }
 

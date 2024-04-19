@@ -68,7 +68,7 @@ public class Stack {
         return s.toString();
     }
 
-    private int getFieldOffset(Struct struct, String memberName)throws UnknownSymbolException  {
+    private int getFieldOffset(Struct struct, String memberName)throws CompileException  {
         int size = 0;
         for(StructField field : struct.fields){
             if(field.name.equals(memberName)){
@@ -76,9 +76,9 @@ public class Stack {
             }
             size += 8;
         }
-        throw new UnknownSymbolException(String.format("Couldn't find member %s?\n", memberName));
+        throw new CompileException(String.format("Couldn't find member %s?\n", memberName));
     }
-    public String loadField(DataType type, String memberName) throws UnknownSymbolException {
+    public String loadField(DataType type, String memberName) throws CompileException {
         Struct struct = this.structs.get(type.name);
         for(StructField field : struct.fields){
             if(field.name.equals(memberName)){
@@ -90,18 +90,42 @@ public class Stack {
                 return String.format("%s rax, [rax + %d]",op, offset);
             }
         }
-        throw new UnknownSymbolException(String.format("Couldn't find struct %s of type %s", type.name, memberName));
+        throw new CompileException(String.format("Couldn't find struct %s with member %s", type.name, memberName));
     }
-    public String storeField(DataType type, Symbol memberSymbol) throws UnknownSymbolException{
+    public String storeField(DataType type, Symbol memberSymbol) throws CompileException{
         String move = Quad.getMovOpFromType(memberSymbol.type);
         String register = Quad.getRegisterFromType(memberSymbol.type, 0);
 
         Struct struct  = this.structs.get(type.name);
         int offset = this.getFieldOffset(struct, memberSymbol.name);
-        if(offset != 0){
-            return String.format("%s [rcx + %d], %s", move, offset, register);
+
+        if(memberSymbol.type.isStruct()){
+            Struct memberStruct = this.structs.get(memberSymbol.type.name);
+            StringBuilder s = new StringBuilder();
+            int size = memberStruct.getSize(this.structs);
+
+            s.append("mov rbx, [rax]\n");
+            s.append(String.format("mov [rcx + %d], rbx\n", offset));
+
+            int sizeInBytes = size / 8;
+
+            for(int i = 1; i < sizeInBytes; i++){
+                int memberOffset = i * 8;
+                s.append(String.format("mov rbx, [rax + %d]\n", memberOffset));
+                s.append(String.format("mov [rcx + %d], rbx", memberOffset + offset));
+
+                if(i != sizeInBytes - 1){
+                    s.append("\n");
+                }
+            }
+
+            return s.toString();
+        }else{
+            if(offset != 0){
+                return String.format("%s [rcx + %d], %s", move, offset, register);
+            }
+            return String.format("%s [rcx], %s", move, register);
         }
-        return String.format("%s [rcx], %s", move, register);
     }
     public String loadVariable(String name) {
         VariableSymbol stackSymbol = this.stackSymbols.get(name);
@@ -155,7 +179,7 @@ public class Stack {
         return symbol.offset;
     }
 
-    public Stack(Map<String, VariableSymbol> symbols, Map<String, Struct> structs) throws UnknownSymbolException {
+    public Stack(Map<String, VariableSymbol> symbols, Map<String, Struct> structs) throws CompileException {
         this.stackSymbols = symbols;
         this.structs = structs;
     }

@@ -33,12 +33,13 @@ public class VariableStmt extends Stmt{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
 
-        Symbol lastSymbol = null;
+        Symbol lastSymbol;
         if(symbolTable.symbolExists(name)){
-            throw new CompileException(String.format("Trying to redeclare existing variable %s\n", name));
-        }else if(value != null){
+            this.error(String.format("Trying to redeclare existing variable %s\n", name));
+        }
+        else if(value != null){
             value.compile(symbolTable, quads);
             Symbol lastOperand = quads.getLastOperand1();
             lastSymbol = quads.getLastResult();
@@ -47,10 +48,10 @@ public class VariableStmt extends Stmt{
         }
 
         if(!symbolTable.isDeclaredStruct(type.name)){
-            throw new CompileException(String.format("Trying to declare variable with non existing type? %s\n", type.name));
+            this.error(String.format("Trying to declare variable with non existing type? %s\n", type.name));
         }
 
         VariableSymbol variable = symbolTable.addSymbol(name, type);
-        quads.addQuad(QuadOp.STORE, lastSymbol, null, variable);
+        quads.createStore(variable);
     }
 }

@@ -1,10 +1,6 @@
 package se.liu.albhe576.project;
 
 public class AssignExpr extends Expr{
-    @Override
-    public String toString() {
-        return String.format("%s = %s",variable, value);
-    }
     private final Expr variable;
     private final Expr value;
 
@@ -14,36 +10,33 @@ public class AssignExpr extends Expr{
         this.value = value;
     }
 
-    private void compileStoreField(SymbolTable symbolTable, QuadList quads, QuadList variableQuads) throws UnknownSymbolException {
-        Quad lastQuad =  variableQuads.getLastQuad();
-        variableQuads.removeLastQuad();
+    private void compileStoreField(SymbolTable symbolTable, QuadList quads, QuadList variableQuads) throws CompileException {
+        Quad lastQuad =  variableQuads.pop();
+
         Symbol struct = lastQuad.operand1;
-        Symbol op2 = lastQuad.operand2;
-        Symbol result = lastQuad.result;
-        Symbol memberSymbol = symbolTable.getMemberSymbol(struct, op2.name);
+        Symbol memberSymbol = symbolTable.getMemberSymbol(struct, lastQuad.operand2.name);
 
 
-        Symbol pushed = Compiler.generateSymbol(struct.type);
-        quads.createPush(pushed);
+        Symbol pushedStruct = Compiler.generateSymbol(struct.type);
+        quads.createPush(pushedStruct);
         quads.addAll(variableQuads);
         Symbol valResult = quads.getLastResult();
 
         if(!memberSymbol.type.isFloatingPoint()){
-            quads.addQuad(QuadOp.MOV_REG_CA, valResult, null, Compiler.generateSymbol(valResult.type));
+            quads.createMovRegisterAToC(valResult);
         }
 
-        Symbol popped = Compiler.generateSymbol(result.type);
-        quads.createPop(popped);
-        quads.addQuad(QuadOp.SET_FIELD, memberSymbol, struct, result);
-
+        Symbol poppedStruct = quads.createPop(pushedStruct);
+        quads.createSetField(memberSymbol, poppedStruct);
     }
+
     private void compileStoreDereference(QuadList valueQuads, QuadList variableQuads) {
         Symbol dereferenced = variableQuads.getLastOperand1();
         Symbol valueSymbol = valueQuads.getLastResult();
         variableQuads.removeLastQuad();
         valueQuads.createSetupBinary(variableQuads, valueSymbol, dereferenced);
 
-        valueQuads.addQuad(QuadOp.STORE_INDEX, valueSymbol, dereferenced, null);
+        valueQuads.createStoreIndex(valueSymbol, dereferenced);
     }
 
     private void compileStoreIndex(QuadList quads, QuadList variableQuads) throws CompileException{
@@ -55,30 +48,26 @@ public class AssignExpr extends Expr{
         DataType resType = res.type.getTypeFromPointer();
         quads.addAll(variableQuads);
         quads.removeLastQuad();
-        quads.addQuad(QuadOp.MOV_REG_CA, quads.getLastResult(), null, Compiler.generateSymbol(DataType.getInt()));
+        quads.createMovRegisterAToC(quads.getLastResult());
         // ToDo check if they can be converted
         if(!resType.isSameType(toStore.type)){
             quads.createPop(toStore);
             if(resType.isFloatingPoint()){
-                Symbol newToStore = Compiler.generateSymbol(DataType.getFloat());
-                quads.addQuad(QuadOp.CVTSI2SD, toStore, null, newToStore);
-                toStore = newToStore;
+                toStore = quads.createConvertIntToFloat(toStore);
             }else if(toStore.type.isFloatingPoint()){
-                Symbol newToStore = Compiler.generateSymbol(DataType.getInt());
-                quads.addQuad(QuadOp.CVTTSD2SI, toStore, null, newToStore);
-                toStore = newToStore;
+                toStore = quads.createConvertFloatToInt(toStore);
             }else{
-                throw new CompileException(String.format("What are you trying to do?, line %d", this.line));
+                this.error("What are you trying to do?");
             }
         }else{
             quads.createPop(toStore);
         }
 
-        quads.addQuad(QuadOp.STORE_INDEX, Compiler.generateSymbol(res.type.getTypeFromPointer()), toStore, res);
+        quads.createStoreIndex(Compiler.generateSymbol(res.type.getTypeFromPointer()), toStore);
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         value.compile(symbolTable, quads);
         QuadList variableQuads = new QuadList();
         variable.compile(symbolTable, variableQuads);
@@ -97,8 +86,7 @@ public class AssignExpr extends Expr{
             quads.createSetupBinary(variableQuads, valueType, variableType);
             quads.addQuad(QuadOp.MOVE_STRUCT, valueType, variableType, null);
         } else if(variableQuads.size() == 1){
-            Symbol res = quads.getLastResult();
-            quads.addQuad(QuadOp.STORE, res, null, variableQuads.getLastResult());
+            quads.createStore(variableQuads.getLastOperand1());
         } else if(lastOp == QuadOp.INDEX){
             this.compileStoreIndex(quads, variableQuads);
         }else{

@@ -8,7 +8,7 @@ import java.util.List;
 
 public class Main {
 
-    public static void main(String[] args) throws IOException, CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
+    public static void main(String[] args) throws IOException, CompileException {
         String filePath = "resources/main.jc";
         String s = Files.readString(Path.of(filePath));
         System.out.println(s);

@@ -16,7 +16,7 @@ public class UnaryExpr extends Expr{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         expr.compile(symbolTable, quads);
         Symbol symbol = quads.getLastResult();
         Symbol result = Compiler.generateSymbol(symbol.type);

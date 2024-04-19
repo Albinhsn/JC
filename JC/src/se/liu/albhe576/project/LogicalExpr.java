@@ -18,41 +18,26 @@ public class LogicalExpr extends Expr{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException {
         left.compile(symbolTable, quads);
 
         Symbol shortCircuitLabel = Compiler.generateLabel();
         Symbol mergeLabel = Compiler.generateLabel();
-        switch(op.type){
-            case TOKEN_AND_LOGICAL:{
-                // check first one, jump to mergeFalse, if false
-                Quad.insertJMPOnComparisonCheck(quads, shortCircuitLabel, false);
-                right.compile(symbolTable, quads);
-                Quad.insertJMPOnComparisonCheck(quads, shortCircuitLabel, false);
-                quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "1"), null,Compiler.generateSymbol(DataType.getInt()));
-                quads.addQuad(QuadOp.JMP, mergeLabel, null, null);
-                quads.insertLabel(shortCircuitLabel);
-                quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "0"), null,Compiler.generateSymbol(DataType.getInt()));
-                quads.insertLabel(mergeLabel);
-                break;
-            }
-            case TOKEN_OR_LOGICAL:{
-                // check first one, jump to mergeTrue, if true
-                // second one jumps over mergeTrue to merge if false
-                    // remember to set it to 0 :)
-                Quad.insertJMPOnComparisonCheck(quads, shortCircuitLabel, true);
-                right.compile(symbolTable, quads);
-                Quad.insertJMPOnComparisonCheck(quads, shortCircuitLabel, true);
-                quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "0"), null,Compiler.generateSymbol(DataType.getInt()));
-                quads.addQuad(QuadOp.JMP, mergeLabel, null, null);
-                quads.insertLabel(shortCircuitLabel);
-                quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), "1"), null,Compiler.generateSymbol(DataType.getInt()));
-                quads.insertLabel(mergeLabel);
-                break;
-            }
-            default: {
-                throw new CompileException("How could this happen to me");
-            }
-        }
+
+        boolean logical = op.type == TokenType.TOKEN_AND_LOGICAL;
+        boolean jumpIfTrue = !logical;
+        String firstImmediate  = logical ? "0" : "1";
+        String secondImmediate = logical ? "1" : "0";
+
+
+        quads.insertJMPOnComparisonCheck(shortCircuitLabel, jumpIfTrue);
+        right.compile(symbolTable, quads);
+        quads.insertJMPOnComparisonCheck(shortCircuitLabel, jumpIfTrue);
+        quads.createLoadImmediate(DataType.getInt(), firstImmediate);
+        quads.createJmp(mergeLabel);
+        quads.insertLabel(shortCircuitLabel);
+        quads.createLoadImmediate(DataType.getInt(), secondImmediate);
+        quads.insertLabel(mergeLabel);
+
     }
 }

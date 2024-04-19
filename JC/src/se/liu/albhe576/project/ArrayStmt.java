@@ -15,11 +15,11 @@ public class ArrayStmt extends Stmt {
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         DataType itemType = type.getTypeFromPointer();
 
         int offset = symbolTable.getCurrentScopeSize();
-        if(itemType.type == DataTypes.STRUCT){
+        if(itemType.isStruct()){
             Struct struct = symbolTable.structs.get(itemType.name);
             offset -= struct.getSize(symbolTable.structs) * this.items.size();
         }else{
@@ -37,19 +37,20 @@ public class ArrayStmt extends Stmt {
             quads.createPush(result);
 
 
-            ImmediateSymbol immSymbol = Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(8 * i));
-            quads.addQuad(QuadOp.LOAD_IMM, immSymbol, null, Compiler.generateSymbol(DataType.getInt()));
-            quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
+            Symbol loadedImmediate = quads.createLoadImmediate(DataType.getInt(), String.valueOf(8 * i));
+            quads.createMovRegisterAToC(loadedImmediate);
+
+
             Symbol offsetSymbol = Compiler.generateSymbol(DataType.getInt());
-            quads.addQuad(QuadOp.LOAD_POINTER, arraySymbol, null, Compiler.generateSymbol(arraySymbol.type));
-            quads.addQuad(QuadOp.ADD, arraySymbol, offsetSymbol, arraySymbol);
+            Symbol loadedPointer = quads.createLoadPointer(arraySymbol);
 
+            Symbol addResult = quads.createAdd(loadedPointer, offsetSymbol);
+            Symbol movedArraySymbol = quads.createMovRegisterAToC(addResult);
 
-            quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(arraySymbol.type), null, Compiler.generateSymbol(arraySymbol.type));
-            quads.createPop(Compiler.generateSymbol(itemType));
-            quads.addQuad(QuadOp.STORE_INDEX, Compiler.generateSymbol(itemType), null, null);
+            Symbol poppedResult = quads.createPop(result);
+            quads.createStoreIndex(poppedResult, movedArraySymbol);
             if(!itemType.isSameType(result.type)){
-                throw new CompileException(String.format("Can't have different types in array declaration on line %d", this.line));
+                this.error("Can't have different types in array declaration");
             }
         }
     }

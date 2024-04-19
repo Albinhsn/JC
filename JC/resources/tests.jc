@@ -13,7 +13,7 @@ void print_testf(float got, float expected, string name){
     if(got == expected){
         printf("PASSED: %s", name);
     }else{
-        printf("FAILED: got %f expected %f with %s", got, expected, name);
+        printf("FAILED: got %lf expected %lf with %s", got, expected, name);
     }
 }
 
@@ -24,13 +24,6 @@ int fib(int a){
    return fib(a - 1) + fib(a - 2);
 }
 
-int for_sum(){
-    int sum = 0;
-    for(int i = 0; i < 10; i++){
-        sum += i;
-    }
-    return sum;
-}
 
 int rec_struct(Bar bar){
     return bar.foo.a;
@@ -68,11 +61,6 @@ void pointer_switchero(Foo ** foo, Foo * foo1){
     return;
 }
 
-int index_array(){
-    int * a = [1,2,3,4];
-    int answer = a[0] + a[2];
-    print_testi(answer, 4, "index_array");
-}
 
 float float_return(){
     return 2.0;
@@ -112,9 +100,221 @@ void pointer_in_struct(){
     printf("%d == 3?", a);
 }
 
+void test_loops(){
+
+    int sum = 0;
+    for(int i = 0; i < 10; i++){
+        sum += i;
+    }
+    print_testi(sum, 45, "for increasing");
+    for(int j = 9; j >= 0; j--){
+        sum -= j;
+    }
+    print_testi(sum, 0, "for decreasing");
+
+    int k = 0;
+    while(k < 10){
+        k++;
+        sum += k;
+    }
+    print_testi(sum, 55, "while increasing");
+    while(k >= 0){
+        k--;
+        sum -= k;
+    }
+    print_testi(sum, 11, "while decreasing");
+
+}
+
+void test_arrays(){
+    int * a = [1,2,3,4];
+    int answer = a[0] + a[2];
+    print_testi(answer, 4, "index array");
+
+    float * b = [2.0, 2.5, 1.0];
+    float answerf = b[0] + b[2];
+    print_testf(answerf, 3.0, "index float array");
+
+
+}
+
+void test_assign_argument(int a, float b){
+
+    a = 5;
+    b = 5.0;
+    print_testf(b, 5.0, "assign float argument");
+    print_testi(a, 5, "assign int argument");
+}
+
+void test_assign(){
+
+    // assign to index
+    int * a = malloc(16);
+    a[1] = 5;
+    print_testi(a[1], 5, "assign int pointer");
+
+    float * b = malloc(16);
+    b[1] = 5.25;
+    print_testf(b[1], 5.25, "assign float pointer");
+
+    // assign to struct
+    Foo foo;
+    foo.a = 5;
+    print_testi(foo.a, 5, "assign to struct");
+
+    Bar bar;
+    bar.foo = foo;
+    print_testi(bar.foo.a, 5, "assign to rec struct");
+
+
+    // assign to float
+    float f = 5.25;
+    print_testf(f, 5.25, "assign float");
+
+    // assign to argument
+    test_assign_argument(2, 2.0);
+    // assign to dereference
+
+    int * p = malloc(16);
+    int ** p2 = &p;
+    int *** p3 = &p2;
+    (**p3)[1] = 2;
+    print_testi(p[1], 2, "assign dereference");
+
+
+}
+
+void test_augmented(){
+
+    int a = 5;
+
+    a += 3;
+    print_testi(a, 8, "+=");
+
+    a -= 2;
+    print_testi(a, 6, "-=");
+
+
+    a /= 6;
+    print_testi(a, 1, "/=");
+
+    a ^= 6;
+    print_testi(a, 7, "^=");
+
+    a &= 5;
+    print_testi(a, 5, "&=");
+
+    a |= 8;
+    print_testi(a, 13, "|=");
+
+}
+
+void test_logical(){
+
+    int a;
+    // &&
+    if(2 == 2 && 3 <= 5){
+        a = 1;
+    }else{
+        a = 0;
+    }
+    print_testi(a, 1, "logical and");
+
+    if(2 >= 2 && 3 <= 5){
+        a = 1;
+    }else{
+        a = 0;
+    }
+    print_testi(a, 0, "logical and short circuited");
+
+    // ||
+    if(2 < 2 || 3 >= 5){
+        a = 1;
+    }else{
+        a = 0;
+    }
+    print_testi(a, 0, "logical or false");
+
+    if(2 != 2 || 3 <= 5){
+        a = 1;
+    }else{
+        a = 0;
+    }
+    print_testi(a, 1, "logical or snd is true");
+}
+
+void test_if(){
+    int a;
+    if(2 == 3){
+        a = 0;
+    }else{
+        a = 1;
+    }
+    print_testi(a, 1, "==");
+
+
+    if(2 <= 3){
+        a = 1;
+    }else{
+        a = 0;
+    }
+    print_testi(a, 1, "<=");
+
+
+    if(2 >= 3){
+        a = 0;
+    }else{
+        a = 1;
+    }
+    print_testi(a, 1, ">=");
+
+
+    if(2 < 3){
+        a = 1;
+    }else{
+        a = 0;
+    }
+    print_testi(a, 1, "<");
+
+
+    if(2 > 3){
+        a = 0;
+    }else{
+        a = 1;
+    }
+    print_testi(a, 1, ">");
+
+    if(2 != 3){
+        a = 1;
+    }else{
+        a = 0;
+    }
+    print_testi(a, 1, "!=");
+}
+
+void test_arithmetic(){
+    int a = 5 * 2 - 3 / 4;
+    print_testi(a, 10, "5 * 2 - 3 / 4");
+
+    float b = 5.0 * 2.0 - 3.0 / 4.0;
+    print_testf(b, 9.25, "5.0 * 2.0 - 3.0 / 4.0");
+}
+
+void test_bitwise(){
+
+    // test shl, shr
+    int a = 2;
+    print_testi(a << 2, 8, "test_sal");
+    print_testi(a >> 1, 1, "test_sar");
+
+    int b = 7;
+    print_testi(b & a, 2, "test bit &");
+    print_testi(b | 8, 15, "test bit |");
+    print_testi(b ^ 5, 2, "test bit ^");
+}
+
 int run_tests(){
     print_testi(fib(6), 8, "fib");
-    print_testi(for_sum(), 45, "for_sum");
 
 
     Bar bar;
@@ -138,12 +338,20 @@ int run_tests(){
     print_testi(foo.a + foo1.a, 50, "pointer_switcheroo");
 
     // Tested in the function
-    index_array();
     pointer_fiesta();
     pointers_pointers_everywhere();
 
 
     print_testf(float_return(), 2.0, "float_return");
+
+    test_bitwise();
+    test_arithmetic();
+    test_if();
+    test_loops();
+    test_arrays();
+    test_augmented();
+    test_assign();
+    test_logical();
 }
 
 

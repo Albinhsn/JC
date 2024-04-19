@@ -23,19 +23,19 @@ public class WhileStmt extends Stmt{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         Symbol condLabel = Compiler.generateLabel();
         quads.insertLabel(condLabel);
         condition.compile(symbolTable, quads);
 
         Symbol mergeLabel = Compiler.generateLabel();
-        Quad.insertJMPOnComparisonCheck(quads, mergeLabel, false);
+        quads.insertJMPOnComparisonCheck(mergeLabel, false);
 
         symbolTable.enterScope();
         for(Stmt stmt : body){
             stmt.compile(symbolTable, quads);
         }
-        quads.addQuad(QuadOp.JMP, condLabel, null, null);
+        quads.createJmp( condLabel);
         quads.insertLabel(mergeLabel);
         symbolTable.exitScope();
     }

@@ -39,7 +39,7 @@ public class DataType {
     public DataType getTypeFromPointer() throws CompileException {
         // ToDo check depth < 0?
         if(depth == 0){
-            throw new CompileException("How could this happen to me");
+            throw new CompileException("How could this happen to me, depth < 0?");
         }
         return new DataType(this.name, this.type, this.depth - 1);
     }
@@ -57,7 +57,7 @@ public class DataType {
         return new ArrayDataType("array", DataTypes.ARRAY, itemType, 0);
     }
     public static DataType getString(){
-        return new DataType("string", DataTypes.STRING, 0);
+        return new DataType("string", DataTypes.STRING, 1);
     }
     public static DataType getFloat(){
         return new DataType("float", DataTypes.FLOAT, 0);
@@ -69,7 +69,7 @@ public class DataType {
         return new DataType("void", DataTypes.VOID, 0);
     }
 
-    public static DataType getDataTypeFromToken(Token token) throws UnexpectedTokenException {
+    public static DataType getDataTypeFromToken(Token token) throws CompileException {
         switch(token.type){
             case TOKEN_INT, TOKEN_INT_LITERAL -> {return DataType.getInt();}
             case TOKEN_FLOAT, TOKEN_FLOAT_LITERAL -> {return DataType.getFloat();}
@@ -77,7 +77,7 @@ public class DataType {
             case TOKEN_IDENTIFIER -> {return getStruct(token.literal);}
             case TOKEN_VOID -> {return getVoid();}
         }
-        throw new UnexpectedTokenException(String.format("Can't parse value type from %s", token));
+        throw new CompileException(String.format("Can't parse value type from %s", token));
     }
 
     public DataType(String name, DataTypes type, int depth){

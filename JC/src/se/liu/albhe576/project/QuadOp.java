@@ -5,7 +5,7 @@ public enum QuadOp {
     MOV_R8, MOV_R9, MOV_RDX, MOV_RSI, MOV_RDI, MOV_RCX,
     STORE_INDEX, PUSH_STRUCT, INDEX, DEREFERENCE,LOAD_POINTER,GET_FIELD, SET_FIELD, MOVE_STRUCT,
     CVTSI2SD, CVTTSD2SI,
-     FADD, FMUL, FDIV, FSUB,INC,DEC, ADD,SUB, MUL, DIV,SHL, SHR,MOD,
+     FADD, FMUL, FDIV, FSUB,INC,DEC, ADD,SUB, MUL, DIV,SAL, SAR,MOD, IMUL,
     NOT, LOGICAL_NOT,AND, OR, XOR,
     SETNE, SETLE, SETL, SETG, SETGE, SETE, CMP, JMP, JNZ, JE,
     LABEL, POP,PUSH,CALL, RET,
@@ -31,10 +31,10 @@ public enum QuadOp {
                 return DIV;
             }
             case TOKEN_SHIFT_LEFT-> {
-                return SHL;
+                return SAL;
             }
             case TOKEN_SHIFT_RIGHT-> {
-                return SHR;
+                return SAR;
             }
             case TOKEN_INCREMENT-> {
                 return INC;
@@ -79,7 +79,7 @@ public enum QuadOp {
         throw new CompileException(String.format("Unknown token to quad op? %s", token.literal));
     }
 
-    public QuadOp convertToFloat() throws InvalidOperation {
+    public QuadOp convertToFloat() throws CompileException {
         switch(this){
             case ADD, FADD -> {return FADD;}
             case SUB, FSUB -> {return FSUB;}
@@ -87,6 +87,6 @@ public enum QuadOp {
             case MUL, FMUL -> {return FMUL;}
         }
 
-        throw new InvalidOperation(String.format("Can't convert op %s to float op?", this.name()));
+        throw new CompileException(String.format("Can't convert op %s to float op?", this.name()));
     }
 }

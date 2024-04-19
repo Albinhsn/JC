@@ -19,18 +19,18 @@ public class BinaryExpr extends Expr{
     }
 
 
-    private void bitwise(SymbolTable symbolTable, QuadList quads) throws InvalidOperation, CompileException, UnexpectedTokenException, UnknownSymbolException {
+    private void bitwise(SymbolTable symbolTable, QuadList quads) throws  CompileException {
 
         left.compile(symbolTable, quads);
         Symbol lResult = quads.getLastResult();
         Symbol rResult = quads.createSetupBinary(symbolTable, right, lResult);
 
-        if(lResult.type.type != DataTypes.INT || rResult.type.type != DataTypes.INT){
-            throw new InvalidOperation(String.format("Can only do bitwise on ints, line %d", op.line));
+        if(!lResult.type.isInteger() || !rResult.type.isInteger()){
+            this.error("Can only do bitwise on ints");
         }
         quads.addQuad(QuadOp.fromToken(op), lResult, rResult, Compiler.generateSymbol(DataType.getInt()));
     }
-    private void arithmetic(SymbolTable symbolTable, QuadList quads) throws InvalidOperation, CompileException, UnexpectedTokenException, UnknownSymbolException {
+    private void arithmetic(SymbolTable symbolTable, QuadList quads)  throws CompileException{
 
         left.compile(symbolTable, quads);
         Symbol lResult = quads.getLastResult();
@@ -42,7 +42,7 @@ public class BinaryExpr extends Expr{
         DataType rType = rResult.type;
 
         if(lResult.type.isStruct() || rResult.type.isStruct()){
-            throw new InvalidOperation(String.format("Can't do operation '%s' on struct on line %d", op.literal, op.line));
+            this.error(String.format("Can't do operation '%s' on struct on line %d", op.literal, op.line));
         }
 
         DataType resultType = lResult.type;
@@ -55,14 +55,15 @@ public class BinaryExpr extends Expr{
         if((lType.isPointer() && rType.isInteger()) || (lType.isInteger() && rType.isPointer())){
             resultType = lType.isPointer() ? lResult.type : rResult.type;
             if(lType.isPointer()){
+                // ToDo imul?
                 int structSize = symbolTable.getStructSize(lResult.type);
-                r.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
-                r.addQuad(QuadOp.LOAD_IMM,Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, Compiler.generateSymbol(DataType.getInt()));
+                r.createMovRegisterAToC(Compiler.generateSymbol(DataType.getInt()));
+                r.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
                 r.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
             }else{
                 int structSize = symbolTable.getStructSize(rResult.type);
-                quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
-                quads.addQuad(QuadOp.LOAD_IMM,Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, Compiler.generateSymbol(DataType.getInt()));
+                quads.createMovRegisterAToC(Compiler.generateSymbol(DataType.getInt()));
+                quads.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
                 quads.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
 
             }
@@ -70,21 +71,19 @@ public class BinaryExpr extends Expr{
             quadOp = quadOp.convertToFloat();
             resultType = DataType.getFloat();
         }else if(!lType.isSameType(rType)){
-            System.out.println(lType);
-            System.out.println(rType);
-            throw new InvalidOperation(String.format("Can't do operation '%s' on pointer with type %s on line %d", op.literal, lResult.type.name, op.line));
+            this.error(String.format("Can't do operation '%s' on pointer with type %s", op.literal, lResult.type.name));
         }
 
         Symbol out = Compiler.generateSymbol(resultType);
         quads.createPush(out);
         quads.addAll(r);
-        quads.addQuad(QuadOp.MOV_REG_CA, rResult, null,rResult);
+        quads.createMovRegisterAToC(rResult);
         quads.createPop(lResult);
         quads.addQuad(quadOp, lResult, rResult, Compiler.generateSymbol(resultType));
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException, UnknownSymbolException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
         switch(op.type){
             // These only work on everything except string
             case TOKEN_PLUS : {}
@@ -106,6 +105,6 @@ public class BinaryExpr extends Expr{
                 return;
             }
         }
-        throw new InvalidOperation(String.format("Can't do binary op with '%s'", op.literal));
+        this.error(String.format("Can't do binary op with '%s'", op.literal));
     }
 }

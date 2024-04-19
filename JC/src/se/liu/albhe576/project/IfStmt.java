@@ -37,7 +37,7 @@ public class IfStmt extends Stmt{
     }
 
     @Override
-    public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, InvalidOperation, UnexpectedTokenException {
+    public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
         condition.compile(symbolTable, quads);
 
         // insert conditional check
@@ -59,13 +59,16 @@ public class IfStmt extends Stmt{
         Symbol elseLabel = Compiler.generateLabel();
         Symbol mergeLabel = Compiler.generateLabel();
 
-        Quad.insertJMPOnComparisonCheck(quads, elseLabel, false);
+
+        Symbol ifJmpLabel = elseBody.isEmpty() ? mergeLabel : elseLabel;
+        quads.insertJMPOnComparisonCheck(ifJmpLabel, false);
+
         quads.addAll(ifQuad);
-        //if(!elseBody.isEmpty()){
+        if(!elseBody.isEmpty()){
             quads.addQuad(QuadOp.JMP, mergeLabel, null, null);
-            quads.addQuad(QuadOp.LABEL, elseLabel, null, null);
+            quads.insertLabel(elseLabel);
             quads.addAll(elseQuad);
-        //}
-        quads.addQuad(QuadOp.LABEL, mergeLabel, null, null);
+        }
+        quads.insertLabel(mergeLabel);
     }
 }

@@ -25,7 +25,7 @@ public class SymbolTable {
         final String[] internal = new String[]{
                 "int",
                 "float",
-                "String",
+                "string",
         };
         if(Arrays.asList(internal).contains(name)){
             return true;
@@ -34,10 +34,6 @@ public class SymbolTable {
     }
 
     public int getStructSize(DataType type){
-        if(type.isPointer()){
-            return 8;
-        }
-        // ToDo :)
         if(this.structs.containsKey(type.name) && type.isStruct()){
             return this.structs.get(type.name).getSize(this.structs);
         }
@@ -59,7 +55,7 @@ public class SymbolTable {
         return this.constants;
     }
     public VariableSymbol addSymbol(String name, DataType type){
-        int offset = -this.getStructSize(type) - this.getScopeSize(getCurrentFunction().name);
+        int offset = -this.getStructSize(type) - this.getLocalVariableStackSize(getCurrentFunction().name);
         VariableSymbol variableSymbol = new VariableSymbol(name, type, offset, scopeDepth);
         getCurrentLocals().put(name, variableSymbol);
         return variableSymbol;
@@ -68,7 +64,7 @@ public class SymbolTable {
         getCurrentLocals().put(symbol.name, symbol);
     }
 
-    public int getScopeSize(String name){
+    public int getLocalVariableStackSize(String name){
         Map<String, VariableSymbol> locals = getLocals(name);
         int size = 0;
         for(VariableSymbol variableSymbol : locals.values()){
@@ -77,8 +73,8 @@ public class SymbolTable {
         return -size;
     }
 
-    public int getFunctionSize(String name) throws UnknownSymbolException {
-        int localSize = this.getScopeSize(name);
+    public int getFunctionSize(String name) throws CompileException {
+        int localSize = this.getLocalVariableStackSize(name);
         int argumentSize = 0;
         for(StructField arg : this.getFunction(name).arguments){
            argumentSize += this.getStructSize(arg.type);
@@ -87,7 +83,7 @@ public class SymbolTable {
     }
 
     public int getCurrentScopeSize(){
-        return this.getScopeSize(this.getCurrentFunction().name);
+        return this.getLocalVariableStackSize(this.getCurrentFunction().name);
     }
     public int getDepth(){
         return this.scopeDepth;
@@ -95,13 +91,13 @@ public class SymbolTable {
     public void addFunction(Function function){
         this.functions.add(function);
     }
-    public Function getFunction(String name) throws UnknownSymbolException{
+    public Function getFunction(String name) throws CompileException{
         for(Function function : functions){
             if(function.name.equals(name)){
                 return function;
             }
         }
-        throw new UnknownSymbolException(String.format("Can't find function %s", name));
+        throw new CompileException(String.format("Can't find function %s", name));
     }
 
     public void addConstant(String constant, DataTypes type){
@@ -120,13 +116,13 @@ public class SymbolTable {
         }
         return false;
     }
-    public Function getExternFunction(String name) throws UnknownSymbolException{
+    public Function getExternFunction(String name) throws CompileException{
         for(Function function : extern){
             if(function.name.equals(name)){
                 return function;
             }
         }
-        throw new UnknownSymbolException(String.format("Can't find extern function %s", name));
+        throw new CompileException(String.format("Can't find extern function %s", name));
     }
     public boolean symbolExists(String name) {
         return this.getCurrentLocals().containsKey(name);
@@ -134,14 +130,14 @@ public class SymbolTable {
     public Symbol findSymbol(String name) {
         return this.getCurrentLocals().get(name);
     }
-    public Symbol getMemberSymbol(Symbol structSymbol, String member) throws UnknownSymbolException {
+    public Symbol getMemberSymbol(Symbol structSymbol, String member) throws CompileException {
         Struct struct = this.structs.get(structSymbol.type.name);
         for(StructField field : struct.fields){
             if(field.name.equals(member)){
                return new Symbol(member, field.type);
             }
         }
-        throw new UnknownSymbolException(String.format("Tried to access member '%s' in struct '%s', doesnt exist", member, structSymbol.name));
+        throw new CompileException(String.format("Tried to access member '%s' in struct '%s', doesnt exist", member, structSymbol.name));
     }
 
     public SymbolTable(Map<String, Struct> structs, Map<String, Constant> constants, List<Function> extern){

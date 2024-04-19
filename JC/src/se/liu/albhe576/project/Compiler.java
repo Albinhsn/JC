@@ -22,7 +22,7 @@ public class Compiler {
         return new Symbol( String.format("label%d", labelCount++), new DataType("label", DataTypes.VOID, 0));
     }
 
-    public void Compile(String name) throws CompileException, IOException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
+    public void Compile(String name) throws CompileException, IOException {
 
         // Intermediate code generation
         this.generateIntermediate();
@@ -32,7 +32,7 @@ public class Compiler {
     }
 
 
-    public void generateIntermediate() throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
+    public void generateIntermediate() throws CompileException{
         for(Stmt stmt : stmts){
             QuadList quads = new QuadList();
             stmt.compile(symbolTable, quads);
@@ -82,34 +82,50 @@ public class Compiler {
         return writer;
     }
 
+    private void handleStackAlignment(FileWriter fileWriter, Function function) throws IOException, CompileException {
+        int scopeSize = this.symbolTable.getLocalVariableStackSize(function.name);
+        scopeSize += (this.symbolTable.getFunctionSize(function.name) % 16) == 0 ? 0 : 8;
+        if(scopeSize != 0){
+            fileWriter.write(String.format("sub rsp, %d\n", scopeSize));
+        }
+    }
+    private void outputFunctionHeader(FileWriter fileWriter, Function function) throws IOException {
+        fileWriter.write("\n\n" + function.name + ":\npush rbp\nmov rbp, rsp\n");
+    }
 
+    private void outputFunctionBody(FileWriter fileWriter, Function function) throws IOException, CompileException {
+        final List<Function> functions = this.symbolTable.getFunctions();
+        final Map<String, Constant> constants = this.symbolTable.getConstants();
 
-    public void generateAssembly(String name, List<Function> extern) throws IOException, UnknownSymbolException {
+        Stack stack = new Stack(this.symbolTable.getLocals(function.name), this.symbolTable.structs);
+
+        boolean shouldOutputRet = function.intermediates.isEmpty();
+        for (Quad intermediate : function.intermediates) {
+            // fileWriter.write("; " + intermediate + "\n");
+            fileWriter.write(intermediate.emit(stack, functions, constants) + "\n");
+        }
+
+        if(!shouldOutputRet){
+            Quad lastQuad = function.intermediates.get(function.intermediates.size() - 1);
+            shouldOutputRet = lastQuad.op != QuadOp.RET;
+        }
+
+        if(shouldOutputRet){
+            Quad retQuad = new Quad(QuadOp.RET, null, null, null);
+            fileWriter.write(retQuad.emit(stack, functions, constants) + "\n");
+        }
+
+    }
+
+    public void generateAssembly(String name, List<Function> extern) throws IOException, CompileException {
         final List<Function> functions = this.symbolTable.getFunctions();
         final Map<String, Constant> constants = this.symbolTable.getConstants();
         FileWriter fileWriter = initOutput(name, constants, extern);
 
-        for(int i = 0; i < functions.size(); i++){
-            Function function = functions.get(i);
-            fileWriter.write("\n\n" + function.name + ":\npush rbp\nmov rbp, rsp\n");
-
-
-            int scopeSize = this.symbolTable.getScopeSize(function.name);
-            scopeSize += (this.symbolTable.getFunctionSize(function.name) % 16) == 0 ? 0 : 8;
-            if(scopeSize != 0){
-                fileWriter.write(String.format("sub rsp, %d\n", scopeSize));
-            }
-
-            Stack stack = new Stack(this.symbolTable.getLocals(function.name), this.symbolTable.structs);
-            for (Quad intermediate : function.intermediates) {
-                // fileWriter.write("; " + intermediate + "\n");
-                fileWriter.write(intermediate.emit(stack, functions, constants) + "\n");
-            }
-            Quad lastQuad = function.intermediates.get(function.intermediates.size() - 1);
-            if(lastQuad.op != QuadOp.RET){
-                Quad retQuad = new Quad(QuadOp.RET, null, null, null);
-                fileWriter.write(retQuad.emit(stack, functions, constants) + "\n");
-            }
+        for (Function function : functions) {
+            this.outputFunctionHeader(fileWriter, function);
+            this.handleStackAlignment(fileWriter, function);
+            this.outputFunctionBody(fileWriter, function);
         }
 
         fileWriter.flush();
