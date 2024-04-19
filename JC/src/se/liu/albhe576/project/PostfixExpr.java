@@ -9,8 +9,8 @@ public class PostfixExpr extends Expr{
     public Token literal;
     public Token op;
 
-    public PostfixExpr(Token literal, Token op, int line){
-        super(line);
+    public PostfixExpr(Token literal, Token op, int line, String file){
+        super(line, file);
         this.literal = literal;
         this.op   = op;
     }

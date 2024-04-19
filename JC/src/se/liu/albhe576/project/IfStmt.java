@@ -28,8 +28,8 @@ public class IfStmt extends Stmt{
     public Expr condition;
     public List<Stmt> ifBody;
     public List<Stmt> elseBody;
-    public IfStmt(Expr condition, List<Stmt> ifBody, List<Stmt> elseBody, int line){
-        super(line);
+    public IfStmt(Expr condition, List<Stmt> ifBody, List<Stmt> elseBody, int line, String file){
+        super(line, file);
         this.condition = condition;
         this.ifBody= ifBody;
         this.elseBody= elseBody;

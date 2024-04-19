@@ -3,9 +3,7 @@ package se.liu.albhe576.project;
 import java.util.Comparator;
 
 public class VariableSymbol extends Symbol implements Comparator<VariableSymbol> {
-
     public int offset;
-
     public int depth;
 
     public VariableSymbol(String name, DataType type, int offset, int depth){

@@ -11,8 +11,8 @@ public class VarExpr extends Expr {
     }
 
     public final Token token;
-    public VarExpr(Token token, int line){
-        super(line);
+    public VarExpr(Token token, int line, String file){
+        super(line, file);
         this.token = token;
     }
 

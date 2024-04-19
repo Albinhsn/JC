@@ -12,8 +12,8 @@ public class DotExpr extends Expr{
     public Expr variable;
     public Token member;
 
-    public DotExpr(Expr variable, Token member, int line){
-        super(line);
+    public DotExpr(Expr variable, Token member, int line, String file){
+        super(line, file);
         this.variable = variable;
         this.member = member;
     }

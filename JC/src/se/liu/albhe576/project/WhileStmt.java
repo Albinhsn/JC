@@ -16,8 +16,8 @@ public class WhileStmt extends Stmt{
 
     public Expr condition;
     public List<Stmt> body;
-    public WhileStmt(Expr condition, List<Stmt> body, int line){
-        super(line);
+    public WhileStmt(Expr condition, List<Stmt> body, int line, String file){
+        super(line, file);
         this.condition = condition;
         this.body = body;
     }

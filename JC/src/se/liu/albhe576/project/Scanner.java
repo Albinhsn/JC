@@ -11,13 +11,6 @@ public class Scanner {
     public int getLine(){
         return this.line;
     }
-    public int getIndex(){
-        return this.index;
-    }
-    public void setIndex(int i){
-        this.index = i;
-    }
-
     private char getCurrentChar(){
         if(index >= input.length()){
             return 0;
@@ -117,6 +110,7 @@ public class Scanner {
     public TokenType getKeyword(String literal){
     final Map<String, TokenType> reservedWords = Map.ofEntries(
                 Map.entry("struct", TokenType.TOKEN_STRUCT),
+                Map.entry("string", TokenType.TOKEN_STRING),
                 Map.entry("fun", TokenType.TOKEN_FUN),
                 Map.entry("if", TokenType.TOKEN_IF),
                 Map.entry("else", TokenType.TOKEN_ELSE),

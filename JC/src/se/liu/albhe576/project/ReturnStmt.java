@@ -10,8 +10,8 @@ public class ReturnStmt extends Stmt{
         return String.format("return %s;", expr);
     }
     private final Expr expr;
-    public ReturnStmt(Expr expr, int line){
-        super(line);
+    public ReturnStmt(Expr expr, int line, String file){
+        super(line, file);
         this.expr = expr;
 
     }
@@ -21,7 +21,7 @@ public class ReturnStmt extends Stmt{
     public void compile(SymbolTable symbolTable, QuadList quads) throws UnknownSymbolException, CompileException, UnexpectedTokenException, InvalidOperation {
         Function currentFunction = symbolTable.getCurrentFunction();
 
-        if(!(expr instanceof EmptyExpr)){
+        if(expr != null){
             expr.compile(symbolTable, quads);
             Symbol returnSymbol = quads.getLastResult();
             if(returnSymbol.type.isInteger() && currentFunction.returnType.isFloatingPoint()){

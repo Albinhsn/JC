@@ -30,8 +30,8 @@ public class FunctionStmt extends Stmt{
     private final List<StructField> arguments;
     private final List<Stmt> body;
 
-    public FunctionStmt(DataType returnType, String name, List<StructField> arguments, List<Stmt> body, int line){
-        super(line);
+    public FunctionStmt(DataType returnType, String name, List<StructField> arguments, List<Stmt> body, int line, String file){
+        super(line, file);
         this.returnType = returnType;
         this.name = name;
         this.arguments = arguments;

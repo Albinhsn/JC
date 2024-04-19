@@ -9,11 +9,12 @@ import java.util.List;
 public class Main {
 
     public static void main(String[] args) throws IOException, CompileException, UnknownSymbolException, UnexpectedTokenException, InvalidOperation {
-        String s = Files.readString(Path.of("resources/test.jc"));
+        String filePath = "resources/main.jc";
+        String s = Files.readString(Path.of(filePath));
         System.out.println(s);
         Scanner scanner = new Scanner(s);
         List<String> included = new ArrayList<>();
-        included.add("resources/test.jc");
+        included.add(filePath);
         Parser parser = new Parser(scanner, included);
         Compiler compiler = new Compiler(parser.getStructs(), parser.parse(), parser.getExtern());
         compiler.Compile("out.asm");

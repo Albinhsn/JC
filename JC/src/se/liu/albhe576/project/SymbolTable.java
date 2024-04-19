@@ -27,7 +27,7 @@ public class SymbolTable {
                 "float",
                 "String",
         };
-        if(Arrays.stream(internal).anyMatch(i -> i.equals(name))){
+        if(Arrays.asList(internal).contains(name)){
             return true;
         }
         return this.structs.containsKey(name);
@@ -38,7 +38,7 @@ public class SymbolTable {
             return 8;
         }
         // ToDo :)
-        if(this.structs.containsKey(type.name)){
+        if(this.structs.containsKey(type.name) && type.isStruct()){
             return this.structs.get(type.name).getSize(this.structs);
         }
         return 8;
@@ -75,6 +75,15 @@ public class SymbolTable {
             size = Math.min(variableSymbol.offset, size);
         }
         return -size;
+    }
+
+    public int getFunctionSize(String name) throws UnknownSymbolException {
+        int localSize = this.getScopeSize(name);
+        int argumentSize = 0;
+        for(StructField arg : this.getFunction(name).arguments){
+           argumentSize += this.getStructSize(arg.type);
+        }
+        return localSize + argumentSize;
     }
 
     public int getCurrentScopeSize(){

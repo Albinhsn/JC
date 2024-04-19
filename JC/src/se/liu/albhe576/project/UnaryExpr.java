@@ -9,8 +9,8 @@ public class UnaryExpr extends Expr{
 
     public Expr expr;
     public Token op;
-    public UnaryExpr(Expr expr, Token op, int line){
-        super(line);
+    public UnaryExpr(Expr expr, Token op, int line, String file){
+        super(line, file);
         this.expr = expr;
         this.op = op;
     }
@@ -23,10 +23,7 @@ public class UnaryExpr extends Expr{
         QuadOp quadOp;
 
         switch(op.type){
-            // Take the address of a pointer
-            // int foo = &bar;
             case TOKEN_AND_BIT:{
-                // Remove load
                 symbol = quads.getLastOperand1();
                 quads.removeLastQuad();
                 result = Compiler.generateSymbol(DataType.getPointerFromType(symbol.type));
@@ -44,31 +41,14 @@ public class UnaryExpr extends Expr{
                quadOp = QuadOp.NOT;
                break;
             }
-            case TOKEN_INCREMENT:{
+            case TOKEN_INCREMENT, TOKEN_DECREMENT:{
                 if(result.type.isPointer()){
-                    int structSize = symbolTable.getStructSize(result.type);
-                    quads.addQuad(QuadOp.PUSH, result, null, Compiler.generateSymbol(result.type));
-                    Symbol immSymbol = Compiler.generateSymbol(DataType.getInt());
-                    quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, immSymbol);
+                    quads.createSetupUnary(symbolTable, result);
+
                     Symbol movedImm = Compiler.generateSymbol(DataType.getInt());
-                    quads.addQuad(QuadOp.MOV_REG_CA, immSymbol, null, movedImm);
-                    quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(result.type));
-                    quads.addQuad(QuadOp.ADD, Compiler.generateSymbol(result.type), movedImm, Compiler.generateSymbol(result.type));
-                    return;
-                }
-                quadOp = QuadOp.fromToken(op);
-                break;
-            }
-            case TOKEN_DECREMENT:{
-                if(result.type.isPointer()){
-                    int structSize = symbolTable.getStructSize(result.type);
-                    quads.addQuad(QuadOp.PUSH, result, null, Compiler.generateSymbol(result.type));
-                    Symbol immSymbol = Compiler.generateSymbol(DataType.getInt());
-                    quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, immSymbol);
-                    Symbol movedImm = Compiler.generateSymbol(DataType.getInt());
-                    quads.addQuad(QuadOp.MOV_REG_CA, immSymbol, null, movedImm);
-                    quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(result.type));
-                    quads.addQuad(QuadOp.SUB, Compiler.generateSymbol(result.type), movedImm, Compiler.generateSymbol(result.type));
+
+                    QuadOp op = this.op.type == TokenType.TOKEN_INCREMENT ? QuadOp.ADD : QuadOp.SUB;
+                    quads.addQuad(op, Compiler.generateSymbol(result.type), movedImm, Compiler.generateSymbol(result.type));
                     return;
                 }
                 quadOp = QuadOp.fromToken(op);
@@ -78,7 +58,6 @@ public class UnaryExpr extends Expr{
                 quadOp = QuadOp.fromToken(op);
             }
         }
-
         quads.addQuad(quadOp, symbol, null, result);
     }
 }

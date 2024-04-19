@@ -3,10 +3,9 @@
 ## Features remaining
 
 
-* array as actual type, aka Foo/int array 
+* test bitwise
 * index array of structs?
-* add file to expr/stmt
-* pointer to array
+* actually use error function
 * fix macros that are functions, aka sizeof
 * return struct without pointer?
   * essentially leave it on the stack afterwards

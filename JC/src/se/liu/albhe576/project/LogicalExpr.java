@@ -10,8 +10,8 @@ public class LogicalExpr extends Expr{
     public Expr left;
     public Expr right;
     public Token op;
-    public LogicalExpr(Expr left, Expr right, Token op, int line){
-        super(line);
+    public LogicalExpr(Expr left, Expr right, Token op, int line, String file){
+        super(line, file);
         this.left = left;
         this.right = right;
         this.op = op;

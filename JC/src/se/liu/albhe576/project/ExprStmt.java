@@ -11,8 +11,8 @@ public class ExprStmt extends Stmt{
     }
 
     private final Expr expr;
-    public ExprStmt(Expr expr, int line){
-        super(line);
+    public ExprStmt(Expr expr, int line, String file){
+        super(line, file);
         this.expr = expr;
     }
 

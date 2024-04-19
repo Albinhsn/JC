@@ -11,8 +11,8 @@ public class BinaryExpr extends Expr{
         return String.format("(%s %s %s)", left, op.literal, right);
     }
 
-    public BinaryExpr(Expr left, Token op, Expr right, int line){
-        super(line);
+    public BinaryExpr(Expr left, Token op, Expr right, int line, String file){
+        super(line, file);
         this.left = left;
         this.op = op;
         this.right = right;
@@ -20,14 +20,10 @@ public class BinaryExpr extends Expr{
 
 
     private void bitwise(SymbolTable symbolTable, QuadList quads) throws InvalidOperation, CompileException, UnexpectedTokenException, UnknownSymbolException {
+
         left.compile(symbolTable, quads);
         Symbol lResult = quads.getLastResult();
-        quads.addQuad(QuadOp.PUSH, lResult, null, lResult);
-        right.compile(symbolTable, quads);
-        Symbol rResult = quads.getLastResult();
-
-        quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
-        quads.addQuad(QuadOp.POP, null, null, lResult);
+        Symbol rResult = quads.createSetupBinary(symbolTable, right, lResult);
 
         if(lResult.type.type != DataTypes.INT || rResult.type.type != DataTypes.INT){
             throw new InvalidOperation(String.format("Can only do bitwise on ints, line %d", op.line));
@@ -80,10 +76,10 @@ public class BinaryExpr extends Expr{
         }
 
         Symbol out = Compiler.generateSymbol(resultType);
-        quads.addQuad(QuadOp.PUSH, out, null, out);
+        quads.createPush(out);
         quads.addAll(r);
         quads.addQuad(QuadOp.MOV_REG_CA, rResult, null,rResult);
-        quads.addQuad(QuadOp.POP, lResult, null, lResult);
+        quads.createPop(lResult);
         quads.addQuad(quadOp, lResult, rResult, Compiler.generateSymbol(resultType));
     }
 

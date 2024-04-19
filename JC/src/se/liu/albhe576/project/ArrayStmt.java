@@ -3,27 +3,12 @@ package se.liu.albhe576.project;
 import java.util.List;
 
 public class ArrayStmt extends Stmt {
-
-    @Override
-    public String toString() {
-        StringBuilder s = new StringBuilder();
-        s.append("[");
-        for(int i = 0; i < items.size(); i++){
-            s.append(items.get(i));
-            if(i < items.size() - 1){
-                s.append(", ");
-            }
-        }
-        s.append("]");
-        return s.toString();
-    }
-
     public final DataType type;
     public final String name;
     private final List<Expr> items;
 
-    public ArrayStmt(DataType type, String name, List<Expr> items, int line){
-        super(line);
+    public ArrayStmt(DataType type, String name, List<Expr> items, int line, String file){
+        super(line, file);
         this.type = type;
         this.name = name;
         this.items = items;
@@ -49,7 +34,7 @@ public class ArrayStmt extends Stmt {
             Expr item = this.items.get(i);
             item.compile(symbolTable, quads);
             Symbol result = quads.getLastResult();
-            quads.addQuad(QuadOp.PUSH, result, null, result);
+            quads.createPush(result);
 
 
             ImmediateSymbol immSymbol = Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(8 * i));
@@ -61,7 +46,7 @@ public class ArrayStmt extends Stmt {
 
 
             quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(arraySymbol.type), null, Compiler.generateSymbol(arraySymbol.type));
-            quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(itemType));
+            quads.createPop(Compiler.generateSymbol(itemType));
             quads.addQuad(QuadOp.STORE_INDEX, Compiler.generateSymbol(itemType), null, null);
             if(!itemType.isSameType(result.type)){
                 throw new CompileException(String.format("Can't have different types in array declaration on line %d", this.line));

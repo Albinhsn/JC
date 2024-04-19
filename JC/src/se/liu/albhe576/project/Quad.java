@@ -30,10 +30,10 @@ public class Quad {
     public static void insertBooleanComparison(QuadList quads, String immediateLiteral){
         Symbol immediateSymbol = Compiler.generateImmediateSymbol(DataType.getInt(), immediateLiteral);
         Symbol immLoadResult = Compiler.generateSymbol(DataType.getInt());
-        quads.addQuad(QuadOp.PUSH, immLoadResult, null, Compiler.generateSymbol(DataType.getInt()));
+        quads.createPush(immLoadResult);
         quads.addQuad(QuadOp.LOAD_IMM, immediateSymbol, null, immLoadResult);
         quads.addQuad(QuadOp.MOV_REG_CA, immLoadResult, null, immLoadResult);
-        quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(DataType.getInt()));
+        quads.createPop(Compiler.generateSymbol(DataType.getInt()));
         quads.addQuad(QuadOp.CMP, null, null,null);
     }
 
@@ -68,13 +68,11 @@ public class Quad {
         return  type.isFloatingPoint() ? "movsd" : "mov";
     }
 
-    public String emit(Stack stack, Quad prevQuad, List<Function> functions, Map<String, Constant> constants) throws UnknownSymbolException {
-        QuadOp prevOp = prevQuad == null ? null : prevQuad.op;
+    public String emit(Stack stack, List<Function> functions, Map<String, Constant> constants) throws UnknownSymbolException {
         switch(this.op){
             case LOAD_IMM -> {
                 ImmediateSymbol imm = (ImmediateSymbol) this.operand1;
-                int registerIndex = prevOp != null && prevOp.isLoad() ? 1 :0;
-                String register = getRegisterFromType(operand1.type, registerIndex);
+                String register = getRegisterFromType(operand1.type, 0);
 
                 switch(imm.type.type){
                     case INT -> {return String.format("mov %s, %s", register, imm.value);}
@@ -145,7 +143,7 @@ public class Quad {
                 return String.format("%s %s, [rax]", movOp, register);
             }
             case LOAD ->{
-                return stack.loadVariable(operand1.name, prevOp);
+                return stack.loadVariable(operand1.name);
             }
             case SET_FIELD -> {
                 return stack.storeField(operand2.type, operand1);
@@ -162,6 +160,9 @@ public class Quad {
                 return String.format("%s [rcx], %s", movOp, register);
             }
             case CMP -> {
+                if(operand1 != null && operand1.type.isFloatingPoint()){
+                    return "ucomisd xmm0, xmm1";
+                }
                 return "cmp rax, rcx";
             }
             case JMP ->{
@@ -206,8 +207,10 @@ public class Quad {
                 }
                 return "pop rax";
             }
+            case MOV_RCX ->{
+               return "mov rcx, rax";
+            }
             case MOV_REG_CA ->{
-
                 String movOp = getMovOpFromType(operand1.type);
                 String register1 = getRegisterFromType(operand1.type, 0);
                 String register2 = getRegisterFromType(operand1.type, 1);
@@ -264,7 +267,7 @@ public class Quad {
                     if(function.name.equals(operand1.name)){
                         for(StructField field : function.arguments){
                             Struct struct = stack.getStruct(field.type.name);
-                            if(struct == null){
+                            if(struct == null || field.type.isPointer()){
                                 argSize += 8;
                             }else{
                                 argSize += struct.getSize(stack.structs);

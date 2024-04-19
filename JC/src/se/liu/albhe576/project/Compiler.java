@@ -92,26 +92,23 @@ public class Compiler {
         for(int i = 0; i < functions.size(); i++){
             Function function = functions.get(i);
             fileWriter.write("\n\n" + function.name + ":\npush rbp\nmov rbp, rsp\n");
+
+
             int scopeSize = this.symbolTable.getScopeSize(function.name);
-            scopeSize += scopeSize % 16 == 0 ? 0 : 8;
+            scopeSize += (this.symbolTable.getFunctionSize(function.name) % 16) == 0 ? 0 : 8;
             if(scopeSize != 0){
-                System.out.println("SCOPE " + scopeSize);
                 fileWriter.write(String.format("sub rsp, %d\n", scopeSize));
             }
 
-            Quad prev = null;
             Stack stack = new Stack(this.symbolTable.getLocals(function.name), this.symbolTable.structs);
-            System.out.printf("FUNCTION %s\n", function.name);
-
             for (Quad intermediate : function.intermediates) {
-                fileWriter.write("; " + intermediate + "\n");
-                fileWriter.write(intermediate.emit(stack, prev, functions, constants) + "\n");
-                prev = intermediate;
+                // fileWriter.write("; " + intermediate + "\n");
+                fileWriter.write(intermediate.emit(stack, functions, constants) + "\n");
             }
             Quad lastQuad = function.intermediates.get(function.intermediates.size() - 1);
             if(lastQuad.op != QuadOp.RET){
                 Quad retQuad = new Quad(QuadOp.RET, null, null, null);
-                fileWriter.write(retQuad.emit(stack, lastQuad, functions, constants) + "\n");
+                fileWriter.write(retQuad.emit(stack, functions, constants) + "\n");
             }
         }
 

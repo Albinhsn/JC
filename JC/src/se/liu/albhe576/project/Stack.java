@@ -95,6 +95,7 @@ public class Stack {
     public String storeField(DataType type, Symbol memberSymbol) throws UnknownSymbolException{
         String move = Quad.getMovOpFromType(memberSymbol.type);
         String register = Quad.getRegisterFromType(memberSymbol.type, 0);
+
         Struct struct  = this.structs.get(type.name);
         int offset = this.getFieldOffset(struct, memberSymbol.name);
         if(offset != 0){
@@ -102,12 +103,12 @@ public class Stack {
         }
         return String.format("%s [rcx], %s", move, register);
     }
-    public String loadVariable(String name, QuadOp prevOp) {
+    public String loadVariable(String name) {
         VariableSymbol stackSymbol = this.stackSymbols.get(name);
         if(stackSymbol.offset < 0){
-            return this.loadLocal(stackSymbol, prevOp);
+            return this.loadLocal(stackSymbol);
         }
-        return this.loadArgument(stackSymbol, prevOp);
+        return this.loadArgument(stackSymbol);
     }
     public String storeVariable(String name) {
         VariableSymbol symbol = this.stackSymbols.get(name);
@@ -117,11 +118,10 @@ public class Stack {
         return this.storeArgument(symbol);
     }
 
-    private String loadArgument(VariableSymbol symbol, QuadOp prevOp){
+    private String loadArgument(VariableSymbol symbol){
         int offset = this.getStackPointerOffset(symbol);
-        int registerIndex = prevOp != null && prevOp.isLoad() ? 1 : 0;
         String move = Quad.getMovOpFromType(symbol.type);
-        String register = Quad.getRegisterFromType(symbol.type, registerIndex);
+        String register = Quad.getRegisterFromType(symbol.type, 0);
 
         return String.format("%s %s, [rbp + %d]", move, register, offset);
     }
@@ -132,10 +132,9 @@ public class Stack {
         return String.format("%s [rbp + %d], %s", move, offset, register);
     }
 
-    private String loadLocal(VariableSymbol symbol, QuadOp prevOp){
-        int registerIndex = prevOp.isLoad() ? 1 : 0;
+    private String loadLocal(VariableSymbol symbol){
         String move = Quad.getMovOpFromType(symbol.type);
-        String register = Quad.getRegisterFromType(symbol.type, registerIndex);
+        String register = Quad.getRegisterFromType(symbol.type, 0);
         if(symbol.offset == 0){
             return String.format("%s %s, [rbp]", move, register);
         }

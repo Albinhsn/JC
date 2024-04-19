@@ -13,8 +13,8 @@ public class LiteralExpr extends Expr{
         return token.literal;
     }
     private final Token token;
-    public LiteralExpr(Token token, int line){
-        super(line);
+    public LiteralExpr(Token token, int line, String file){
+        super(line, file);
         this.token = token;
     }
 

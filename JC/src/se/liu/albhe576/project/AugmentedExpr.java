@@ -14,8 +14,8 @@ public class AugmentedExpr extends Expr{
     private final Token op;
     private final Expr target;
     private final Expr value;
-    public AugmentedExpr(Token op, Expr target, Expr value, int line){
-        super(line);
+    public AugmentedExpr(Token op, Expr target, Expr value, int line, String file){
+        super(line, file);
         this.op = op;
         this.target = target;
         this.value = value;
@@ -24,18 +24,18 @@ public class AugmentedExpr extends Expr{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException, UnknownSymbolException, InvalidOperation, UnexpectedTokenException {
+
         target.compile(symbolTable, quads);
         Symbol targetSymbol = quads.getLastOperand1();
 
-        value.compile(symbolTable, quads);
-        Symbol valueSymbol = quads.getLastResult();
+        Symbol rSymbol = quads.createSetupBinary(symbolTable, value, targetSymbol);
 
         QuadOp op = QuadOp.fromToken(this.op);
-        if(targetSymbol.type.type == DataTypes.FLOAT || valueSymbol.type.type == DataTypes.FLOAT){
+        if(targetSymbol.type.isFloatingPoint() || rSymbol.type.isFloatingPoint()){
             op = op.convertToFloat();
         }
 
-        quads.addQuad(op, targetSymbol, valueSymbol, targetSymbol);
+        quads.addQuad(op, targetSymbol, rSymbol, targetSymbol);
         quads.addQuad(QuadOp.STORE, null, null, targetSymbol);
     }
 }

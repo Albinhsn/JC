@@ -8,8 +8,8 @@ public class AssignExpr extends Expr{
     private final Expr variable;
     private final Expr value;
 
-    public AssignExpr(Expr variable, Expr value, int line){
-        super(line);
+    public AssignExpr(Expr variable, Expr value, int line, String file){
+        super(line, file);
         this.variable = variable;
         this.value = value;
     }
@@ -24,7 +24,7 @@ public class AssignExpr extends Expr{
 
 
         Symbol pushed = Compiler.generateSymbol(struct.type);
-        quads.addQuad(QuadOp.PUSH, result, null, pushed);
+        quads.createPush(pushed);
         quads.addAll(variableQuads);
         Symbol valResult = quads.getLastResult();
 
@@ -33,34 +33,24 @@ public class AssignExpr extends Expr{
         }
 
         Symbol popped = Compiler.generateSymbol(result.type);
-        quads.addQuad(QuadOp.POP, pushed, null, popped);
+        quads.createPop(popped);
         quads.addQuad(QuadOp.SET_FIELD, memberSymbol, struct, result);
 
     }
     private void compileStoreDereference(QuadList valueQuads, QuadList variableQuads) {
-
         Symbol dereferenced = variableQuads.getLastOperand1();
         Symbol valueSymbol = valueQuads.getLastResult();
         variableQuads.removeLastQuad();
+        valueQuads.createSetupBinary(variableQuads, valueSymbol, dereferenced);
 
-        // rax is value
-        valueQuads.addQuad(QuadOp.PUSH, valueSymbol, null, valueSymbol);
-
-        // rcx is pointer
-        valueQuads.addAll(variableQuads);
-        valueQuads.addQuad(QuadOp.MOV_REG_CA, dereferenced, null, dereferenced);
-        valueQuads.addQuad(QuadOp.POP, valueSymbol, null, valueSymbol);
         valueQuads.addQuad(QuadOp.STORE_INDEX, valueSymbol, dereferenced, null);
-
     }
 
     private void compileStoreIndex(QuadList quads, QuadList variableQuads) throws CompileException{
         Symbol res = variableQuads.getLastOperand2();
         Symbol toStore = quads.getLastResult();
 
-
-        quads.addQuad(QuadOp.PUSH, toStore, null, toStore);
-
+        quads.createPush(toStore);
 
         DataType resType = res.type.getTypeFromPointer();
         quads.addAll(variableQuads);
@@ -68,7 +58,7 @@ public class AssignExpr extends Expr{
         quads.addQuad(QuadOp.MOV_REG_CA, quads.getLastResult(), null, Compiler.generateSymbol(DataType.getInt()));
         // ToDo check if they can be converted
         if(!resType.isSameType(toStore.type)){
-            quads.addQuad(QuadOp.POP, toStore, null, toStore);
+            quads.createPop(toStore);
             if(resType.isFloatingPoint()){
                 Symbol newToStore = Compiler.generateSymbol(DataType.getFloat());
                 quads.addQuad(QuadOp.CVTSI2SD, toStore, null, newToStore);
@@ -81,7 +71,7 @@ public class AssignExpr extends Expr{
                 throw new CompileException(String.format("What are you trying to do?, line %d", this.line));
             }
         }else{
-            quads.addQuad(QuadOp.POP, toStore, null, toStore);
+            quads.createPop(toStore);
         }
 
         quads.addQuad(QuadOp.STORE_INDEX, Compiler.generateSymbol(res.type.getTypeFromPointer()), toStore, res);
@@ -98,35 +88,21 @@ public class AssignExpr extends Expr{
         Symbol variableType = variableQuads.getLastOperand1();
 
 
-        // There is a difference when assinging a value whose location is on the stack
-        // versus something that's accessed through a pointer to something
-        // This is just looking essentially if the last thing in the variable is a get field
         if(lastOp == QuadOp.GET_FIELD){
             this.compileStoreField(symbolTable, quads, variableQuads);
         }else if(lastOp == QuadOp.DEREFERENCE){
             this.compileStoreDereference(quads, variableQuads);
         }
         else if (valueType.type.isStruct()){
-            quads.addQuad(QuadOp.PUSH, valueType, null, valueType);
-            quads.addAll(variableQuads);
-            quads.addQuad(QuadOp.MOV_REG_CA, variableType, null, variableType);
-            quads.addQuad(QuadOp.POP, valueType, null, valueType);
+            quads.createSetupBinary(variableQuads, valueType, variableType);
             quads.addQuad(QuadOp.MOVE_STRUCT, valueType, variableType, null);
-
         } else if(variableQuads.size() == 1){
-            // If we're just storing a variable on the stack we don't care to load the variable at all
-            // So just store it directly instead, ToDo type check though
-            // ... unless it's a struct :)
             Symbol res = quads.getLastResult();
             quads.addQuad(QuadOp.STORE, res, null, variableQuads.getLastResult());
         } else if(lastOp == QuadOp.INDEX){
             this.compileStoreIndex(quads, variableQuads);
         }else{
-            // Figure out if legal?
-            Symbol res = quads.getLastResult();
-
-            variable.compile(symbolTable, quads);
-            quads.addQuad(QuadOp.STORE, res, null, variableQuads.getLastResult());
+            this.error("How could this happen to me");
         }
 
     }

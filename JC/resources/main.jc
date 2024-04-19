@@ -6,12 +6,8 @@
 
 #include "resources/tests.jc"
 
-// #include "resources/foo.jc"
 
-
-int main() {
-
+int main(){
     run_tests();
-    return 0;
 }
 

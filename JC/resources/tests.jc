@@ -1,5 +1,21 @@
 #include "resources/foo.jc"
-#include "resources/test.jc"
+
+#include "resources/main.jc"
+
+void print_testi(int got, int expected, string name){
+    if(got == expected){
+        printf("PASSED: %s", name);
+    }else{
+        printf("FAILED: %s, got %d expected %d", name, got, expected);
+    }
+}
+void print_testf(float got, float expected, string name){
+    if(got == expected){
+        printf("PASSED: %s", name);
+    }else{
+        printf("FAILED: got %f expected %f with %s", got, expected, name);
+    }
+}
 
 int fib(int a){
    if(a <= 2){
@@ -54,9 +70,13 @@ void pointer_switchero(Foo ** foo, Foo * foo1){
 
 int index_array(){
     int * a = [1,2,3,4];
-    printf("%d == 4?", a[0] + a[2]);
+    int answer = a[0] + a[2];
+    print_testi(answer, 4, "index_array");
 }
 
+float float_return(){
+    return 2.0;
+}
 
 void pointers_pointers_everywhere(){
     int * a = [1,2,3,4];
@@ -64,7 +84,8 @@ void pointers_pointers_everywhere(){
     int **c = &b;
 
     (*c)[2] = 10;
-    printf("%d == 12?", (*c)[1] + (*c)[2]);
+    int answer = (*c)[1] + (*c)[2];
+    print_testi(answer, 12, "pointer_pointers_everywhere");
 }
 
 void pointer_fiesta(){
@@ -74,7 +95,7 @@ void pointer_fiesta(){
     int *** d=  &c;
     int **** e = &d;
 
-    printf("%d == 5?", ****e);
+    print_testi(****e, 5, "pointer_fiesta");
 }
 
 
@@ -92,24 +113,21 @@ void pointer_in_struct(){
 }
 
 int run_tests(){
-    printf("%d = 8?", fib(6));
-    printf("%d = 45?", for_sum());
+    print_testi(fib(6), 8, "fib");
+    print_testi(for_sum(), 45, "for_sum");
+
 
     Bar bar;
     bar.c = 3;
     bar.foo.a = 5;
     bar.foo.b = 2;
-    printf("%d = 5?", rec_struct(bar));
-
-
-    int result = arr_conversions();
-    printf("%d = 33?", result);
-
-    printf("%d = 5?", move_struct());
+    print_testi(rec_struct(bar), 5, "rec_struct");
+    print_testi(arr_conversions(), 33, "arr_conversions");
+    print_testi(move_struct(), 5, "move_struct");
 
     int * a = malloc(8);
     write_to_pointer(a);
-    printf("%d = 5?", *a);
+    print_testi(*a, 5, "write_to_pointer");
 
     Foo * foo = malloc(8);
     foo.a = 3;
@@ -117,11 +135,15 @@ int run_tests(){
     Foo foo1;
     foo1.a = 2;
     pointer_switchero(&foo, &foo1);
-    printf("%d == 50?", foo.a + foo1.a);
+    print_testi(foo.a + foo1.a, 50, "pointer_switcheroo");
 
+    // Tested in the function
     index_array();
     pointer_fiesta();
     pointers_pointers_everywhere();
+
+
+    print_testf(float_return(), 2.0, "float_return");
 }
 
 

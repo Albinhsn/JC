@@ -9,8 +9,8 @@ public class IndexExpr extends Expr{
 
     private final Expr value;
     private final Expr index;
-    public IndexExpr(Expr value, Expr index, int line){
-        super(line);
+    public IndexExpr(Expr value, Expr index, int line, String file){
+        super(line, file);
         this.value = value;
         this.index = index;
 
@@ -22,8 +22,7 @@ public class IndexExpr extends Expr{
         // value = arr
         value.compile(symbolTable, quads);
         Symbol valResult = quads.getLastResult();
-        Symbol valOperand = quads.getLastOperand1();
-        quads.addQuad(QuadOp.PUSH, valResult, null, null);
+        quads.createPush(valResult);
 
         index.compile(symbolTable, quads);
         Symbol idxResult = quads.getLastResult();
@@ -33,7 +32,7 @@ public class IndexExpr extends Expr{
         quads.addQuad(QuadOp.LOAD_IMM, immSymbol, null, Compiler.generateSymbol(DataType.getInt()));
         quads.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), Compiler.generateSymbol(idxResult.type), Compiler.generateSymbol(DataType.getInt()));
         quads.addQuad(QuadOp.MOV_REG_CA, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
-        quads.addQuad(QuadOp.POP, null, null, Compiler.generateSymbol(DataType.getInt()));
+        quads.createPop(Compiler.generateSymbol(DataType.getInt()));
         quads.addQuad(QuadOp.ADD, null, null, Compiler.generateSymbol(DataType.getInt()));
         quads.addQuad(QuadOp.INDEX, idxResult, valResult, Compiler.generateSymbol(valResult.type.getTypeFromPointer()));
 

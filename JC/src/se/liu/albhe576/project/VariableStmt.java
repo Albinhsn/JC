@@ -10,8 +10,8 @@ public class VariableStmt extends Stmt{
     private final DataType type;
     private final String name;
     private final Expr value;
-    public VariableStmt(DataType type, String name, Expr value, int line){
-        super(line);
+    public VariableStmt(DataType type, String name, Expr value, int line, String file){
+        super(line, file);
         this.name = name;
         this.type = type;
         this.value = value;

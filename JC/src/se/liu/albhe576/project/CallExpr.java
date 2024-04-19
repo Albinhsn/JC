@@ -3,24 +3,10 @@ package se.liu.albhe576.project;
 import java.util.List;
 
 public class CallExpr extends Expr{
-    @Override
-    public String toString() {
-        StringBuilder s = new StringBuilder();
-        s.append(name.literal).append("(");
-        for(int i = 0; i < args.size(); i++){
-            s.append(args.get(i));
-            if(i != args.size() - 1){
-               s.append(", ");
-            }
-        }
-        s.append(")");
-        return s.toString();
-    }
-
    private final Token name;
    private final List<Expr> args;
-   public CallExpr(Token name, List<Expr> args, int line){
-       super(line);
+   public CallExpr(Token name, List<Expr> args, int line, String file){
+       super(line, file);
        this.name = name;
        this.args = args;
    }
@@ -32,7 +18,7 @@ public class CallExpr extends Expr{
               QuadOp.MOV_RDI,
                QuadOp.MOV_RSI,
                QuadOp.MOV_RDX,
-               QuadOp.MOV_REG_CA,
+               QuadOp.MOV_RCX,
                QuadOp.MOV_R8,
                QuadOp.MOV_R9,
        };
@@ -57,11 +43,11 @@ public class CallExpr extends Expr{
            Symbol result = quads.getLastResult();
            if (result.type.type == DataTypes.FLOAT) {
                if(floatCount > 1){
-                   quads.addQuad(QuadOp.PUSH, floatType, null, floatType);
+                   quads.createPush(floatType);
                }
                quads.addQuad(floatLocations[floatCount], null, null, null);
                if(floatCount > 1){
-                   quads.addQuad(QuadOp.POP, floatType, null, floatType);
+                   quads.createPop(floatType);
                }
                floatCount++;
            } else {
@@ -101,7 +87,7 @@ public class CallExpr extends Expr{
             if(argSymbol.type.isStruct()){
                 quads.addQuad(QuadOp.PUSH_STRUCT, argSymbol, null, null);
             }else{
-                quads.addQuad(QuadOp.PUSH, argSymbol, null, null);
+                quads.createPush(argSymbol);
             }
 
         }

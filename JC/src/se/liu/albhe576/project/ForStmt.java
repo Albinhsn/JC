@@ -45,8 +45,8 @@ public class ForStmt extends Stmt{
         symbolTable.exitScope();
     }
 
-    public ForStmt(Stmt init, Stmt condition, Stmt update, List<Stmt> body, int line){
-        super(line);
+    public ForStmt(Stmt init, Stmt condition, Stmt update, List<Stmt> body, int line, String file){
+        super(line, file);
         this.init = init;
         this.condition = condition;
         this.update = update;
