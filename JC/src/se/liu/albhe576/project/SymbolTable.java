@@ -73,15 +73,6 @@ public class SymbolTable {
         return -size;
     }
 
-    public int getFunctionSize(String name) throws CompileException {
-        int localSize = this.getLocalVariableStackSize(name);
-        int argumentSize = 0;
-        for(StructField arg : this.getFunction(name).arguments){
-           argumentSize += this.getStructSize(arg.type);
-        }
-        return localSize + argumentSize;
-    }
-
     public int getCurrentScopeSize(){
         return this.getLocalVariableStackSize(this.getCurrentFunction().name);
     }
@@ -125,7 +116,10 @@ public class SymbolTable {
         throw new CompileException(String.format("Can't find extern function %s", name));
     }
     public boolean symbolExists(String name) {
-        return this.getCurrentLocals().containsKey(name);
+        if(!this.getCurrentLocals().containsKey(name)){
+           return false;
+        }
+        return this.getCurrentLocals().get(name).depth >= this.scopeDepth;
     }
     public Symbol findSymbol(String name) {
         return this.getCurrentLocals().get(name);

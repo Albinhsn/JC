@@ -8,3 +8,14 @@ struct Bar{
     int c;
     Foo foo;
 }
+
+void print_testi(int got, int expected, string name){
+    if(got != expected){
+        printf("FAILED: %s, got %d expected %d\n", name, got, expected);
+    }
+}
+void print_testf(float got, float expected, string name){
+    if(got != expected){
+        printf("FAILED: got %lf expected %lf with %s\n", got, expected, name);
+    }
+}

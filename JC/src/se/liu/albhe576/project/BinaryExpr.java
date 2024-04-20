@@ -23,7 +23,11 @@ public class BinaryExpr extends Expr{
 
         left.compile(symbolTable, quads);
         Symbol lResult = quads.getLastResult();
-        Symbol rResult = quads.createSetupBinary(symbolTable, right, lResult);
+        quads.createPush(lResult);
+        right.compile(symbolTable, quads);
+        Symbol rResult = quads.getLastResult();
+        quads.createMovRegisterAToC(rResult);
+        quads.createPop(Compiler.generateSymbol(lResult.type));
 
         if(!lResult.type.isInteger() || !rResult.type.isInteger()){
             this.error("Can only do bitwise on ints");
@@ -45,40 +49,40 @@ public class BinaryExpr extends Expr{
             this.error(String.format("Can't do operation '%s' on struct on line %d", op.literal, op.line));
         }
 
+
+
+
         DataType resultType = lResult.type;
         QuadOp quadOp = QuadOp.fromToken(op);
 
         if(lType.isFloatingPoint() || rType.isFloatingPoint()){
             quadOp = quadOp.convertToFloat();
+            resultType = DataType.getFloat();
         }
 
+        // int int, should be fine
+        // float, float, should be fine
+
+        // pointer op int or opposite
         if((lType.isPointer() && rType.isInteger()) || (lType.isInteger() && rType.isPointer())){
             resultType = lType.isPointer() ? lResult.type : rResult.type;
-            if(lType.isPointer()){
-                // ToDo imul?
-                int structSize = symbolTable.getStructSize(lResult.type);
-                r.createMovRegisterAToC(Compiler.generateSymbol(DataType.getInt()));
-                r.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
-                r.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
-            }else{
-                int structSize = symbolTable.getStructSize(rResult.type);
-                quads.createMovRegisterAToC(Compiler.generateSymbol(DataType.getInt()));
-                quads.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
-                quads.addQuad(QuadOp.MUL, Compiler.generateSymbol(DataType.getInt()), null, Compiler.generateSymbol(DataType.getInt()));
+            QuadList quadsToIMUL = lType.isPointer() ? r : quads;
 
-            }
+            int structSize = symbolTable.getStructSize(resultType);
+            quadsToIMUL.createIMUL(String.valueOf(structSize));
+
+        // float op int or opposite
         }else if((lType.isFloatingPoint() && rType.isInteger()) || (lType.isInteger() && rType.isFloatingPoint())){
-            quadOp = quadOp.convertToFloat();
-            resultType = DataType.getFloat();
+            if(lType.isFloatingPoint()){
+                rResult = r.createConvertIntToFloat(rResult);
+            }else{
+                lResult = quads.createConvertIntToFloat(lResult);
+            }
         }else if(!lType.isSameType(rType)){
             this.error(String.format("Can't do operation '%s' on pointer with type %s", op.literal, lResult.type.name));
         }
 
-        Symbol out = Compiler.generateSymbol(resultType);
-        quads.createPush(out);
-        quads.addAll(r);
-        quads.createMovRegisterAToC(rResult);
-        quads.createPop(lResult);
+        quads.createSetupBinary(r, lResult, rResult);
         quads.addQuad(quadOp, lResult, rResult, Compiler.generateSymbol(resultType));
     }
 

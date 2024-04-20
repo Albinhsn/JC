@@ -28,23 +28,11 @@ public class QuadList extends ArrayList<Quad>{
     }
     public void createPush(Symbol operandSymbol){this.add(new Quad(QuadOp.PUSH, operandSymbol, null, null));}
 
-    public Symbol createSetupBinary(SymbolTable symbolTable, Syntax right, Symbol lSymbol) throws CompileException {
-
-        this.createPush(lSymbol);
-        right.compile(symbolTable, this);
-        Symbol rSymbol = this.getLastResult();
-        this.createMovRegisterAToC(rSymbol);
-        this.createPop(Compiler.generateSymbol(lSymbol.type));
-
-        return rSymbol;
-    }
-
     public Symbol createSetupBinary(QuadList right, Symbol lSymbol, Symbol rSymbol) {
         this.createPush(lSymbol);
         this.addAll(right);
         this.createMovRegisterAToC(rSymbol);
         return this.createPop(lSymbol);
-
     }
 
     public Symbol createSetupUnary(SymbolTable symbolTable, Symbol result){
@@ -69,6 +57,11 @@ public class QuadList extends ArrayList<Quad>{
     public Symbol createLoadImmediate(DataType type, String immediate){
         Symbol out = Compiler.generateSymbol(type);
         this.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(type, immediate), null, out);
+        return out;
+    }
+    public Symbol createIMUL(String immediate){
+        Symbol out = Compiler.generateSymbol(DataType.getInt());
+        this.addQuad(QuadOp.IMUL , Compiler.generateImmediateSymbol(DataType.getInt(), immediate), null, out);
         return out;
     }
     public Symbol createConvertIntToFloat(Symbol toStore){
@@ -118,7 +111,6 @@ public class QuadList extends ArrayList<Quad>{
         this.addQuad(QuadOp.GET_FIELD, structSymbol, member, result);
         return result;
     }
-    public void createPushStruct(Symbol struct){this.addQuad(QuadOp.PUSH_STRUCT, struct, null, null);}
     public void createCall(Symbol functionSymbol, Symbol returnType){this.addQuad(QuadOp.CALL, functionSymbol, null, returnType);}
     public void createCmp(Symbol left, Symbol right){this.addQuad(QuadOp.CMP, left, right, null);}
     public void createJmp(Symbol label){this.addQuad(QuadOp.JMP, label, null, null);}
@@ -137,6 +129,9 @@ public class QuadList extends ArrayList<Quad>{
         this.addQuad(QuadOp.DEC, symbol, null, decreased);
         return decreased;
     }
+    public void createSwapF(){this.addQuad(QuadOp.SWAPF, null, null, null);}
     public void createReturn(){this.addQuad(QuadOp.RET, null, null, null);}
+    public void allocateArguments(int size){this.addQuad(QuadOp.ALLOCATE, new ImmediateSymbol("size", DataType.getInt(), String.valueOf(size)), null, null);}
+    public void createMoveArgument(Symbol argSymbol, int offset){this.addQuad(QuadOp.MOVE_ARG, argSymbol, new ImmediateSymbol("size", DataType.getInt(), String.valueOf(offset)), null);}
 
 }

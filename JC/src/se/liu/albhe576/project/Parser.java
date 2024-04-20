@@ -33,15 +33,16 @@ public class Parser {
     private final EnumMap<TokenType, ParseFunction> parseFunctions;
     private final Map<String, Token> defined;
     private final List<String> included;
+    private final String fileName;
     private final List<Function> extern;
     private final Map<String, Struct> structs;
     private final Scanner scanner;
     private Token current;
     private Token previous;
-    private List<Stmt> stmts;
+    private final List<Stmt> stmts;
 
     public String getCurrentFile(){
-        return this.included.get(this.included.size() - 1);
+        return this.fileName;
     }
     public List<Function> getExtern(){
         return this.extern;
@@ -132,12 +133,16 @@ public class Parser {
                 this.error(String.format("Expected semicolon after struct field but got %s", this.current.type));
             }
         }
-        this.structs.put(name.literal, new Struct(name.literal, fields));
+        if(this.structs.containsKey(name.literal)){
+            Struct struct = this.structs.get(name.literal);
+            this.error(String.format("Can't declare struct '%s' which is already declared from file %s", name.literal, struct.fileName));
+        }
+        this.structs.put(name.literal, new Struct(name.literal, fields, this.getCurrentFile()));
     }
 
     private void consume(TokenType type, String msg) throws CompileException{
         if(!matchType(type)){
-            throw new CompileException(msg);
+            this.error(msg);
         }
     }
     private Expr literal(Expr expr, boolean canAssign) {
@@ -183,20 +188,6 @@ public class Parser {
     }
 
     private Stmt expressionStatement() throws CompileException {
-        if(this.structs.containsKey(this.current.literal)){
-            DataType type = this.parseType();
-            consume(TokenType.TOKEN_IDENTIFIER, String.format("Expected identifier for type at line %d", this.current.line));
-            String name = this.previous.literal;
-            if(this.current.type == TokenType.TOKEN_SEMICOLON){
-                return new VariableStmt(type, name, null, this.current.line, this.getCurrentFile());
-            }
-            consume(TokenType.TOKEN_EQUAL, String.format("Expected '=' or ';' after struct variable on line %d", this.current.line));
-            if(matchType(TokenType.TOKEN_LEFT_BRACKET)){
-                return array(type, name);
-            }
-            return new VariableStmt(type, name, parseExpr(this.getEmptyExpr(this.current.line), Precedence.ASSIGNMENT), this.current.line, this.getCurrentFile());
-
-        }
 
         int line = this.current.line;
         Expr expr = parseExpr(this.getEmptyExpr(line), Precedence.OR);
@@ -342,7 +333,29 @@ public class Parser {
             default -> {
                 if(isVariableType()){
                     return variableDeclaration();
+                }else if(this.structs.containsKey(this.current.literal)){
+                        DataType type = this.parseType();
+                        consume(TokenType.TOKEN_IDENTIFIER, String.format("Expected identifier for type at line %d", this.current.line));
+                        String name = this.previous.literal;
+                        if(this.current.type == TokenType.TOKEN_SEMICOLON){
+                            Stmt out = new VariableStmt(type, name, null, this.current.line, this.getCurrentFile());
+                            consume(TokenType.TOKEN_SEMICOLON, "Expected ';' after variable");
+                            return out;
+                        }
+                        if(matchType(TokenType.TOKEN_LEFT_PAREN)){
+                            return function(type, name, this.previous.line);
+                        }
+                        consume(TokenType.TOKEN_EQUAL, String.format("Expected '=' or ';' after struct variable on line %d", this.current.line));
+                        if(matchType(TokenType.TOKEN_LEFT_BRACKET)){
+                            Stmt out = array(type, name);
+                            consume(TokenType.TOKEN_SEMICOLON, "Expected ';' after array");
+                            return out;
+                        }
+                        Stmt out = new VariableStmt(type, name, parseExpr(this.getEmptyExpr(this.current.line), Precedence.ASSIGNMENT), this.current.line, this.getCurrentFile());
+                        consume(TokenType.TOKEN_SEMICOLON, "Expected ';' after variable");
+                        return out;
                 }
+
                 Stmt out = expressionStatement();
                 consume(TokenType.TOKEN_SEMICOLON, String.format("Expected ';' after expression Stmt %s", out));
                 return out;
@@ -364,19 +377,16 @@ public class Parser {
         this.included.add(fileName);
         String s = Files.readString(Path.of(fileName));
 
-        Parser includeParser = new Parser(new Scanner(s), this.included);
+        Parser includeParser = new Parser(new Scanner(s), this.included, this.structs, fileName);
         List<Stmt> included = includeParser.parse();
         for(Map.Entry<String, Struct> entry : includeParser.structs.entrySet()){
             String key = entry.getKey();
             Struct value = entry.getValue();
 
-            if(this.structs.containsKey(key)){
-                throw new CompileException(String.format("Imported struct '%s' which is already declared from file %s", key, fileName));
-            }
             this.structs.put(key, value);
         }
-        included.addAll(this.stmts);
-        this.stmts = included;
+        this.stmts.addAll(included);
+
     }
 
     private void parseDefine() throws CompileException {
@@ -591,13 +601,14 @@ public class Parser {
         this.parseFunctions.put(TokenType.TOKEN_ELLIPSIS, new ParseFunction(null, null, Precedence.NONE));
     }
 
-    public Parser(Scanner scanner, List<String> included){
+    public Parser(Scanner scanner, List<String> included, Map<String, Struct> structs, String fileName){
         this.included = included;
         this.stmts = new ArrayList<>();
         this.defined = new HashMap<>();
         this.extern = new ArrayList<>();
-        this.structs = new HashMap<>();
+        this.structs = structs;
         this.scanner = scanner;
+        this.fileName = fileName;
         this.current = null;
         this.previous = null;
 

@@ -18,7 +18,7 @@ public class ArrayStmt extends Stmt {
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         DataType itemType = type.getTypeFromPointer();
 
-        int offset = symbolTable.getCurrentScopeSize();
+        int offset = -symbolTable.getCurrentScopeSize();
         if(itemType.isStruct()){
             Struct struct = symbolTable.structs.get(itemType.name);
             offset -= struct.getSize(symbolTable.structs) * this.items.size();

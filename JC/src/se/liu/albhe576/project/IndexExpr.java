@@ -28,8 +28,7 @@ public class IndexExpr extends Expr{
         Symbol idxResult = quads.getLastResult();
 
         int structSize = symbolTable.getStructSize(idxResult.type);
-        quads.addQuad(QuadOp.IMUL, Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(structSize)), null, Compiler.generateSymbol(DataType.getInt()));
-
+        quads.createIMUL(String.valueOf(structSize));
 
         Symbol right = Compiler.generateSymbol(DataType.getInt());
         quads.createMovRegisterAToC(right);

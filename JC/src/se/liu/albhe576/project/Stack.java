@@ -19,6 +19,19 @@ public class Stack {
         }
     }
 
+    public String moveArg(Symbol argSymbol, int offset){
+        if(argSymbol.type.isStruct()){
+            StringBuilder s = new StringBuilder();
+            s.append(String.format("lea rcx, [rsp + %d]\n", offset));
+            s.append(this.moveStruct(argSymbol));
+            return s.toString();
+        }
+        String move = Quad.getMovOpFromType(argSymbol.type);
+        String register = Quad.getRegisterFromType(argSymbol.type, 0);
+
+        return String.format("%s [rsp + %d], %s",move, offset, register);
+    }
+
     public String moveStruct(Symbol value){
         Struct valueStruct  = this.structs.get(value.type.name);
 
@@ -166,6 +179,11 @@ public class Stack {
     }
 
     private String storeLocal(VariableSymbol symbol){
+
+        if(symbol.type.isStruct()){
+            return this.moveStruct(symbol);
+        }
+
         int offset = this.getStackPointerOffset(symbol);
         String move = Quad.getMovOpFromType(symbol.type);
         String register = Quad.getRegisterFromType(symbol.type, 0);
@@ -179,7 +197,7 @@ public class Stack {
         return symbol.offset;
     }
 
-    public Stack(Map<String, VariableSymbol> symbols, Map<String, Struct> structs) throws CompileException {
+    public Stack(Map<String, VariableSymbol> symbols, Map<String, Struct> structs) {
         this.stackSymbols = symbols;
         this.structs = structs;
     }

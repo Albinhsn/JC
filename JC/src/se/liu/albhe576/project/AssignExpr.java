@@ -14,20 +14,26 @@ public class AssignExpr extends Expr{
         Quad lastQuad =  variableQuads.pop();
 
         Symbol struct = lastQuad.operand1;
-        Symbol memberSymbol = symbolTable.getMemberSymbol(struct, lastQuad.operand2.name);
+        Symbol memberSymbol = symbolTable.getMemberSymbol(lastQuad.operand1, lastQuad.operand2.name);
+        Symbol value = quads.getLastResult();
 
-
-        Symbol pushedStruct = Compiler.generateSymbol(struct.type);
-        quads.createPush(pushedStruct);
-        quads.addAll(variableQuads);
-        Symbol valResult = quads.getLastResult();
-
-        if(!memberSymbol.type.isFloatingPoint()){
-            quads.createMovRegisterAToC(valResult);
+        if(value.type.isFloatingPoint() && !memberSymbol.type.isFloatingPoint()){
+             value = quads.createConvertFloatToInt(value);
+        }
+        else if(memberSymbol.type.isFloatingPoint() && !value.type.isFloatingPoint()){
+            value = quads.createConvertIntToFloat(value);
         }
 
-        Symbol poppedStruct = quads.createPop(pushedStruct);
-        quads.createSetField(memberSymbol, poppedStruct);
+        quads.createPush(value);
+        quads.addAll(variableQuads);
+        Symbol varResult = quads.getLastResult();
+
+        if(!memberSymbol.type.isFloatingPoint()){
+            quads.createMovRegisterAToC(varResult);
+        }
+
+        quads.createPop(value);
+        quads.createSetField(memberSymbol, struct);
     }
 
     private void compileStoreDereference(QuadList valueQuads, QuadList variableQuads) {
@@ -68,13 +74,22 @@ public class AssignExpr extends Expr{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
+        // Check types
+        // foo = 5
+        // *foo = 5
+        // foo[5] = 5
+        // foo.a = 5
+        // foo.bar = bar2
+
         value.compile(symbolTable, quads);
         QuadList variableQuads = new QuadList();
         variable.compile(symbolTable, variableQuads);
 
         QuadOp lastOp = variableQuads.getLastOp();
         Symbol valueType = quads.getLastOperand1();
+        Symbol valueResult = quads.getLastResult();
         Symbol variableType = variableQuads.getLastOperand1();
+
 
 
         if(lastOp == QuadOp.GET_FIELD){
@@ -83,8 +98,8 @@ public class AssignExpr extends Expr{
             this.compileStoreDereference(quads, variableQuads);
         }
         else if (valueType.type.isStruct()){
-            quads.createSetupBinary(variableQuads, valueType, variableType);
-            quads.addQuad(QuadOp.MOVE_STRUCT, valueType, variableType, null);
+            quads.createSetupBinary(variableQuads, valueResult, variableType);
+            quads.addQuad(QuadOp.MOVE_STRUCT, valueResult, variableType, null);
         } else if(variableQuads.size() == 1){
             quads.createStore(variableQuads.getLastOperand1());
         } else if(lastOp == QuadOp.INDEX){

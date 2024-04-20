@@ -28,14 +28,18 @@ public class AugmentedExpr extends Expr{
         target.compile(symbolTable, quads);
         Symbol targetSymbol = quads.getLastOperand1();
 
-        Symbol rSymbol = quads.createSetupBinary(symbolTable, value, targetSymbol);
+        QuadList valueQuads = new QuadList();
+        value.compile(symbolTable, valueQuads);
+        Symbol valueSymbol = valueQuads.getLastResult();
+
+        quads.createSetupBinary(valueQuads, targetSymbol, valueSymbol);
 
         QuadOp op = QuadOp.fromToken(this.op);
-        if(targetSymbol.type.isFloatingPoint() || rSymbol.type.isFloatingPoint()){
+        if(targetSymbol.type.isFloatingPoint() || valueSymbol.type.isFloatingPoint()){
             op = op.convertToFloat();
         }
 
-        quads.addQuad(op, targetSymbol, rSymbol, targetSymbol);
+        quads.addQuad(op, targetSymbol, valueSymbol, targetSymbol);
         quads.createStore(targetSymbol);
     }
 }

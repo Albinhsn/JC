@@ -34,8 +34,18 @@ public class CallExpr extends Expr{
        int generalCount = 0;
        int floatCount = 0;
 
+       List<StructField> functionArgs = function.arguments;
+       int argCount = functionArgs == null ? 0 : functionArgs.size();
+       if(!function.varArgs && args.size() > argCount){
+           this.error(String.format("Mismatch in argument count when calling %s", this.name.literal));
+       }
+
+
+
+
        Symbol floatType = Compiler.generateSymbol(DataType.getFloat());
-       for (Expr arg : args) {
+       for (int i = 0; i < args.size(); i++) {
+           Expr arg = args.get(i);
            arg.compile(symbolTable, quads);
            Symbol result = quads.getLastResult();
            if (result.type.isFloatingPoint()) {
@@ -48,6 +58,10 @@ public class CallExpr extends Expr{
            } else {
                quads.addQuad(generalRegisters[generalCount], null, null, null);
                generalCount++;
+           }
+
+           if(!function.varArgs && !result.type.isSameType(functionArgs.get(i).type)){
+            this.error("");
            }
 
            if(generalCount >= generalRegisters.length || floatCount >= floatRegisters.length){
@@ -73,22 +87,27 @@ public class CallExpr extends Expr{
             this.error(String.format("Function parameter mismatch expected %d got %d on line %d when calling %s", functionArguments.size(), args.size(), name.line, name.literal));
         }
 
-        for(int i = args.size() - 1; i >= 0; i--){
+        QuadList argQuads = new QuadList();
+        int argSize = 0;
+        for(int i = 0; i < args.size(); i++){
             Expr arg = args.get(i);
 
-            arg.compile(symbolTable, quads);
-            Quad lastQuad = quads.getLastQuad();
+            arg.compile(symbolTable, argQuads);
+            Quad lastQuad = argQuads.getLastQuad();
             Symbol argSymbol = lastQuad.result;
             DataType funcArgType = functionArguments.get(i).type;
             if(!argSymbol.type.isSameType(funcArgType)){
                 this.error(String.format("Function parameter type mismatch expected %s got %s", argSymbol.type.name, funcArgType.name));
             }
-            if(argSymbol.type.isStruct()){
-                quads.createPushStruct(argSymbol);
-            }else{
-                quads.createPush(argSymbol);
+            argQuads.createMoveArgument(argSymbol, argSize);
+            argSize += symbolTable.getStructSize(argSymbol.type);
+        }
+        if(argSize > 0){
+            if(argSize % 16 == 8){
+                argSize += 8;
             }
-
+            quads.allocateArguments(argSize);
+            quads.addAll(argQuads);
         }
 
         quads.createCall(function.getFunctionSymbol(), Compiler.generateSymbol(function.returnType));

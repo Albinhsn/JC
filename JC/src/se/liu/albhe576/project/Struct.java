@@ -5,8 +5,8 @@ import java.util.Map;
 
 public class Struct {
     public List<StructField> fields;
-
     public DataType type;
+    public String fileName;
     public int getSize(Map<String, Struct> structs){
         int size = 0;
         for(StructField field : fields){
@@ -20,9 +20,9 @@ public class Struct {
         return size;
     }
 
-    public Struct(String name, List<StructField> fields){
+    public Struct(String name, List<StructField> fields, String fileName){
         this.fields = fields;
         this.type = DataType.getStruct(name);
-
+        this.fileName = fileName;
     }
 }

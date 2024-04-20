@@ -31,12 +31,7 @@ public class Compiler {
         this.generateAssembly(name, extern);
     }
 
-
-    public void generateIntermediate() throws CompileException{
-        for(Stmt stmt : stmts){
-            QuadList quads = new QuadList();
-            stmt.compile(symbolTable, quads);
-        }
+    private void debugIntermediates(){
 
         List<Function> functions = symbolTable.getFunctions();
         for(Function function : functions){
@@ -49,6 +44,16 @@ public class Compiler {
             }
             System.out.println();
         }
+    }
+
+    public void generateIntermediate() throws CompileException{
+        for(Stmt stmt : stmts){
+            QuadList quads = new QuadList();
+            stmt.compile(symbolTable, quads);
+        }
+
+        this.debugIntermediates();
+
 
     }
 
@@ -64,8 +69,22 @@ public class Compiler {
         header.append("\n\nsection .data\n");
         for(Map.Entry<String, Constant> entry : constants.entrySet()){
             Constant value = entry.getValue();
+            String key = entry.getKey();
             if(value.type == DataTypes.STRING){
-                header.append(String.format("%s db \"%s\", 10, 0\n", value.label, entry.getKey()));
+                header.append(String.format("%s db ", value.label));
+                if(key.isEmpty()){
+                    header.append(" 0");
+                }else{
+                    String formatted = key.replace("\\n", "\n");
+                    header.append(String.format("%d",(byte)formatted.charAt(0)));
+                    byte[] keyAsBytes = formatted.getBytes();
+                    for(int i = 1; i < keyAsBytes.length; i++){
+                        byte b = keyAsBytes[i];
+                        header.append(String.format(", %d",b));
+                    }
+                    header.append(", 0\n");
+                }
+
             }else{
                 header.append(String.format("%s dq %s\n", value.label, entry.getKey()));
             }
@@ -84,7 +103,7 @@ public class Compiler {
 
     private void handleStackAlignment(FileWriter fileWriter, Function function) throws IOException, CompileException {
         int scopeSize = this.symbolTable.getLocalVariableStackSize(function.name);
-        scopeSize += (this.symbolTable.getFunctionSize(function.name) % 16) == 0 ? 0 : 8;
+        scopeSize += (scopeSize % 16) == 0 ? 0 : 8;
         if(scopeSize != 0){
             fileWriter.write(String.format("sub rsp, %d\n", scopeSize));
         }

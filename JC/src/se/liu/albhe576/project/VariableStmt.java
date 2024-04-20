@@ -28,30 +28,40 @@ public class VariableStmt extends Stmt{
         }
 
         if(!lastResult.type.isSameType(type) && !lastOperand.isNull()){
-            throw new CompileException(String.format("Trying to access type %s to type %s on line %d", lastResult.type.name, type.name, this.line));
+            this.error(String.format("Trying to access type %s to type %s", lastResult.type.name, type.name));
         }
     }
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
 
-        Symbol lastSymbol;
         if(symbolTable.symbolExists(name)){
             this.error(String.format("Trying to redeclare existing variable %s\n", name));
         }
-        else if(value != null){
+
+
+        VariableSymbol variable = symbolTable.addSymbol(name, type);
+        if(value != null){
             value.compile(symbolTable, quads);
             Symbol lastOperand = quads.getLastOperand1();
-            lastSymbol = quads.getLastResult();
+            Symbol lastSymbol = quads.getLastResult();
 
             this.checkValidTypes(lastSymbol, lastOperand, quads);
+
+            if(type.isStruct()){
+                quads.createPush(lastSymbol);
+                Symbol loadedPointer = quads.createLoadPointer(variable);
+                quads.createMovRegisterAToC(loadedPointer);
+                quads.createPop(lastSymbol);
+            }
+
+            quads.createStore(variable);
         }
 
         if(!symbolTable.isDeclaredStruct(type.name)){
             this.error(String.format("Trying to declare variable with non existing type? %s\n", type.name));
         }
 
-        VariableSymbol variable = symbolTable.addSymbol(name, type);
-        quads.createStore(variable);
+
     }
 }

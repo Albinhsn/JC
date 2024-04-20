@@ -110,10 +110,10 @@ public class Quad {
                 return setup + "mulsd xmm0, xmm1";
             }
             case DIV -> {
-                return "idiv rcx";
+                return "xor rdx, rdx\nidiv rcx";
             }
             case MOD -> {
-                return "cdq\nidiv rcx\nmov rax, rdx\n";
+                return "cdq\nxor rdx, rdx\nidiv rcx\nmov rax, rdx\n";
             }
             case FDIV -> {
                 String setup = this.setupFloatingPointBinary();
@@ -151,7 +151,7 @@ public class Quad {
             }
             case CMP -> {
                 if(operand1 != null && operand1.type.isFloatingPoint()){
-                    return "ucomisd xmm0, xmm1";
+                    return "comisd xmm0, xmm1";
                 }
                 return "cmp rax, rcx";
             }
@@ -167,23 +167,35 @@ public class Quad {
             case LABEL ->{
                 return operand1.name + ":";
             }
-            case SETE -> {
-                return "sete al\nmovzx rax, al";
-            }
             case SETLE -> {
                 return "setle al\nmovzx rax, al";
             }
             case SETG -> {
                 return "setg al\nmovzx rax, al";
             }
-            case SETNE -> {
-                return "setne al\nmovzx rax, al";
-            }
             case SETGE -> {
                 return "setge al\nmovzx rax, al";
             }
             case SETL -> {
                 return "setl al\nmovzx rax, al";
+            }
+            case SETE -> {
+                return "sete al\nmovzx rax, al";
+            }
+            case SETA -> {
+                return "seta al\nmovzx rax, al";
+            }
+            case SETNE -> {
+                return "setne al\nmovzx rax, al";
+            }
+            case SETAE -> {
+                return "setae al\nmovzx rax, al";
+            }
+            case SETB -> {
+                return "setb al\nmovzx rax, al";
+            }
+            case SETBE -> {
+                return "setbe al\nmovzx rax, al";
             }
             case SAL -> {
                 return "sal rax, cl";
@@ -284,6 +296,9 @@ public class Quad {
 
 
                 if(argSize != 0){
+                    if(argSize % 16 == 8){
+                        argSize += 8;
+                    }
                     return String.format("call %s\nadd rsp, %d", operand1.name, argSize);
                 }
                 return String.format("call %s", operand1.name);
@@ -293,6 +308,14 @@ public class Quad {
             }
             case NOT ->{
                 return "not rax\ninc rax";
+            }
+            case ALLOCATE->{
+                ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand1;
+                return String.format("sub rsp, %s", immediateSymbol.value);
+            }
+            case MOVE_ARG ->{
+                ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand2;
+                return stack.moveArg(operand1, Integer.parseInt(immediateSymbol.value));
             }
             case RET ->{
                 return "mov rsp, rbp\npop rbp\nret";

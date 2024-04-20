@@ -2,16 +2,12 @@
 
 ## Features remaining
 
-* bugfix if stmt?
-* assign to struct from struct
-  * i.e foo = bar.foo;
-* return struct without pointer?
-  * essentially leave it on the stack afterwards
-
-* have it actually fail if it fails inside a file/function
-  * we keep parsing atm
 * do proper error handling throughout
   * actually go through and start type checking
+* rework comparison
+* redo array, at least parsing
+* fix scoping issues :)
+  * for(int i = 0)
 * have the Temp makes sense
 * look at
   * functions
@@ -19,9 +15,6 @@
   * stack
   * extern
   * constants
-
-* fix scoping issues :)
-  * for(int i = 0)
 
 
 

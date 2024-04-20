@@ -10,7 +10,7 @@ public class Function {
     public QuadList intermediates;
     public final boolean varArgs;
     public Symbol getFunctionSymbol(){
-        return new Symbol(name, null);
+        return new Symbol(name, returnType);
     }
     public Function(String name, List<StructField> arguments, DataType returnType, QuadList intermediates){
         this.name = name;

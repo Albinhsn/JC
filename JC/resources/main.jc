@@ -2,15 +2,16 @@
 #extern void * malloc(int size)
 #extern void  free(void * ptr)
 #extern void  printf(...)
+#extern float sqrt(float x)
 
 
+#include "resources/foo.jc"
 #include "resources/tests.jc"
-// #include "resources/foo.jc"
+
 
 int main(){
-
-
     run_tests();
-    return 0;
+
 }
+
 

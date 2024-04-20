@@ -1,21 +1,5 @@
 #include "resources/foo.jc"
 
-#include "resources/main.jc"
-
-void print_testi(int got, int expected, string name){
-    if(got == expected){
-        printf("PASSED: %s", name);
-    }else{
-        printf("FAILED: %s, got %d expected %d", name, got, expected);
-    }
-}
-void print_testf(float got, float expected, string name){
-    if(got == expected){
-        printf("PASSED: %s", name);
-    }else{
-        printf("FAILED: got %lf expected %lf with %s", got, expected, name);
-    }
-}
 
 int fib(int a){
    if(a <= 2){
@@ -28,6 +12,7 @@ int fib(int a){
 int rec_struct(Bar bar){
     return bar.foo.a;
 }
+
 
 int arr_conversions(){
     float * arrf = malloc(16);
@@ -97,7 +82,7 @@ void pointer_in_struct(){
     foo.a = &a;
 
     *foo.a = 3;
-    printf("%d == 3?", a);
+    printf("%d == 3?\n", a);
 }
 
 void test_loops(){
@@ -107,6 +92,7 @@ void test_loops(){
         sum += i;
     }
     print_testi(sum, 45, "for increasing");
+
     for(int j = 9; j >= 0; j--){
         sum -= j;
     }
@@ -118,6 +104,7 @@ void test_loops(){
         sum += k;
     }
     print_testi(sum, 55, "while increasing");
+
     while(k >= 0){
         k--;
         sum -= k;
@@ -135,6 +122,15 @@ void test_arrays(){
     float answerf = b[0] + b[2];
     print_testf(answerf, 3.0, "index float array");
 
+    Foo foo0;
+    foo0.a = 5;
+    Foo foo1;
+    foo1.a = 50;
+    Foo foo2;
+    foo2.a = 25;
+    Foo * foo = [foo0, foo1, foo2];
+
+    print_testi(foo[0].a + foo[1].a + foo[2].a, 80, "struct array");
 
 }
 
@@ -160,11 +156,20 @@ void test_assign(){
     // assign to struct
     Foo foo;
     foo.a = 5;
+    foo.b = 10;
     print_testi(foo.a, 5, "assign to struct");
 
     Bar bar;
     bar.foo = foo;
-    print_testi(bar.foo.a, 5, "assign to rec struct");
+    print_testi(bar.foo.a, 5, "bar.foo = foo");
+
+    foo.a = 3;
+    foo.b = 1;
+    foo = bar.foo;
+    print_testi(foo.a + foo.b, 15, "foo = bar.foo");
+    foo.a = 6;
+    print_testi(bar.foo.a + bar.foo.b, 15, "change struct var after assignment");
+
 
 
     // assign to float
@@ -211,6 +216,7 @@ void test_augmented(){
 
 void test_logical(){
 
+
     int a;
     // &&
     if(2 == 2 && 3 <= 5){
@@ -220,12 +226,19 @@ void test_logical(){
     }
     print_testi(a, 1, "logical and");
 
-    if(2 >= 2 && 3 <= 5){
+    if(2 > 2 && 3 <= 5){
         a = 1;
     }else{
         a = 0;
     }
     print_testi(a, 0, "logical and short circuited");
+
+    if(2 > 2 && 3 == 5){
+        a = 1;
+    }else{
+        a = 0;
+    }
+    print_testi(a, 0, "logical and both fail");
 
     // ||
     if(2 < 2 || 3 >= 5){
@@ -241,6 +254,15 @@ void test_logical(){
         a = 0;
     }
     print_testi(a, 1, "logical or snd is true");
+
+    if(2 == 2 || 3 > 5){
+        a = 1;
+    }else{
+        a = 0;
+    }
+    print_testi(a, 1, "logical or short circuit");
+
+
 }
 
 void test_if(){
@@ -298,6 +320,9 @@ void test_arithmetic(){
 
     float b = 5.0 * 2.0 - 3.0 / 4.0;
     print_testf(b, 9.25, "5.0 * 2.0 - 3.0 / 4.0");
+
+    // int c = 255 * (5 / 400.0);
+    //print_testi(c, 3, "255 * (5 / 400.0)");
 }
 
 void test_bitwise(){
@@ -313,10 +338,44 @@ void test_bitwise(){
     print_testi(b ^ 5, 2, "test bit ^");
 }
 
-int run_tests(){
+
+Foo return_foo(int a){
+    Foo foo;
+    foo.a = a;
+    return foo;
+}
+
+Foo * return_foo_pointer(int a){
+    Foo * foo = malloc(8);
+    foo.a = a;
+    return foo;
+}
+
+void test_return_struct(){
+
+   Foo foo = return_foo(5);
+   print_testi(foo.a, 5, "Return struct with var stmt from function");
+
+   foo = return_foo(3);
+   print_testi(foo.a, 3, "Return struct with assignExpr from function");
+
+   Foo * foo1 = return_foo_pointer(8);
+   print_testi(foo1.a, 8, "Return struct pointer with varstmt from function");
+
+   free(foo1);
+
+   foo1 = return_foo_pointer(5);
+   print_testi(foo1.a, 5, "Return struct pointer with assign expr from function");
+
+
+
+}
+
+void test_fib(){
     print_testi(fib(6), 8, "fib");
+}
 
-
+void test_structs(){
     Bar bar;
     bar.c = 3;
     bar.foo.a = 5;
@@ -325,6 +384,14 @@ int run_tests(){
     print_testi(arr_conversions(), 33, "arr_conversions");
     print_testi(move_struct(), 5, "move_struct");
 
+
+    Foo foo;
+    foo = bar.foo;
+    print_testi(foo.a + foo.b, 7, "foo = bar.foo");
+
+}
+
+void test_pointer(){
     int * a = malloc(8);
     write_to_pointer(a);
     print_testi(*a, 5, "write_to_pointer");
@@ -341,9 +408,113 @@ int run_tests(){
     pointer_fiesta();
     pointers_pointers_everywhere();
 
+}
 
+void test_fp(){
     print_testf(float_return(), 2.0, "float_return");
 
+    // float vs float checks;
+    int answer = 0;
+    if(2.0 == 3.0){
+        answer = 0;
+    }else{
+        answer = 1;
+    }
+    print_testi(answer, 1, "== f");
+
+
+    if(2.0 <= 3.0){
+        answer = 1;
+    }else{
+        answer = 0;
+    }
+    print_testi(answer, 1, "<=, f");
+
+
+    if(2.0 >= 3.0){
+        answer = 0;
+    }else{
+        answer = 1;
+    }
+    print_testi(answer, 1, ">=, f");
+
+
+    if(2.0 < 3.0){
+        answer = 1;
+    }else{
+        answer = 0;
+    }
+    print_testi(answer, 1, "<, f");
+
+
+    if(2.0 > 3.0){
+        answer = 0;
+    }else{
+        answer = 1;
+    }
+    print_testi(answer, 1, ">, f");
+
+    if(2.0 != 3.0){
+        answer = 1;
+    }else{
+        answer = 0;
+    }
+    print_testi(answer, 1, "!=, f");
+
+    if(2 == 3.0){
+        answer = 0;
+    }else{
+        answer = 1;
+    }
+    print_testi(answer, 1, "== f");
+
+
+    if(2 <= 3.0){
+        answer = 1;
+    }else{
+        answer = 0;
+    }
+    print_testi(answer, 1, "<=, i - f");
+
+
+    if(2 >= 3.0){
+        answer = 0;
+    }else{
+        answer = 1;
+    }
+    print_testi(answer, 1, ">=, i - f");
+
+
+    if(2 < 3.0){
+        answer = 1;
+    }else{
+        answer = 0;
+    }
+    print_testi(answer, 1, "<, i - f");
+
+
+    if(2 > 3.0){
+        answer = 0;
+    }else{
+        answer = 1;
+    }
+    print_testi(answer, 1, ">, i - f");
+
+    if(2 != 3.0){
+        answer = 1;
+    }else{
+        answer = 0;
+    }
+    print_testi(answer, 1, "!=, i - f");
+
+}
+
+int run_tests(){
+
+    test_fib();
+    test_structs();
+    test_pointer();
+    test_fp();
     test_bitwise();
     test_arithmetic();
     test_if();
@@ -352,6 +523,11 @@ int run_tests(){
     test_augmented();
     test_assign();
     test_logical();
+    test_return_struct();
+
+    printf("Finished tests!\n");
+    return 0;
+
 }
 
 

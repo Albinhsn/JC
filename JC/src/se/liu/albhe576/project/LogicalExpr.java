@@ -24,19 +24,17 @@ public class LogicalExpr extends Expr{
         Symbol shortCircuitLabel = Compiler.generateLabel();
         Symbol mergeLabel = Compiler.generateLabel();
 
-        boolean logical = op.type == TokenType.TOKEN_AND_LOGICAL;
-        boolean jumpIfTrue = !logical;
-        String firstImmediate  = logical ? "0" : "1";
-        String secondImmediate = logical ? "1" : "0";
-
+        boolean jumpIfTrue = op.type == TokenType.TOKEN_OR_LOGICAL;
+        String fstImm = jumpIfTrue ? "0" : "1";
+        String sndImm = jumpIfTrue ? "1" : "0";
 
         quads.insertJMPOnComparisonCheck(shortCircuitLabel, jumpIfTrue);
         right.compile(symbolTable, quads);
         quads.insertJMPOnComparisonCheck(shortCircuitLabel, jumpIfTrue);
-        quads.createLoadImmediate(DataType.getInt(), firstImmediate);
-        quads.createJmp(mergeLabel);
+        quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), fstImm), null,Compiler.generateSymbol(DataType.getInt()));
+        quads.addQuad(QuadOp.JMP, mergeLabel, null, null);
         quads.insertLabel(shortCircuitLabel);
-        quads.createLoadImmediate(DataType.getInt(), secondImmediate);
+        quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), sndImm), null,Compiler.generateSymbol(DataType.getInt()));
         quads.insertLabel(mergeLabel);
 
     }
