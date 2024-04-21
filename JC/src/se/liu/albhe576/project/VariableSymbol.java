@@ -4,12 +4,11 @@ import java.util.Comparator;
 
 public class VariableSymbol extends Symbol implements Comparator<VariableSymbol> {
     public int offset;
-    public int depth;
-
-    public VariableSymbol(String name, DataType type, int offset, int depth){
+    public int id;
+    public VariableSymbol(String name, DataType type, int offset, int id){
        super(name, type);
        this.offset = offset;
-       this.depth =depth;
+       this.id = id;
     }
 
     @Override

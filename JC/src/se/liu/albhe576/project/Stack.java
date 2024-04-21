@@ -3,18 +3,15 @@ package se.liu.albhe576.project;
 import java.util.Map;
 
 public class Stack {
-    private final Map<String, VariableSymbol> stackSymbols;
+    private final Map<Integer, VariableSymbol> stackSymbols;
     public final Map<String, Struct> structs;
 
     public Struct getStruct(String name){
         return this.structs.get(name);
     }
 
-    public String loadVariablePointer(String name) {
-        VariableSymbol symbol = this.stackSymbols.get(name);
-        if(symbol == null){
-            System.out.println();
-        }
+    public String loadVariablePointer(int id) {
+        VariableSymbol symbol = this.stackSymbols.get(id);
         if(symbol.offset < 0){
             return String.format("lea rax, [rbp %d]", symbol.offset);
         }else{
@@ -143,15 +140,15 @@ public class Stack {
             return String.format("%s [rcx], %s", move, register);
         }
     }
-    public String loadVariable(String name) {
-        VariableSymbol stackSymbol = this.stackSymbols.get(name);
+    public String loadVariable(int id) {
+        VariableSymbol stackSymbol = this.stackSymbols.get(id);
         if(stackSymbol.offset < 0){
             return this.loadLocal(stackSymbol);
         }
         return this.loadArgument(stackSymbol);
     }
-    public String storeVariable(String name) {
-        VariableSymbol symbol = this.stackSymbols.get(name);
+    public String storeVariable(int id) {
+        VariableSymbol symbol = this.stackSymbols.get(id);
         if(symbol.offset < 0){
             return this.storeLocal(symbol);
         }
@@ -200,7 +197,7 @@ public class Stack {
         return symbol.offset;
     }
 
-    public Stack(Map<String, VariableSymbol> symbols, Map<String, Struct> structs) {
+    public Stack(Map<Integer, VariableSymbol> symbols, Map<String, Struct> structs) {
         this.stackSymbols = symbols;
         this.structs = structs;
     }

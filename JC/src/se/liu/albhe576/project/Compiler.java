@@ -105,7 +105,7 @@ public class Compiler {
         return writer;
     }
 
-    private void handleStackAlignment(FileWriter fileWriter, Function function) throws IOException, CompileException {
+    private void handleStackAlignment(FileWriter fileWriter, Function function) throws IOException{
         int scopeSize = this.symbolTable.getLocalVariableStackSize(function.name);
         scopeSize += (scopeSize % 16) == 0 ? 0 : 8;
         if(scopeSize != 0){
@@ -120,7 +120,7 @@ public class Compiler {
         final List<Function> functions = this.symbolTable.getFunctions();
         final Map<String, Constant> constants = this.symbolTable.getConstants();
 
-        Stack stack = new Stack(this.symbolTable.getLocals(function.name), this.symbolTable.structs);
+        Stack stack = new Stack(this.symbolTable.getAllScopedVariables(function.name), this.symbolTable.structs);
 
         boolean shouldOutputRet = function.intermediates.isEmpty();
         for (Quad intermediate : function.intermediates) {

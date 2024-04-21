@@ -52,7 +52,7 @@ public class FunctionStmt extends Stmt{
         Map<String, VariableSymbol> localSymbols =new HashMap<>();
         int offset = 16;
         for(StructField arg : arguments){
-           localSymbols.put(arg.name, new VariableSymbol(arg.name, arg.type, offset, 0));
+           localSymbols.put(arg.name, new VariableSymbol(arg.name, arg.type, offset, symbolTable.generateVariableId()));
            offset += symbolTable.getStructSize(arg.type);
         }
 

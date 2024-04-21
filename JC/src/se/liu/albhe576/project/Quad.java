@@ -120,7 +120,8 @@ public class Quad {
                 return setup + "divsd xmm0, xmm1";
             }
             case LOAD_POINTER ->{
-                return stack.loadVariablePointer(operand1.name);
+                VariableSymbol variableSymbol = (VariableSymbol)  operand1;
+                return stack.loadVariablePointer(variableSymbol.id);
             }
             case DEREFERENCE, INDEX ->{
                 String movOp = getMovOpFromType(result.type);
@@ -128,7 +129,8 @@ public class Quad {
                 return String.format("%s %s, [rax]", movOp, register);
             }
             case LOAD ->{
-                return stack.loadVariable(operand1.name);
+                VariableSymbol variableSymbol = (VariableSymbol)  operand1;
+                return stack.loadVariable(variableSymbol.id);
             }
             case SET_FIELD -> {
                 return stack.storeField(operand2.type, operand1);
@@ -137,7 +139,8 @@ public class Quad {
                 return stack.loadField(operand1.type, operand2.name);
             }
             case STORE -> {
-                return stack.storeVariable(operand1.name);
+                VariableSymbol variableSymbol = (VariableSymbol)  operand1;
+                return stack.storeVariable(variableSymbol.id);
             }
             case STORE_INDEX -> {
                 String movOp = getMovOpFromType(operand1.type);

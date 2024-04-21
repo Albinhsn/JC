@@ -1,6 +1,7 @@
 package se.liu.albhe576.project;
 
 import java.util.*;
+import java.util.Stack;
 
 public class SymbolTable {
 
@@ -8,17 +9,13 @@ public class SymbolTable {
     public final Map<String, Struct> structs;
     private final List<Function> functions;
     private final Map<String, Constant> constants;
-    private final Map<String, Map<String, VariableSymbol>> localSymbolTable;
-    private int scopeDepth;
-
-    public void enterScope(){
-        this.scopeDepth++;
-    }
-    public void exitScope(){
-        this.scopeDepth--;
-    }
+    private final Map<String, Scope> scopes;
+    private int variableCount;
     public void compileFunction(String name, Map<String, VariableSymbol> arguments){
-        this.localSymbolTable.put(name, arguments);
+        this.scopes.put(name, new Scope(arguments));
+    }
+    public Map<Integer, VariableSymbol> getAllScopedVariables(String functionName){
+        return this.scopes.get(functionName).getAllScopedVariables();
     }
 
     public boolean isDeclaredStruct(String name){
@@ -42,11 +39,15 @@ public class SymbolTable {
     public Function getCurrentFunction(){
         return this.functions.get(this.functions.size() - 1);
     }
-    public Map<String, VariableSymbol> getLocals(String name){
-        return this.localSymbolTable.get(name);
-    }
-    private Map<String, VariableSymbol> getCurrentLocals(){
-        return this.localSymbolTable.get(this.getCurrentFunction().name);
+    private Scope getCurrentScope(){
+        Scope curr = this.scopes.get(this.getCurrentFunction().name);
+        while(true){
+            List<Scope> children = curr.getChildren();
+            if(children.isEmpty() || children.get(children.size() - 1).closed){
+                return curr;
+            }
+            curr = children.get(children.size() - 1);
+        }
     }
     public List<Function> getFunctions(){
         return this.functions;
@@ -54,26 +55,45 @@ public class SymbolTable {
     public Map<String, Constant> getConstants(){
         return this.constants;
     }
-    public VariableSymbol addSymbol(String name, DataType type){
+    public int generateVariableId(){
+        return this.variableCount++;
+    }
+
+    public void enterScope(){
+        Scope lastScope = this.getCurrentScope();
+        lastScope.addChild();
+    }
+    public void exitScope(){
+        this.getCurrentScope().closed = true;
+    }
+
+    public VariableSymbol addVariable(String name, DataType type){
         int offset = -this.getStructSize(type) - this.getLocalVariableStackSize(getCurrentFunction().name);
-        VariableSymbol variableSymbol = new VariableSymbol(name, type, offset, scopeDepth);
-        getCurrentLocals().put(name, variableSymbol);
+        VariableSymbol variableSymbol = new VariableSymbol(name, type, offset, this.generateVariableId());
+        getCurrentScope().addVariable(name, variableSymbol);
         return variableSymbol;
     }
-    public void addSymbol(VariableSymbol symbol){
-        getCurrentLocals().put(symbol.name, symbol);
+    public void addVariable(VariableSymbol symbol){
+        getCurrentScope().addVariable(symbol.name, symbol);
     }
 
     public int getLocalVariableStackSize(String name){
-        Map<String, VariableSymbol> locals = getLocals(name);
+
         int size = 0;
-        for(VariableSymbol variableSymbol : locals.values()){
-            size = Math.min(variableSymbol.offset, size);
+        Scope outerScope = this.scopes.get(name);
+        java.util.Stack<Scope> scopes = new Stack<>();
+        scopes.add(outerScope);
+
+        while(!scopes.empty()){
+            Scope scope = scopes.pop();
+            for(VariableSymbol variableSymbol : scope.getVariables()){
+                size = Math.min(variableSymbol.offset, size);
+            }
+            scopes.addAll(scope.getChildren());
         }
+
         return -size;
     }
-
-
 
     public boolean functionExists(String name){
         for(Function function : functions){
@@ -91,9 +111,6 @@ public class SymbolTable {
 
     public int getCurrentScopeSize(){
         return this.getLocalVariableStackSize(this.getCurrentFunction().name);
-    }
-    public int getDepth(){
-        return this.scopeDepth;
     }
     public void addFunction(Function function){
         this.functions.add(function);
@@ -137,13 +154,34 @@ public class SymbolTable {
         throw new CompileException(String.format("Can't find extern function %s", name));
     }
     public boolean symbolExists(String name) {
-        if(!this.getCurrentLocals().containsKey(name)){
-           return false;
+        Scope scope = this.scopes.get(this.getCurrentFunction().name);
+
+        while(true){
+            if(scope.variableExists(name)){
+               return true;
+            }
+            if(scope.getChildren().isEmpty()){
+                return false;
+            }
+            scope = scope.getLastChild();
+            if(scope.closed){
+                return false;
+            }
         }
-        return this.getCurrentLocals().get(name).depth >= this.scopeDepth;
     }
-    public Symbol findSymbol(String name) {
-        return this.getCurrentLocals().get(name);
+    public Symbol findSymbol(String name) throws CompileException{
+        Scope scope = this.scopes.get(this.getCurrentFunction().name);
+        java.util.Stack<Scope> scopes = new Stack<>();
+        scopes.add(scope);
+
+        while(!scopes.empty()){
+            if(scope.variableExists(name)){
+                return scope.getVariable(name);
+            }
+            scopes.addAll(scope.getChildren());
+            scope = scopes.pop();
+        }
+        throw new CompileException(String.format("Couldn't find symbol %s", name));
     }
     public boolean isMemberOfStruct(DataType type, String member) {
         Struct struct = this.structs.get(type.name);
@@ -165,11 +203,11 @@ public class SymbolTable {
     }
 
     public SymbolTable(Map<String, Struct> structs, Map<String, Constant> constants, List<Function> extern){
-        this.scopeDepth = 0;
         this.structs = structs;
         this.extern = extern;
         this.constants =constants;
         this.functions = new ArrayList<>();
-        this.localSymbolTable = new HashMap<>();
+        this.scopes = new HashMap<>();
+        this.variableCount = 0;
     }
 }

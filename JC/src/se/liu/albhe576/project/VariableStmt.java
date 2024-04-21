@@ -40,7 +40,7 @@ public class VariableStmt extends Stmt{
         }
 
 
-        VariableSymbol variable = symbolTable.addSymbol(name, type);
+        VariableSymbol variable = symbolTable.addVariable(name, type);
         if(value != null){
             value.compile(symbolTable, quads);
             Symbol lastOperand = quads.getLastOperand1();

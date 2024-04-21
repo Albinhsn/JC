@@ -28,9 +28,8 @@ public class ArrayStmt extends Stmt {
             offset -= 8 * size;
         }
 
-        int depth = symbolTable.getDepth();
-        VariableSymbol arraySymbol = new VariableSymbol(name, DataType.getArray(itemType), offset, depth);
-        symbolTable.addSymbol(arraySymbol);
+        VariableSymbol arraySymbol = new VariableSymbol(name, DataType.getArray(itemType), offset, symbolTable.generateVariableId());
+        symbolTable.addVariable(arraySymbol);
 
         for(int i = this.items.size() - 1; i >= 0; i--){
             Expr item = this.items.get(i);

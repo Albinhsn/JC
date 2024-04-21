@@ -6,6 +6,7 @@
 
 * fix scoping issues :)
   * for(int i = 0)
+* function and extern into one with flag
 
 * hoist out comparison thing to function?
 * have the Temp makes sense

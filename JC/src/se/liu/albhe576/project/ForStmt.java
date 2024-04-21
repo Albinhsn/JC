@@ -21,13 +21,13 @@ public class ForStmt extends Stmt{
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
 
+        symbolTable.enterScope();
         init.compile(symbolTable, quads);
 
         Symbol conditionLabel = Compiler.generateLabel();
         Symbol mergeLabel = Compiler.generateLabel();
 
         // Compile condition
-        symbolTable.enterScope();
         quads.insertLabel(conditionLabel);
         condition.compile(symbolTable, quads);
 
