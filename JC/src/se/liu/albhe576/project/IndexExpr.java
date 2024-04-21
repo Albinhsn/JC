@@ -15,6 +15,9 @@ public class IndexExpr extends Expr{
         this.index = index;
 
     }
+    private static boolean isInvalidValueToIndex(DataType type){
+        return !(type.isArray() || type.isPointer());
+    }
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
@@ -24,8 +27,16 @@ public class IndexExpr extends Expr{
         Symbol valResult = quads.getLastResult();
         quads.createPush(valResult);
 
+        if(isInvalidValueToIndex(valResult.type)){
+            this.error(String.format("Can't index type %s", valResult.type));
+        }
+
         index.compile(symbolTable, quads);
         Symbol idxResult = quads.getLastResult();
+
+        if(!idxResult.type.isInteger()){
+            this.error(String.format("Can't index with none integer, is type %s", valResult.type));
+        }
 
         int structSize = symbolTable.getStructSize(idxResult.type);
         quads.createIMUL(String.valueOf(structSize));

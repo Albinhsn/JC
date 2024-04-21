@@ -7,8 +7,8 @@ public enum QuadOp {
     MOV_R8, MOV_R9, MOV_RDX, MOV_RSI, MOV_RDI, MOV_RCX,
     STORE_INDEX, PUSH_STRUCT, INDEX, DEREFERENCE,LOAD_POINTER,GET_FIELD, SET_FIELD, MOVE_STRUCT, MOVE_ARG,
     CVTSI2SD, CVTTSD2SI,
-     FADD, FMUL, FDIV, FSUB,INC,DEC, ADD,SUB, MUL, DIV,SAL, SAR,MOD, IMUL,
-    NOT, LOGICAL_NOT,AND, OR, XOR,
+     FADD, FMUL, FDIV, FSUB,INC,DEC, ADD,SUB, MUL, DIV, SHL, SHR,MOD, IMUL,
+    NEGATE, LOGICAL_NOT,AND, OR, XOR,
     SETNE, SETB, SETBE, SETA, SETAE, SETE, CMP, JMP, JNZ, JE,
     SETLE, SETGE, SETG, SETL,
     LABEL, POP,PUSH,CALL, RET,
@@ -34,10 +34,10 @@ public enum QuadOp {
                 return DIV;
             }
             case TOKEN_SHIFT_LEFT-> {
-                return SAL;
+                return SHL;
             }
             case TOKEN_SHIFT_RIGHT-> {
-                return SAR;
+                return SHR;
             }
             case TOKEN_INCREMENT-> {
                 return INC;

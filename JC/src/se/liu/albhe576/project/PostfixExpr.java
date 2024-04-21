@@ -15,9 +15,17 @@ public class PostfixExpr extends Expr{
         this.op   = op;
     }
 
+    private static boolean isInvalidPostfixTarget(DataType type){
+        return type.isArray() || type.isString() || type.isStruct();
+    }
+
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         Symbol symbol = symbolTable.findSymbol(literal.literal);
+
+        if(isInvalidPostfixTarget(symbol.type)){
+            this.error(String.format("Can't postfix type %s", symbol.type));
+        }
 
         Symbol loadedSymbol = Compiler.generateSymbol(symbol.type);
 

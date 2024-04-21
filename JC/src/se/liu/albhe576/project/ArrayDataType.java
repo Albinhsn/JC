@@ -7,6 +7,10 @@ public class ArrayDataType extends DataType{
         this.itemType = itemType;
     }
 
+    public static ArrayDataType fromDataType(DataType type){
+        return new ArrayDataType(type.name, DataTypes.ARRAY, type, 0);
+    }
+
     @Override public DataType getTypeFromPointer() throws CompileException {
         return itemType;
     }

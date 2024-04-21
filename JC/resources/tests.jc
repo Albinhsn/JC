@@ -52,7 +52,7 @@ float float_return(){
 }
 
 void pointers_pointers_everywhere(){
-    int * a = [1,2,3,4];
+    int a[4] = [1,2,3,4];
     int * b= &a;
     int **c = &b;
 
@@ -114,11 +114,11 @@ void test_loops(){
 }
 
 void test_arrays(){
-    int * a = [1,2,3,4];
+    int a[4] = [1,2,3,4];
     int answer = a[0] + a[2];
     print_testi(answer, 4, "index array");
 
-    float * b = [2.0, 2.5, 1.0];
+    float b[3] = [2.0, 2.5, 1.0];
     float answerf = b[0] + b[2];
     print_testf(answerf, 3.0, "index float array");
 
@@ -128,64 +128,9 @@ void test_arrays(){
     foo1.a = 50;
     Foo foo2;
     foo2.a = 25;
-    Foo * foo = [foo0, foo1, foo2];
+    Foo foo[3] = [foo0, foo1, foo2];
 
     print_testi(foo[0].a + foo[1].a + foo[2].a, 80, "struct array");
-
-}
-
-void test_assign_argument(int a, float b){
-
-    a = 5;
-    b = 5.0;
-    print_testf(b, 5.0, "assign float argument");
-    print_testi(a, 5, "assign int argument");
-}
-
-void test_assign(){
-
-    // assign to index
-    int * a = malloc(16);
-    a[1] = 5;
-    print_testi(a[1], 5, "assign int pointer");
-
-    float * b = malloc(16);
-    b[1] = 5.25;
-    print_testf(b[1], 5.25, "assign float pointer");
-
-    // assign to struct
-    Foo foo;
-    foo.a = 5;
-    foo.b = 10;
-    print_testi(foo.a, 5, "assign to struct");
-
-    Bar bar;
-    bar.foo = foo;
-    print_testi(bar.foo.a, 5, "bar.foo = foo");
-
-    foo.a = 3;
-    foo.b = 1;
-    foo = bar.foo;
-    print_testi(foo.a + foo.b, 15, "foo = bar.foo");
-    foo.a = 6;
-    print_testi(bar.foo.a + bar.foo.b, 15, "change struct var after assignment");
-
-
-
-    // assign to float
-    float f = 5.25;
-    print_testf(f, 5.25, "assign float");
-
-    // assign to argument
-    test_assign_argument(2, 2.0);
-    // assign to dereference
-
-    int * p = malloc(16);
-    int ** p2 = &p;
-    int *** p3 = &p2;
-    (**p3)[1] = 2;
-    print_testi(p[1], 2, "assign dereference");
-
 
 }
 
@@ -199,8 +144,10 @@ void test_augmented(){
     a -= 2;
     print_testi(a, 6, "-=");
 
+    a *= 3;
+    print_testi(a, 18, "-=");
 
-    a /= 6;
+    a /= 18;
     print_testi(a, 1, "/=");
 
     a ^= 6;
@@ -211,6 +158,51 @@ void test_augmented(){
 
     a |= 8;
     print_testi(a, 13, "|=");
+
+    a = 5;
+    a += 3.0;
+    print_testi(a, 8, "+=");
+
+    a -= 2.0;
+    print_testi(a, 6, "-=");
+
+    a *= 3.0;
+    print_testi(a, 18, "-=");
+
+    a /= 18.0;
+    print_testi(a, 1, "/=");
+
+    float f = 2.0;
+    f += 1.5;
+    print_testf(f, 3.5, "f +=");
+
+    f -= 2.5;
+    print_testf(f, 1.0, "f *=");
+
+    f *= 5.0;
+    print_testf(f, 5.0, "f *=");
+
+    f /= 2.5;
+    print_testf(f, 2.0, "f /=");
+
+    f = 2.0;
+    f += 1;
+    print_testf(f, 3.0, "f +=");
+
+    f -= 2;
+    print_testf(f, 1.0, "f *=");
+
+    f *= 5.0;
+    print_testf(f, 5.0, "f *=");
+
+    f /= 2;
+    print_testf(f, 2.5, "f /=");
+
+    int * ap = malloc(16);
+    ap[1] = 5;
+    ap += 1;
+
+    print_testi(*ap, 5, "int * a += 1");
 
 }
 
@@ -509,8 +501,87 @@ void test_fp(){
 
 }
 
+void test_assign(){
+    int a = 0;
+
+    a = 1;
+    print_testi(a, 1, "a = 1");
+
+    a = 2.0;
+    print_testi(a, 2, "a = 2.0");
+
+    float b = 0.0;
+    b = 1;
+    print_testf(b, 1.0, "b = 1");
+    b = 2.0;
+    print_testf(b, 2.0, "b = 2.0");
+
+    int * ap = malloc(8);
+    *ap = 1;
+    print_testi(*ap, 1, "*ap = 1");
+
+    *ap = 2.0;
+    print_testi(*ap, 2, "*ap = 2.0");
+
+    ap[0] = 3;
+    print_testi(ap[0], 3, "ap[0] = 3");
+
+    ap[0] = 4.0;
+    print_testi(ap[0], 4, "ap[0] = 4.0");
+
+
+    float * bp = malloc(8);
+    *bp = 1;
+    print_testf(*bp, 1.0, "*bp = 1");
+
+    *bp = 2.0;
+    print_testf(*bp, 2.0, "*bp = 2.0");
+
+    bp[0] = 3;
+    print_testf(bp[0], 3.0, "bp[0] = 3");
+
+    bp[0] = 4.0;
+    print_testf(bp[0], 4.0, "bp[0] = 4.0");
+
+
+    int **app = malloc(8);
+    *app = &a;
+    print_testi(**app, 2, "*app = &a");
+
+    float **bpp = malloc(8);
+    *bpp = &b;
+    print_testf(**bpp, 2.0, "*bpp = &b");
+
+    // assign to struct
+    Foo foo;
+    foo.a = 5;
+    foo.b = 10;
+    print_testi(foo.a, 5, "assign to struct");
+
+    Bar bar;
+    bar.foo = foo;
+    print_testi(bar.foo.a, 5, "bar.foo = foo");
+
+    foo.a = 3;
+    foo.b = 1;
+    foo = bar.foo;
+    print_testi(foo.a + foo.b, 15, "foo = bar.foo");
+    foo.a = 6;
+    print_testi(bar.foo.a + bar.foo.b, 15, "change struct var after assignment");
+
+    // assign to dereference
+
+    int * p = malloc(16);
+    int ** p2 = &p;
+    int *** p3 = &p2;
+    (**p3)[1] = 2;
+    print_testi(p[1], 2, "assign dereference");
+
+}
+
 int run_tests(){
 
+    test_assign();
     test_fib();
     test_structs();
     test_pointer();
@@ -521,7 +592,6 @@ int run_tests(){
     test_loops();
     test_arrays();
     test_augmented();
-    test_assign();
     test_logical();
     test_return_struct();
 

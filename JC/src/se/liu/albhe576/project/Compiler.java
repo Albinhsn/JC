@@ -31,22 +31,26 @@ public class Compiler {
         this.generateAssembly(name, extern);
     }
 
-    private void debugIntermediates(){
+    private void debugIntermediates() throws IOException {
 
         List<Function> functions = symbolTable.getFunctions();
+        FileWriter writer = new FileWriter("debug.txt");
         for(Function function : functions){
+            writer.write("\n" + function.name + ":\n");
             System.out.println("\n" + function.name + ":\n");
 
 
             for(int i = 0; i < function.intermediates.size(); i++){
                 Quad intermediate = function.intermediates.get(i);
                 System.out.printf("%d\t%s%n", i, intermediate);
+                writer.write(String.format("%d\t%s%n", i, intermediate));
             }
             System.out.println();
+            writer.write("\n");
         }
     }
 
-    public void generateIntermediate() throws CompileException{
+    public void generateIntermediate() throws CompileException, IOException {
         for(Stmt stmt : stmts){
             QuadList quads = new QuadList();
             stmt.compile(symbolTable, quads);

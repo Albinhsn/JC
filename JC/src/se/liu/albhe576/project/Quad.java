@@ -122,12 +122,7 @@ public class Quad {
             case LOAD_POINTER ->{
                 return stack.loadVariablePointer(operand1.name);
             }
-            case DEREFERENCE ->{
-                String movOp = getMovOpFromType(operand1.type);
-                String register = getRegisterFromType(operand1.type, 0);
-                return String.format("%s %s, [rax]", movOp, register);
-            }
-            case INDEX ->{
+            case DEREFERENCE, INDEX ->{
                 String movOp = getMovOpFromType(result.type);
                 String register = getRegisterFromType(result.type, 0);
                 return String.format("%s %s, [rax]", movOp, register);
@@ -197,8 +192,8 @@ public class Quad {
             case SETBE -> {
                 return "setbe al\nmovzx rax, al";
             }
-            case SAL -> {
-                return "sal rax, cl";
+            case SHL -> {
+                return "shl rax, cl";
             }
             case AND -> {
                 return "and rax, rcx";
@@ -209,8 +204,8 @@ public class Quad {
             case XOR -> {
                 return "xor rax, rcx";
             }
-            case SAR -> {
-                return "sar rax, cl";
+            case SHR -> {
+                return "shr rax, cl";
             }
             case PUSH ->{
                 if(operand1.type.isFloatingPoint()){
@@ -306,7 +301,7 @@ public class Quad {
             case LOGICAL_NOT ->{
                 return "xor rax, 1";
             }
-            case NOT ->{
+            case NEGATE ->{
                 return "not rax\ninc rax";
             }
             case ALLOCATE->{

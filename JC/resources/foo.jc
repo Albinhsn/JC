@@ -11,11 +11,11 @@ struct Bar{
 
 void print_testi(int got, int expected, string name){
     if(got != expected){
-        printf("FAILED: %s, got %d expected %d\n", name, got, expected);
+        printf("FAILED: got %d expected %d with %s\n", got, expected, name);
     }
 }
 void print_testf(float got, float expected, string name){
     if(got != expected){
-        printf("FAILED: got %lf expected %lf with %s\n", got, expected, name);
+       printf("FAILED: got %lf expected %lf with %s\n", got, expected, name);
     }
 }

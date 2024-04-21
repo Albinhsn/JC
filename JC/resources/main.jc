@@ -5,13 +5,13 @@
 #extern float sqrt(float x)
 
 
-#include "resources/foo.jc"
+// #include "resources/foo.jc"
 #include "resources/tests.jc"
 
 
 int main(){
     run_tests();
-
+    return 0;
 }
 
 

@@ -23,6 +23,9 @@ public class DataType {
     public boolean isArray(){
         return this.type == DataTypes.ARRAY && depth == 0;
     }
+    public boolean isString(){
+        return this.type == DataTypes.STRING && depth == 0;
+    }
 
     public boolean isPointer(){
         return this.depth > 0;
@@ -34,6 +37,16 @@ public class DataType {
         }
 
         return ((type == other.type && depth == 0 && other.depth == 0)) || (depth > 0 && other.depth > 0);
+    }
+    public boolean canBeCastedTo(DataType other){
+        boolean same = this.isSameType(other);
+        if((this.isFloatingPoint() && other.isInteger()) || (other.isFloatingPoint() && this.isInteger())){
+            return true;
+        }
+        if((this.isArray() && (other.isPointer() && other.depth == 1)) || (other.isArray() && (this.isPointer() && this.depth == 1))){
+            return true;
+        }
+        return same;
     }
 
     public DataType getTypeFromPointer() throws CompileException {

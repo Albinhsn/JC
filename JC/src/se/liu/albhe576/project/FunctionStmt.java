@@ -41,7 +41,13 @@ public class FunctionStmt extends Stmt{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
-        symbolTable.addFunction(new Function(name, arguments, returnType, quads));
+
+        if(symbolTable.functionExists(name)){
+
+            Function declaredFunction = symbolTable.getFunction(name);
+            this.error(String.format("Trying to redeclare function %s in %s:%d, already declared at %s:%d", name, file, line, declaredFunction.file, declaredFunction.line));
+        }
+        symbolTable.addFunction(new Function(name, arguments, returnType, quads, file, line));
 
         Map<String, VariableSymbol> localSymbols =new HashMap<>();
         int offset = 16;

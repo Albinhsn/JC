@@ -18,10 +18,16 @@ public class DotExpr extends Expr{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException {
-        // feels like this can be solved in the parser
-        // we don't know whether we're supposed to load this value or not
         variable.compile(symbolTable, quads);
         Symbol lastSymbol = quads.getLastResult();
+
+        if(!lastSymbol.type.isStruct() && lastSymbol.type.depth > 1){
+            this.error(String.format("Trying to access member of none struct %s", lastSymbol.type.name));
+        }
+        if(!symbolTable.isMemberOfStruct(lastSymbol.type, this.member.literal)){
+            this.error(String.format("Trying to access member %s of struct %s, doesn't exist!", lastSymbol.type.name, this.member.literal));
+        }
+
         Symbol memberSymbol = symbolTable.getMemberSymbol(lastSymbol, this.member.literal);
         quads.createGetField(memberSymbol, lastSymbol);
     }

@@ -12,6 +12,9 @@ public class Stack {
 
     public String loadVariablePointer(String name) {
         VariableSymbol symbol = this.stackSymbols.get(name);
+        if(symbol == null){
+            System.out.println();
+        }
         if(symbol.offset < 0){
             return String.format("lea rax, [rbp %d]", symbol.offset);
         }else{

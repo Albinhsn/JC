@@ -32,14 +32,33 @@ public class AugmentedExpr extends Expr{
         value.compile(symbolTable, valueQuads);
         Symbol valueSymbol = valueQuads.getLastResult();
 
-        quads.createSetupBinary(valueQuads, targetSymbol, valueSymbol);
+        DataType lType = targetSymbol.type;
+        DataType rType = valueSymbol.type;
 
         QuadOp op = QuadOp.fromToken(this.op);
+        BinaryExpr.typecheckBinaryExpr(op, lType, rType, this, this.op.literal);
+
+        if(rType.isPointer()){
+            this.error("Can't do augmented op with a pointer on the right side");
+        }else if(lType.isPointer() && rType.isInteger()){
+            int structSize = symbolTable.getStructSize(lType);
+            valueQuads.createIMUL(String.valueOf(structSize));
+        }
+
+        quads.createSetupBinary(valueQuads, targetSymbol, valueSymbol);
+
+        boolean fpOp = false;
         if(targetSymbol.type.isFloatingPoint() || valueSymbol.type.isFloatingPoint()){
             op = op.convertToFloat();
+            fpOp = true;
         }
 
         quads.addQuad(op, targetSymbol, valueSymbol, targetSymbol);
+
+        if(fpOp && !targetSymbol.type.isFloatingPoint()){
+            quads.createConvertFloatToInt(valueSymbol);
+        }
+
         quads.createStore(targetSymbol);
     }
 }

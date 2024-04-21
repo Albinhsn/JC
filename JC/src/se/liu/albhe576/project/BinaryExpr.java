@@ -18,6 +18,58 @@ public class BinaryExpr extends Expr{
         this.right = right;
     }
 
+    public static boolean isBitwiseOp(QuadOp op){
+        switch(op){
+            case AND:{}
+            case OR: {}
+            case XOR: {}
+            case SHL: {}
+            case SHR: {
+                return true;
+            }
+            default:{
+                return false;
+            }
+        }
+    }
+
+    public static void typecheckBinaryExpr(QuadOp op, DataType lType, DataType rType, Expr expr, String opLiteral) throws CompileException {
+        if(BinaryExpr.isArithmeticOp(op)){
+            if(!BinaryExpr.isValidArithmetic(lType, rType)){
+                expr.error(String.format("Can't do arithmetic op '%s' on %s and %s", opLiteral, lType, rType));
+            }
+        }else if(BinaryExpr.isBitwiseOp(op)){
+            if(!BinaryExpr.isValidBitwise(lType, rType)){
+                expr.error(String.format("Can't do bitwise op '%s' on %s and %s", opLiteral, lType, rType));
+            }
+        }else{
+            expr.error(String.format("Can't do augmented expression with op %s", opLiteral));
+        }
+    }
+
+    public static boolean isValidBitwise(DataType left, DataType right){
+        return left.isInteger() && right.isInteger();
+    }
+    public static boolean isValidArithmetic(DataType left, DataType right){
+        if((left.isPointer() && !right.isInteger()) || (right.isPointer() && !left.isInteger())){
+            return false;
+        }
+        return !left.isArray() && !left.isStruct() && !right.isArray() && !right.isStruct();
+    }
+    public static boolean isArithmeticOp(QuadOp op){
+        switch(op){
+            case ADD: {}
+            case SUB: {}
+            case DIV: {}
+            case MOD: {}
+            case MUL: {
+                return true;
+            }
+            default:{
+                return false;
+            }
+        }
+    }
 
     private void bitwise(SymbolTable symbolTable, QuadList quads) throws  CompileException {
 
@@ -29,9 +81,10 @@ public class BinaryExpr extends Expr{
         quads.createMovRegisterAToC(rResult);
         quads.createPop(Compiler.generateSymbol(lResult.type));
 
-        if(!lResult.type.isInteger() || !rResult.type.isInteger()){
-            this.error("Can only do bitwise on ints");
+        if (!isValidBitwise(lResult.type, rResult.type)) {
+            this.error(String.format("Can't do bitwise with %s and %s", lResult.type.name, rResult.type.name));
         }
+
         quads.addQuad(QuadOp.fromToken(op), lResult, rResult, Compiler.generateSymbol(DataType.getInt()));
     }
     private void arithmetic(SymbolTable symbolTable, QuadList quads)  throws CompileException{
@@ -45,8 +98,8 @@ public class BinaryExpr extends Expr{
         Symbol rResult = r.getLastResult();
         DataType rType = rResult.type;
 
-        if(lResult.type.isStruct() || rResult.type.isStruct()){
-            this.error(String.format("Can't do operation '%s' on struct on line %d", op.literal, op.line));
+        if(!isValidArithmetic(lResult.type, rResult.type)){
+            this.error(String.format("Can't do arithmetic op '%s' on %s and %s", op.literal, lType, rType));
         }
 
 
@@ -78,8 +131,6 @@ public class BinaryExpr extends Expr{
             }else{
                 lResult = quads.createConvertIntToFloat(lResult);
             }
-        }else if(!lType.isSameType(rType)){
-            this.error(String.format("Can't do operation '%s' on pointer with type %s", op.literal, lResult.type.name));
         }
 
         quads.createSetupBinary(r, lResult, rResult);
@@ -88,27 +139,13 @@ public class BinaryExpr extends Expr{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
-        switch(op.type){
-            // These only work on everything except string
-            case TOKEN_PLUS : {}
-            case TOKEN_MINUS : {}
-            case TOKEN_SLASH: {}
-            case TOKEN_MOD: {}
-            case TOKEN_STAR: {
-                this.arithmetic(symbolTable, quads);
-                return;
-            }
-
-            // These only work on pointers, int and byte
-            case TOKEN_AND_BIT:{}
-            case TOKEN_OR_BIT: {}
-            case TOKEN_XOR : {}
-            case TOKEN_SHIFT_LEFT: {}
-            case TOKEN_SHIFT_RIGHT: {
-                this.bitwise(symbolTable, quads);
-                return;
-            }
+        QuadOp op = QuadOp.fromToken(this.op);
+        if(isBitwiseOp(op)){
+            this.bitwise(symbolTable, quads);
+        }else if(isArithmeticOp(op)){
+            this.arithmetic(symbolTable, quads);
+        }else{
+            this.error(String.format("Can't do binary op with '%s'", this.op.literal));
         }
-        this.error(String.format("Can't do binary op with '%s'", op.literal));
     }
 }

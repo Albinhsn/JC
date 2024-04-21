@@ -35,8 +35,7 @@ public class CallExpr extends Expr{
        int floatCount = 0;
 
        List<StructField> functionArgs = function.arguments;
-       int argCount = functionArgs == null ? 0 : functionArgs.size();
-       if(!function.varArgs && args.size() > argCount){
+       if(functionArgs != null && args.size() > functionArgs.size()){
            this.error(String.format("Mismatch in argument count when calling %s", this.name.literal));
        }
 
@@ -46,22 +45,31 @@ public class CallExpr extends Expr{
        Symbol floatType = Compiler.generateSymbol(DataType.getFloat());
        for (int i = 0; i < args.size(); i++) {
            Expr arg = args.get(i);
-           arg.compile(symbolTable, quads);
-           Symbol result = quads.getLastResult();
+           QuadList argQuads = new QuadList();
+           arg.compile(symbolTable, argQuads);
+           Symbol result = argQuads.getLastResult();
            if (result.type.isFloatingPoint()) {
-
-               if(floatCount > 1){quads.createPush(floatType);}
+               if(floatCount >= 1){
+                   quads.createPush(floatType);
+               }
+               quads.addAll(argQuads);
                quads.addQuad(floatRegisters[floatCount], null, null, null);
-               if(floatCount > 1){quads.createPop(floatType);}
+               if(floatCount >= 1){
+                   quads.createPop(floatType);
+               }
 
                floatCount++;
            } else {
+               quads.addAll(argQuads);
                quads.addQuad(generalRegisters[generalCount], null, null, null);
                generalCount++;
            }
 
-           if(!function.varArgs && !result.type.isSameType(functionArgs.get(i).type)){
-            this.error("");
+           if(functionArgs != null){
+               DataType argType = functionArgs.get(i).type;
+               if(!result.type.isSameType(argType)){
+                   this.error(String.format("Type mismatch when calling extern function %s, expected %s got %s", function.name, argType.name, result.type.name));
+               }
            }
 
            if(generalCount >= generalRegisters.length || floatCount >= floatRegisters.length){

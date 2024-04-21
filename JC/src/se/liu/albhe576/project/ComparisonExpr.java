@@ -24,6 +24,12 @@ public class ComparisonExpr extends Expr {
         }
     }
 
+    private void typecheckComparison(DataType left, DataType right) throws CompileException {
+        if(left.isArray() || right.isArray() || left.isStruct() || right.isStruct() || left.isString() || right.isString()){
+            this.error(String.format("Can't do comparison op %s with types %s and %s", this.op.literal, left, right));
+        }
+    }
+
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads)  throws CompileException{
         left.compile(symbolTable, quads);
@@ -34,6 +40,8 @@ public class ComparisonExpr extends Expr {
         right.compile(symbolTable, rQuads);
         Symbol rResult = rQuads.getLastResult();
         DataType rType = rResult.type;
+
+        this.typecheckComparison(lType, rType);
 
         QuadOp op = QuadOp.fromToken(this.op);
         if(lType.isFloatingPoint() || rType.isFloatingPoint()){

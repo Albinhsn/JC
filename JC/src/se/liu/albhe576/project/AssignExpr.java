@@ -38,11 +38,19 @@ public class AssignExpr extends Expr{
 
     private void compileStoreDereference(QuadList valueQuads, QuadList variableQuads) {
         Symbol dereferenced = variableQuads.getLastOperand1();
-        Symbol valueSymbol = valueQuads.getLastResult();
+        Symbol valueResult = valueQuads.getLastResult();
+        Symbol variableType = variableQuads.getLastResult();
         variableQuads.removeLastQuad();
-        valueQuads.createSetupBinary(variableQuads, valueSymbol, dereferenced);
 
-        valueQuads.createStoreIndex(valueSymbol, dereferenced);
+        if(valueResult.type.isFloatingPoint() && !variableType.type.isFloatingPoint()){
+            valueResult = valueQuads.createConvertFloatToInt(valueResult);
+        }
+        else if(!valueResult.type.isFloatingPoint() && variableType.type.isFloatingPoint()){
+            valueResult = valueQuads.createConvertIntToFloat(valueResult);
+        }
+
+        valueQuads.createSetupBinary(variableQuads, valueResult, dereferenced);
+        valueQuads.createStoreIndex(valueResult, dereferenced);
     }
 
     private void compileStoreIndex(QuadList quads, QuadList variableQuads) throws CompileException{
@@ -74,22 +82,20 @@ public class AssignExpr extends Expr{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
-        // Check types
-        // foo = 5
-        // *foo = 5
-        // foo[5] = 5
-        // foo.a = 5
-        // foo.bar = bar2
-
         value.compile(symbolTable, quads);
+
+
         QuadList variableQuads = new QuadList();
         variable.compile(symbolTable, variableQuads);
 
-        QuadOp lastOp = variableQuads.getLastOp();
-        Symbol valueType = quads.getLastOperand1();
         Symbol valueResult = quads.getLastResult();
-        Symbol variableType = variableQuads.getLastOperand1();
+        QuadOp lastOp = variableQuads.getLastOp();
+        Symbol variableType = variableQuads.getLastResult();
 
+
+        if(!variableType.type.isSameType(valueResult.type) && !variableType.type.canBeCastedTo(valueResult.type)){
+            this.error(String.format("Trying to assign type %s to %s", valueResult.type.name, variableType.type.name));
+        }
 
 
         if(lastOp == QuadOp.GET_FIELD){
@@ -97,16 +103,23 @@ public class AssignExpr extends Expr{
         }else if(lastOp == QuadOp.DEREFERENCE){
             this.compileStoreDereference(quads, variableQuads);
         }
-        else if (valueType.type.isStruct()){
+        else if(lastOp == QuadOp.INDEX){
+            this.compileStoreIndex(quads, variableQuads);
+        }
+        else if (valueResult.type.isStruct()){
             quads.createSetupBinary(variableQuads, valueResult, variableType);
             quads.addQuad(QuadOp.MOVE_STRUCT, valueResult, variableType, null);
-        } else if(variableQuads.size() == 1){
-            quads.createStore(variableQuads.getLastOperand1());
-        } else if(lastOp == QuadOp.INDEX){
-            this.compileStoreIndex(quads, variableQuads);
         }else{
-            this.error("How could this happen to me");
+            if(valueResult.type.isFloatingPoint() && !variableType.type.isFloatingPoint()){
+                valueResult = quads.createConvertFloatToInt(valueResult);
+            }
+            else if(!valueResult.type.isFloatingPoint() && variableType.type.isFloatingPoint()){
+                valueResult = quads.createConvertIntToFloat(valueResult);
+            }
+            quads.createSetupBinary(variableQuads, valueResult, variableType);
+            quads.createStore(variableQuads.getLastOperand1());
         }
+
 
     }
 }

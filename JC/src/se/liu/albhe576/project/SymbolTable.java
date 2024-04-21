@@ -73,6 +73,22 @@ public class SymbolTable {
         return -size;
     }
 
+
+
+    public boolean functionExists(String name){
+        for(Function function : functions){
+            if(function.name.equals(name)){
+                return true;
+            }
+        }
+        for(Function function : extern){
+            if(function.name.equals(name)){
+                return true;
+            }
+        }
+        return false;
+    }
+
     public int getCurrentScopeSize(){
         return this.getLocalVariableStackSize(this.getCurrentFunction().name);
     }
@@ -84,6 +100,11 @@ public class SymbolTable {
     }
     public Function getFunction(String name) throws CompileException{
         for(Function function : functions){
+            if(function.name.equals(name)){
+                return function;
+            }
+        }
+        for(Function function : extern){
             if(function.name.equals(name)){
                 return function;
             }
@@ -123,6 +144,15 @@ public class SymbolTable {
     }
     public Symbol findSymbol(String name) {
         return this.getCurrentLocals().get(name);
+    }
+    public boolean isMemberOfStruct(DataType type, String member) {
+        Struct struct = this.structs.get(type.name);
+        for(StructField field : struct.fields){
+            if(field.name.equals(member)){
+                return true;
+            }
+        }
+        return false;
     }
     public Symbol getMemberSymbol(Symbol structSymbol, String member) throws CompileException {
         Struct struct = this.structs.get(structSymbol.type.name);
