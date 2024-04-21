@@ -5,7 +5,7 @@ import java.util.Map;
 public enum QuadOp {
 
     ALLOCATE,
-    MOV_XMM0, MOV_XMM1, MOV_XMM2, MOV_XMM3, MOV_XMM4, MOV_XMM5, SWAPF,
+    MOV_XMM0, MOV_XMM1, MOV_XMM2, MOV_XMM3, MOV_XMM4, MOV_XMM5,
     MOV_R8, MOV_R9, MOV_RDX, MOV_RSI, MOV_RDI, MOV_RCX,
     STORE_INDEX, PUSH_STRUCT, INDEX, DEREFERENCE,LOAD_POINTER,GET_FIELD, SET_FIELD, MOVE_STRUCT, MOVE_ARG,
     CVTSI2SD, CVTTSD2SI,
@@ -19,7 +19,7 @@ public enum QuadOp {
     MOV_REG_AC, MOV_REG_CA;
 
     public static QuadOp fromToken(Token token) throws CompileException {
-        switch(token.type){
+        switch(token.type()){
             case TOKEN_PLUS, TOKEN_AUGMENTED_PLUS -> {
                 return ADD;
             }
@@ -78,7 +78,7 @@ public enum QuadOp {
                 return MOD;
             }
         }
-        throw new CompileException(String.format("Unknown token to quad op? %s", token.literal));
+        throw new CompileException(String.format("Unknown token to quad op? %s", token.literal()));
     }
 
     public QuadOp convertToFloat() throws CompileException {
@@ -131,5 +131,35 @@ public enum QuadOp {
             throw new CompileException(String.format("Can't transform set op %s to jump op?", this.name()));
         }
         return INVERT_JMP_MAP.get(this);
+    }
+
+    public static boolean isBitwiseOp(QuadOp op){
+        switch(op){
+            case AND:{}
+            case OR: {}
+            case XOR: {}
+            case SHL: {}
+            case SHR: {
+                return true;
+            }
+            default:{
+                return false;
+            }
+        }
+    }
+
+    public static boolean isArithmeticOp(QuadOp op){
+        switch(op){
+            case ADD: {}
+            case SUB: {}
+            case DIV: {}
+            case MOD: {}
+            case MUL: {
+                return true;
+            }
+            default:{
+                return false;
+            }
+        }
     }
 }

@@ -6,7 +6,14 @@ public class Scope {
     private final List<Scope> children;
     private final Map<String, VariableSymbol> variables;
 
-    public boolean closed;
+    private boolean closed;
+
+    public void closeScope(){
+        this.closed = true;
+    }
+    public boolean isClosed(){
+        return this.closed;
+    }
 
     public Map<Integer, VariableSymbol> getAllScopedVariables(){
         Map<Integer, VariableSymbol> vars = new HashMap<>();
@@ -32,9 +39,7 @@ public class Scope {
         this.variables.put(name, symbol);
     }
 
-    public List<Scope> getChildren(){
-        return this.children;
-    }
+    public List<Scope> getChildren(){return this.children;}
     public Scope getLastChild(){
         if(this.children.isEmpty()){
             return null;

@@ -9,12 +9,6 @@ public class IndexExpr extends Expr{
 
     private final Expr value;
     private final Expr index;
-    public IndexExpr(Expr value, Expr index, int line, String file){
-        super(line, file);
-        this.value = value;
-        this.index = index;
-
-    }
     private static boolean isInvalidValueToIndex(DataType type){
         return !(type.isArray() || type.isPointer());
     }
@@ -51,5 +45,11 @@ public class IndexExpr extends Expr{
         Symbol addResult = quads.createAdd(left, right);
 
         quads.createIndex(addResult, valResult);
+    }
+    public IndexExpr(Expr value, Expr index, int line, String file){
+        super(line, file);
+        this.value = value;
+        this.index = index;
+
     }
 }

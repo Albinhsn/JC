@@ -13,7 +13,7 @@ public class CallExpr extends Expr{
 
    private void callExternFunction(SymbolTable symbolTable, QuadList quads) throws CompileException {
 
-       Function function = symbolTable.getExternFunction(this.name.literal);
+       Function function = symbolTable.getFunction(this.name.literal());
        QuadOp[] generalRegisters = new QuadOp[]{
               QuadOp.MOV_RDI,
                QuadOp.MOV_RSI,
@@ -34,13 +34,10 @@ public class CallExpr extends Expr{
        int generalCount = 0;
        int floatCount = 0;
 
-       List<StructField> functionArgs = function.arguments;
+       List<StructField> functionArgs = function.getArguments();
        if(functionArgs != null && args.size() > functionArgs.size()){
-           this.error(String.format("Mismatch in argument count when calling %s", this.name.literal));
+           this.error(String.format("Mismatch in argument count when calling %s", this.name.literal()));
        }
-
-
-
 
        Symbol floatType = Compiler.generateSymbol(DataType.getFloat());
        for (int i = 0; i < args.size(); i++) {
@@ -66,9 +63,9 @@ public class CallExpr extends Expr{
            }
 
            if(functionArgs != null){
-               DataType argType = functionArgs.get(i).type;
+               DataType argType = functionArgs.get(i).type();
                if(!result.type.isSameType(argType)){
-                   this.error(String.format("Type mismatch when calling extern function %s, expected %s got %s", function.name, argType.name, result.type.name));
+                   this.error(String.format("Type mismatch when calling extern function %s, expected %s got %s", this.name.literal(), argType.name, result.type.name));
                }
            }
 
@@ -78,21 +75,21 @@ public class CallExpr extends Expr{
 
        }
 
-       quads.createCall(function.getFunctionSymbol(), Compiler.generateSymbol(function.returnType));
+       quads.createCall(function.getFunctionSymbol(this.name.literal()), Compiler.generateSymbol(function.getReturnType()));
    }
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
 
-        if(symbolTable.isExternFunction(name.literal) || symbolTable.isExternFunction(name.literal)){
+        if(symbolTable.isExternFunction(name.literal())){
             this.callExternFunction(symbolTable, quads);
             return;
         }
 
-        Function function = symbolTable.getFunction(this.name.literal);
-        List<StructField> functionArguments = function.arguments;
+        Function function = symbolTable.getFunction(this.name.literal());
+        List<StructField> functionArguments = function.getArguments();
         if(args.size() != functionArguments.size()){
-            this.error(String.format("Function parameter mismatch expected %d got %d on line %d when calling %s", functionArguments.size(), args.size(), name.line, name.literal));
+            this.error(String.format("Function parameter mismatch expected %d got %d on line %d when calling %s", functionArguments.size(), args.size(), name.line(), name.literal()));
         }
 
         QuadList argQuads = new QuadList();
@@ -102,8 +99,8 @@ public class CallExpr extends Expr{
 
             arg.compile(symbolTable, argQuads);
             Quad lastQuad = argQuads.getLastQuad();
-            Symbol argSymbol = lastQuad.result;
-            DataType funcArgType = functionArguments.get(i).type;
+            Symbol argSymbol = lastQuad.getResult();
+            DataType funcArgType = functionArguments.get(i).type();
             if(!argSymbol.type.isSameType(funcArgType)){
                 this.error(String.format("Function parameter type mismatch expected %s got %s", argSymbol.type.name, funcArgType.name));
             }
@@ -118,6 +115,6 @@ public class CallExpr extends Expr{
             quads.addAll(argQuads);
         }
 
-        quads.createCall(function.getFunctionSymbol(), Compiler.generateSymbol(function.returnType));
+        quads.createCall(function.getFunctionSymbol(this.name.literal()), Compiler.generateSymbol(function.getReturnType()));
     }
 }

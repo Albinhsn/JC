@@ -1,6 +1,5 @@
 package se.liu.albhe576.project;
 
-import java.util.List;
 import java.util.Map;
 
 public class Quad {
@@ -13,10 +12,26 @@ public class Quad {
                 result;
     }
 
-    public QuadOp op;
-    public Symbol operand1;
-    public Symbol operand2;
-    public Symbol result;
+    private final QuadOp op;
+    private final Symbol operand1;
+    private final Symbol operand2;
+    private final Symbol result;
+
+    public QuadOp getOp() {
+        return op;
+    }
+    public Symbol getOperand1() {
+        return operand1;
+    }
+
+    public Symbol getOperand2() {
+        return operand2;
+    }
+
+    public Symbol getResult() {
+        return result;
+    }
+
 
 
     public Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result){
@@ -26,7 +41,26 @@ public class Quad {
         this.result   = result;
 
     }
+    private static int getStackAlignment(String name, Map<String,Function> functions, Stack stack){
+        int argSize = 0;
+        Function function = functions.get(name);
+        if(function.external){
+            return 0;
+        }
+        if(function.getArguments() != null){
+            for(StructField field : function.getArguments()){
+                Struct struct = stack.getStruct(field.type().name);
+                if(struct == null || field.type().isPointer()){
+                    argSize += 8;
+                }else{
+                    argSize += struct.getSize(stack.getStructs());
+                }
+            }
+        }
 
+        return argSize;
+
+    }
 
     public static String getRegisterFromType(DataType type, int registerIndex){
         final String[] floatRegisters = new String[]{"xmm0", "xmm1"};
@@ -54,20 +88,22 @@ public class Quad {
         return  type.isFloatingPoint() ? "movsd" : "mov";
     }
 
-    public String emit(Stack stack, List<Function> functions, Map<String, Constant> constants) throws CompileException {
+    public String emit(Stack stack, Map<String,Function> functions, Map<String, Constant> constants) throws CompileException {
         switch(this.op){
             case LOAD_IMM -> {
                 ImmediateSymbol imm = (ImmediateSymbol) this.operand1;
                 String register = getRegisterFromType(operand1.type, 0);
 
+                String immValue = imm.getValue();
+
                 switch(imm.type.type){
-                    case INT -> {return String.format("mov %s, %s", register, imm.value);}
-                    case STRING -> {return String.format("mov %s, %s", register,constants.get(imm.value).label);}
+                    case INT -> {return String.format("mov %s, %s", register, immValue);}
+                    case STRING -> {return String.format("mov %s, %s", register,constants.get(immValue).label());}
                     case FLOAT-> {
-                        if(constants.containsKey(imm.value)){
-                            return String.format("movsd %s,[%s]", register, constants.get(imm.value).label);
+                        if(constants.containsKey(immValue)){
+                            return String.format("movsd %s,[%s]", register, constants.get(immValue).label());
                         }
-                        throw new CompileException(String.format("Couldn't find constant '%s'", imm.value));
+                        throw new CompileException(String.format("Couldn't find constant '%s'", immValue));
                     }
                 }
                 throw new CompileException(String.format("Can't load this type? %s", imm.type.type));
@@ -97,7 +133,7 @@ public class Quad {
             }
             case IMUL -> {
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) this.operand1;
-                return String.format("imul rax, %s", immediateSymbol.value);
+                return String.format("imul rax, %s", immediateSymbol.getValue());
             }
             case CVTTSD2SI -> {
                 return "cvttsd2si rax, xmm0";
@@ -304,27 +340,13 @@ public class Quad {
                 return "mov r9, rax";
             }
             case CALL ->{
-                int argSize = 0;
-                for(Function function : functions){
-                    if(function.name.equals(operand1.name)){
-                        for(StructField field : function.arguments){
-                            Struct struct = stack.getStruct(field.type.name);
-                            if(struct == null || field.type.isPointer()){
-                                argSize += 8;
-                            }else{
-                                argSize += struct.getSize(stack.structs);
-                            }
-                        }
-                        break;
-                    }
-                }
+                int stackAligment = getStackAlignment(operand1.name, functions, stack);
 
-
-                if(argSize != 0){
-                    if(argSize % 16 == 8){
-                        argSize += 8;
+                if(stackAligment!= 0){
+                    if(stackAligment% 16 == 8){
+                        stackAligment+= 8;
                     }
-                    return String.format("call %s\nadd rsp, %d", operand1.name, argSize);
+                    return String.format("call %s\nadd rsp, %d", operand1.name, stackAligment);
                 }
                 return String.format("call %s", operand1.name);
             }
@@ -336,11 +358,11 @@ public class Quad {
             }
             case ALLOCATE->{
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand1;
-                return String.format("sub rsp, %s", immediateSymbol.value);
+                return String.format("sub rsp, %s", immediateSymbol.getValue());
             }
             case MOVE_ARG ->{
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand2;
-                return stack.moveArg(operand1, Integer.parseInt(immediateSymbol.value));
+                return stack.moveArg(operand1, Integer.parseInt(immediateSymbol.getValue()));
             }
             case RET ->{
                 return "mov rsp, rbp\npop rbp\nret";

@@ -2,30 +2,14 @@
 
 ## Features remaining
 
-
-
-* fix scoping issues :)
-  * for(int i = 0)
-* function and extern into one with flag
-
-* hoist out comparison thing to function?
+* lookover unneccessary ops
+  * token
+  * quad ops
+* look over every stmt/expr again for things to hoist 
+* bugtest string?
 * have the Temp makes sense
-* look at
-  * scoping things
-  * functions
-  * variableSymbols
-  * stack
-  * extern
-  * constants
-
-
-
-
-
 
 ## Tests
-Pointer arithmetic
-
 
 ## Bugs
 ### Compiler

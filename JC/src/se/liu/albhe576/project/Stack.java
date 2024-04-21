@@ -4,11 +4,10 @@ import java.util.Map;
 
 public class Stack {
     private final Map<Integer, VariableSymbol> stackSymbols;
-    public final Map<String, Struct> structs;
+    private final Map<String, Struct> structs;
 
-    public Struct getStruct(String name){
-        return this.structs.get(name);
-    }
+    public Struct getStruct(String name){return this.structs.get(name);}
+    public Map<String, Struct> getStructs(){return this.structs;}
 
     public String loadVariablePointer(int id) {
         VariableSymbol symbol = this.stackSymbols.get(id);
@@ -83,8 +82,8 @@ public class Stack {
 
     private int getFieldOffset(Struct struct, String memberName)throws CompileException  {
         int size = 0;
-        for(StructField field : struct.fields){
-            if(field.name.equals(memberName)){
+        for(StructField field : struct.getFields()){
+            if(field.name().equals(memberName)){
                 return size;
             }
             size += 8;
@@ -93,9 +92,9 @@ public class Stack {
     }
     public String loadField(DataType type, String memberName) throws CompileException {
         Struct struct = this.structs.get(type.name);
-        for(StructField field : struct.fields){
-            if(field.name.equals(memberName)){
-                String op = field.type.isStruct() ? "lea" : "mov";
+        for(StructField field : struct.getFields()){
+            if(field.name().equals(memberName)){
+                String op = field.type().isStruct() ? "lea" : "mov";
                 int offset = this.getFieldOffset(struct, memberName);
                 if(offset == 0){
                     return String.format("%s rax, [rax]", op);

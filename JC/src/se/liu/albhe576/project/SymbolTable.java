@@ -5,15 +5,18 @@ import java.util.Stack;
 
 public class SymbolTable {
 
-    private final List<Function> extern;
-    public final Map<String, Struct> structs;
-    private final List<Function> functions;
+    private final Map<String, Struct> structs;
+    private final Map<String, Function> functions;
     private final Map<String, Constant> constants;
     private final Map<String, Scope> scopes;
+    private String currentFunctionName;
     private int variableCount;
     public void compileFunction(String name, Map<String, VariableSymbol> arguments){
         this.scopes.put(name, new Scope(arguments));
+        this.currentFunctionName = name;
     }
+    public Map<String, Struct> getStructs(){return this.structs;}
+    public Struct getStruct(String name){return this.structs.get(name);}
     public Map<Integer, VariableSymbol> getAllScopedVariables(String functionName){
         return this.scopes.get(functionName).getAllScopedVariables();
     }
@@ -37,20 +40,38 @@ public class SymbolTable {
         return 8;
     }
     public Function getCurrentFunction(){
-        return this.functions.get(this.functions.size() - 1);
+        return this.functions.get(this.currentFunctionName);
+    }
+    public String getCurrentFunctionName(){
+        return this.currentFunctionName;
     }
     private Scope getCurrentScope(){
-        Scope curr = this.scopes.get(this.getCurrentFunction().name);
+        Scope curr = this.scopes.get(this.currentFunctionName);
         while(true){
             List<Scope> children = curr.getChildren();
-            if(children.isEmpty() || children.get(children.size() - 1).closed){
+            if(children.isEmpty() || children.get(children.size() - 1).isClosed()){
                 return curr;
             }
             curr = children.get(children.size() - 1);
         }
     }
-    public List<Function> getFunctions(){
-        return this.functions;
+    public Map<String, Function> getInternalFunctions(){
+        Map<String, Function> out = new HashMap<>();
+        for(Map.Entry<String, Function> entry : this.functions.entrySet()){
+            if(!entry.getValue().external){
+                out.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return out;
+    }
+    public Map<String, Function> getExternalFunctions(){
+        Map<String, Function> out = new HashMap<>();
+        for(Map.Entry<String, Function> entry : this.functions.entrySet()){
+            if(entry.getValue().external){
+                out.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return out;
     }
     public Map<String, Constant> getConstants(){
         return this.constants;
@@ -63,22 +84,19 @@ public class SymbolTable {
         Scope lastScope = this.getCurrentScope();
         lastScope.addChild();
     }
-    public void exitScope(){
-        this.getCurrentScope().closed = true;
-    }
+    public void exitScope(){this.getCurrentScope().closeScope();}
 
     public VariableSymbol addVariable(String name, DataType type){
-        int offset = -this.getStructSize(type) - this.getLocalVariableStackSize(getCurrentFunction().name);
+        int offset = -this.getStructSize(type) - this.getLocalVariableStackSize(this.currentFunctionName);
         VariableSymbol variableSymbol = new VariableSymbol(name, type, offset, this.generateVariableId());
         getCurrentScope().addVariable(name, variableSymbol);
         return variableSymbol;
     }
     public void addVariable(VariableSymbol symbol){
-        getCurrentScope().addVariable(symbol.name, symbol);
+        getCurrentScope().addVariable(symbol.getName(), symbol);
     }
 
     public int getLocalVariableStackSize(String name){
-
         int size = 0;
         Scope outerScope = this.scopes.get(name);
         java.util.Stack<Scope> scopes = new Stack<>();
@@ -96,37 +114,24 @@ public class SymbolTable {
     }
 
     public boolean functionExists(String name){
-        for(Function function : functions){
-            if(function.name.equals(name)){
-                return true;
-            }
-        }
-        for(Function function : extern){
-            if(function.name.equals(name)){
-                return true;
-            }
-        }
-        return false;
+        return this.functions.containsKey(name);
     }
 
     public int getCurrentScopeSize(){
-        return this.getLocalVariableStackSize(this.getCurrentFunction().name);
+        return this.getLocalVariableStackSize(currentFunctionName);
     }
-    public void addFunction(Function function){
-        this.functions.add(function);
+    public void addFunction(String name, Function function){
+        this.functions.put(name, function);
+        this.currentFunctionName = name;
     }
     public Function getFunction(String name) throws CompileException{
-        for(Function function : functions){
-            if(function.name.equals(name)){
-                return function;
-            }
+        if(!this.functions.containsKey(name)){
+            throw new CompileException(String.format("Can't find function %s", name));
         }
-        for(Function function : extern){
-            if(function.name.equals(name)){
-                return function;
-            }
-        }
-        throw new CompileException(String.format("Can't find function %s", name));
+        return this.functions.get(name);
+    }
+    public Map<String, Function> getFunctions() {
+        return this.functions;
     }
 
     public void addConstant(String constant, DataTypes type){
@@ -138,23 +143,10 @@ public class SymbolTable {
     }
 
     public boolean isExternFunction(String name){
-        for(Function function : extern){
-            if(function.name.equals(name)){
-                return true;
-            }
-        }
-        return false;
-    }
-    public Function getExternFunction(String name) throws CompileException{
-        for(Function function : extern){
-            if(function.name.equals(name)){
-                return function;
-            }
-        }
-        throw new CompileException(String.format("Can't find extern function %s", name));
+        return this.functions.get(name).external;
     }
     public boolean symbolExists(String name) {
-        Scope scope = this.scopes.get(this.getCurrentFunction().name);
+        Scope scope = this.scopes.get(this.currentFunctionName);
 
         while(true){
             if(scope.variableExists(name)){
@@ -164,13 +156,13 @@ public class SymbolTable {
                 return false;
             }
             scope = scope.getLastChild();
-            if(scope.closed){
+            if(scope.isClosed()){
                 return false;
             }
         }
     }
     public Symbol findSymbol(String name) throws CompileException{
-        Scope scope = this.scopes.get(this.getCurrentFunction().name);
+        Scope scope = this.scopes.get(this.currentFunctionName);
         java.util.Stack<Scope> scopes = new Stack<>();
         scopes.add(scope);
 
@@ -185,28 +177,27 @@ public class SymbolTable {
     }
     public boolean isMemberOfStruct(DataType type, String member) {
         Struct struct = this.structs.get(type.name);
-        for(StructField field : struct.fields){
-            if(field.name.equals(member)){
+        for(StructField field : struct.getFields()){
+            if(field.name().equals(member)){
                 return true;
             }
         }
         return false;
     }
     public Symbol getMemberSymbol(Symbol structSymbol, String member) throws CompileException {
-        Struct struct = this.structs.get(structSymbol.type.name);
-        for(StructField field : struct.fields){
-            if(field.name.equals(member)){
-               return new Symbol(member, field.type);
+        Struct struct = this.structs.get(structSymbol.getType().name);
+        for(StructField field : struct.getFields()){
+            if(field.name().equals(member)){
+               return new Symbol(member, field.type());
             }
         }
-        throw new CompileException(String.format("Tried to access member '%s' in struct '%s', doesnt exist", member, structSymbol.name));
+        throw new CompileException(String.format("Tried to access member '%s' in struct '%s', doesnt exist", member, structSymbol.getName()));
     }
 
-    public SymbolTable(Map<String, Struct> structs, Map<String, Constant> constants, List<Function> extern){
+    public SymbolTable(Map<String, Struct> structs, Map<String, Constant> constants, Map<String, Function> extern){
         this.structs = structs;
-        this.extern = extern;
         this.constants =constants;
-        this.functions = new ArrayList<>();
+        this.functions = new HashMap<>(extern);
         this.scopes = new HashMap<>();
         this.variableCount = 0;
     }

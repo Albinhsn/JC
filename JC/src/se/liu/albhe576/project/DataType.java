@@ -7,9 +7,9 @@ public class DataType {
         return String.format("%s %s %d", name, type.name(), depth);
     }
 
-    public String name;
-    public DataTypes type;
-    public int depth;
+    protected final String name;
+    protected final DataTypes type;
+    protected final int depth;
 
     public boolean isFloatingPoint(){
         return this.type == DataTypes.FLOAT && depth == 0;
@@ -50,8 +50,7 @@ public class DataType {
     }
 
     public DataType getTypeFromPointer() throws CompileException {
-        // ToDo check depth < 0?
-        if(depth == 0){
+        if(depth <= 0){
             throw new CompileException("How could this happen to me, depth < 0?");
         }
         return new DataType(this.name, this.type, this.depth - 1);
@@ -83,11 +82,11 @@ public class DataType {
     }
 
     public static DataType getDataTypeFromToken(Token token) throws CompileException {
-        switch(token.type){
+        switch(token.type()){
             case TOKEN_INT, TOKEN_INT_LITERAL -> {return DataType.getInt();}
             case TOKEN_FLOAT, TOKEN_FLOAT_LITERAL -> {return DataType.getFloat();}
             case TOKEN_STRING-> {return DataType.getString();}
-            case TOKEN_IDENTIFIER -> {return getStruct(token.literal);}
+            case TOKEN_IDENTIFIER -> {return getStruct(token.literal());}
             case TOKEN_VOID -> {return getVoid();}
         }
         throw new CompileException(String.format("Can't parse value type from %s", token));

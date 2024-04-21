@@ -1,16 +1,13 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class LiteralExpr extends Expr{
 
     @Override
     public String toString() {
-        if(token.type == TokenType.TOKEN_STRING){
-            return String.format("\"%s\"", token.literal);
+        if(token.type() == TokenType.TOKEN_STRING){
+            return String.format("\"%s\"", token.literal());
         }
-        return token.literal;
+        return token.literal();
     }
     private final Token token;
     public LiteralExpr(Token token, int line, String file){
@@ -22,11 +19,11 @@ public class LiteralExpr extends Expr{
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
         DataType type = DataType.getDataTypeFromToken(token);
 
-        if(token.type == TokenType.TOKEN_STRING || token.type == TokenType.TOKEN_FLOAT_LITERAL){
-            symbolTable.addConstant(token.literal, type.type);
+        if(token.type() == TokenType.TOKEN_STRING || token.type() == TokenType.TOKEN_FLOAT_LITERAL){
+            symbolTable.addConstant(token.literal(), type.type);
         }
 
-        quads.createLoadImmediate(type, token.literal);
+        quads.createLoadImmediate(type, token.literal());
     }
 }
 

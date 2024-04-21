@@ -12,8 +12,15 @@ public class Symbol {
         return false;
     }
 
-    public String name;
-    public DataType type;
+    protected final String name;
+    protected final DataType type;
+
+    public String getName(){
+        return this.name;
+    }
+    public DataType getType(){
+        return this.type;
+    }
     public Symbol(String name, DataType type){
         this.name = name;
         this.type = type;

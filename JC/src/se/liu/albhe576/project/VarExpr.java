@@ -1,13 +1,9 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Stack;
-
 public class VarExpr extends Expr {
     @Override
     public String toString() {
-        return token.literal;
+        return token.literal();
     }
 
     public final Token token;
@@ -19,9 +15,9 @@ public class VarExpr extends Expr {
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
 
-        Symbol symbol = symbolTable.findSymbol(token.literal);
+        Symbol symbol = symbolTable.findSymbol(token.literal());
         if(symbol == null){
-            this.error(String.format("Can't find symbol %s", token.literal));
+            this.error(String.format("Can't find symbol %s", token.literal()));
         }
 
         assert symbol != null;

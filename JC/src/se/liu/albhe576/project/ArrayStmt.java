@@ -3,8 +3,8 @@ package se.liu.albhe576.project;
 import java.util.List;
 
 public class ArrayStmt extends Stmt {
-    public final ArrayDataType type;
-    public final String name;
+    private final ArrayDataType type;
+    private final String name;
     private final List<Expr> items;
     private final int size;
 
@@ -22,8 +22,8 @@ public class ArrayStmt extends Stmt {
 
         int offset = -symbolTable.getCurrentScopeSize();
         if(itemType.isStruct()){
-            Struct struct = symbolTable.structs.get(itemType.name);
-            offset -= struct.getSize(symbolTable.structs) * size;
+            Struct struct = symbolTable.getStruct(itemType.name);
+            offset -= struct.getSize(symbolTable.getStructs()) * size;
         }else{
             offset -= 8 * size;
         }

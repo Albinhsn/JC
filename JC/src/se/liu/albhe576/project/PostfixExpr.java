@@ -3,11 +3,11 @@ package se.liu.albhe576.project;
 public class PostfixExpr extends Expr{
     @Override
     public String toString() {
-        return String.format("%s%s",literal.literal, op.literal);
+        return String.format("%s%s",literal.literal(), op.literal());
     }
 
-    public Token literal;
-    public Token op;
+    private final Token literal;
+    private final Token op;
 
     public PostfixExpr(Token literal, Token op, int line, String file){
         super(line, file);
@@ -21,7 +21,7 @@ public class PostfixExpr extends Expr{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
-        Symbol symbol = symbolTable.findSymbol(literal.literal);
+        Symbol symbol = symbolTable.findSymbol(literal.literal());
 
         if(isInvalidPostfixTarget(symbol.type)){
             this.error(String.format("Can't postfix type %s", symbol.type));
@@ -31,7 +31,7 @@ public class PostfixExpr extends Expr{
 
         quads.createLoad(symbol);
         if(!loadedSymbol.type.isPointer()){
-            if(op.type == TokenType.TOKEN_INCREMENT){
+            if(op.type() == TokenType.TOKEN_INCREMENT){
                 quads.createIncrement(loadedSymbol);
             }else{
                 quads.createDecrement(loadedSymbol);

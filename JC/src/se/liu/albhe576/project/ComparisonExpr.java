@@ -1,12 +1,9 @@
 package se.liu.albhe576.project;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class ComparisonExpr extends Expr {
-    public Expr left;
-    public Expr right;
-    public Token op;
+    private final Expr left;
+    private final Expr right;
+    private final Token op;
     public ComparisonExpr(Expr left, Expr right, Token op, int line, String file){
         super(line,file);
         this.left = left;
@@ -26,7 +23,7 @@ public class ComparisonExpr extends Expr {
 
     private void typecheckComparison(DataType left, DataType right) throws CompileException {
         if(left.isArray() || right.isArray() || left.isStruct() || right.isStruct() || left.isString() || right.isString()){
-            this.error(String.format("Can't do comparison op %s with types %s and %s", this.op.literal, left, right));
+            this.error(String.format("Can't do comparison op %s with types %s and %s", this.op.literal(), left, right));
         }
     }
 
@@ -34,12 +31,12 @@ public class ComparisonExpr extends Expr {
     public void compile(SymbolTable symbolTable, QuadList quads)  throws CompileException{
         left.compile(symbolTable, quads);
         Symbol lResult = quads.getLastResult();
-        DataType lType = lResult.type;
+        DataType lType = lResult.getType();
 
         QuadList rQuads = new QuadList();
         right.compile(symbolTable, rQuads);
         Symbol rResult = rQuads.getLastResult();
-        DataType rType = rResult.type;
+        DataType rType = rResult.getType();
 
         this.typecheckComparison(lType, rType);
 

@@ -6,7 +6,6 @@ import java.util.*;
 
 public class Compiler {
 
-    private final List<Function> extern;
     private final List<Stmt> stmts;
     private final SymbolTable symbolTable;
     private static int resultCount;
@@ -25,57 +24,30 @@ public class Compiler {
     public void Compile(String name) throws CompileException, IOException {
 
         // Intermediate code generation
-        this.generateIntermediate();
-
-        // Output intel assembly
-        this.generateAssembly(name, extern);
-    }
-
-    private void debugIntermediates() throws IOException {
-
-        List<Function> functions = symbolTable.getFunctions();
-        FileWriter writer = new FileWriter("debug.txt");
-        for(Function function : functions){
-            writer.write("\n" + function.name + ":\n");
-            System.out.println("\n" + function.name + ":\n");
-
-
-            for(int i = 0; i < function.intermediates.size(); i++){
-                Quad intermediate = function.intermediates.get(i);
-                System.out.printf("%d\t%s%n", i, intermediate);
-                writer.write(String.format("%d\t%s%n", i, intermediate));
-            }
-            System.out.println();
-            writer.write("\n");
-        }
-    }
-
-    public void generateIntermediate() throws CompileException, IOException {
         for(Stmt stmt : stmts){
             QuadList quads = new QuadList();
             stmt.compile(symbolTable, quads);
         }
 
-        this.debugIntermediates();
-
-
+        // Output intel assembly
+        this.generateAssembly(name);
     }
 
-    private static FileWriter initOutput(String name, Map<String, Constant> constants, List<Function> extern) throws IOException {
+    private static FileWriter initOutput(String name, Map<String, Constant> constants, Map<String, Function> extern) throws IOException {
         StringBuilder header = new StringBuilder();
         header.append("global _start\n");
 
         header.append("extern printf\n");
-        for(Function function : extern){
-            header.append(String.format("extern %s\n", function.name));
+        for(String functionName : extern.keySet()){
+            header.append(String.format("extern %s\n", functionName));
         }
 
         header.append("\n\nsection .data\n");
         for(Map.Entry<String, Constant> entry : constants.entrySet()){
             Constant value = entry.getValue();
             String key = entry.getKey();
-            if(value.type == DataTypes.STRING){
-                header.append(String.format("%s db ", value.label));
+            if(value.type() == DataTypes.STRING){
+                header.append(String.format("%s db ", value.label()));
                 if(key.isEmpty()){
                     header.append(" 0");
                 }else{
@@ -90,7 +62,7 @@ public class Compiler {
                 }
 
             }else{
-                header.append(String.format("%s dq %s\n", value.label, entry.getKey()));
+                header.append(String.format("%s dq %s\n", value.label(), entry.getKey()));
             }
         }
         header.append("\n\nsection .text\n");
@@ -105,32 +77,33 @@ public class Compiler {
         return writer;
     }
 
-    private void handleStackAlignment(FileWriter fileWriter, Function function) throws IOException{
-        int scopeSize = this.symbolTable.getLocalVariableStackSize(function.name);
+    private void handleStackAlignment(FileWriter fileWriter, String functionName) throws IOException{
+        int scopeSize = this.symbolTable.getLocalVariableStackSize(functionName);
         scopeSize += (scopeSize % 16) == 0 ? 0 : 8;
         if(scopeSize != 0){
             fileWriter.write(String.format("sub rsp, %d\n", scopeSize));
         }
     }
-    private void outputFunctionHeader(FileWriter fileWriter, Function function) throws IOException {
-        fileWriter.write("\n\n" + function.name + ":\npush rbp\nmov rbp, rsp\n");
+    private void outputFunctionHeader(FileWriter fileWriter, String functionName) throws IOException {
+        fileWriter.write("\n\n" + functionName + ":\npush rbp\nmov rbp, rsp\n");
     }
 
-    private void outputFunctionBody(FileWriter fileWriter, Function function) throws IOException, CompileException {
-        final List<Function> functions = this.symbolTable.getFunctions();
+    private void outputFunctionBody(FileWriter fileWriter, String functionName, Function function) throws IOException, CompileException {
+        final Map<String, Function> functions = this.symbolTable.getFunctions();
         final Map<String, Constant> constants = this.symbolTable.getConstants();
 
-        Stack stack = new Stack(this.symbolTable.getAllScopedVariables(function.name), this.symbolTable.structs);
+        Stack stack = new Stack(this.symbolTable.getAllScopedVariables(functionName), this.symbolTable.getStructs());
 
-        boolean shouldOutputRet = function.intermediates.isEmpty();
-        for (Quad intermediate : function.intermediates) {
+        QuadList intermediates = function.getIntermediates();
+        boolean shouldOutputRet = intermediates.isEmpty();
+        for (Quad intermediate : intermediates) {
             // fileWriter.write("; " + intermediate + "\n");
             fileWriter.write(intermediate.emit(stack, functions, constants) + "\n");
         }
 
         if(!shouldOutputRet){
-            Quad lastQuad = function.intermediates.get(function.intermediates.size() - 1);
-            shouldOutputRet = lastQuad.op != QuadOp.RET;
+            Quad lastQuad = intermediates.getLastQuad();
+            shouldOutputRet = lastQuad.getOp() != QuadOp.RET;
         }
 
         if(shouldOutputRet){
@@ -140,15 +113,17 @@ public class Compiler {
 
     }
 
-    public void generateAssembly(String name, List<Function> extern) throws IOException, CompileException {
-        final List<Function> functions = this.symbolTable.getFunctions();
+    public void generateAssembly(String name) throws IOException, CompileException {
+        final Map<String, Function> functions = this.symbolTable.getInternalFunctions();
+        final Map<String, Function> extern    = this.symbolTable.getExternalFunctions();
         final Map<String, Constant> constants = this.symbolTable.getConstants();
         FileWriter fileWriter = initOutput(name, constants, extern);
 
-        for (Function function : functions) {
-            this.outputFunctionHeader(fileWriter, function);
-            this.handleStackAlignment(fileWriter, function);
-            this.outputFunctionBody(fileWriter, function);
+        for (Map.Entry<String, Function> function : functions.entrySet()) {
+            String key = function.getKey();
+            this.outputFunctionHeader(fileWriter, key);
+            this.handleStackAlignment(fileWriter, key);
+            this.outputFunctionBody(fileWriter, key, function.getValue());
         }
 
         fileWriter.flush();
@@ -156,10 +131,9 @@ public class Compiler {
 
     }
 
-    public Compiler(Map<String, Struct> structs, List<Stmt> stmts, List<Function> extern){
+    public Compiler(Map<String, Struct> structs, List<Stmt> stmts, Map<String, Function> extern){
         this.stmts = stmts;
         Map<String, Constant> constants = new HashMap<>();
-        this.extern = extern;
         this.symbolTable = new SymbolTable(structs, constants, extern);
     }
 }

@@ -3,7 +3,6 @@ package se.liu.albhe576.project;
 import java.util.Map;
 
 public class Scanner {
-
     private final String input;
     private int index;
     private int line;
@@ -98,6 +97,7 @@ public class Scanner {
 
         int startIndex = this.index;
         int line = this.line;
+
         char currentChar = advance();
         while(!isOutOfBounds() && currentChar != '\"'){
             currentChar = advance();
@@ -117,10 +117,8 @@ public class Scanner {
                 Map.entry("fun", TokenType.TOKEN_FUN),
                 Map.entry("if", TokenType.TOKEN_IF),
                 Map.entry("else", TokenType.TOKEN_ELSE),
-                Map.entry("false", TokenType.TOKEN_FALSE),
                 Map.entry("for", TokenType.TOKEN_FOR),
                 Map.entry("while", TokenType.TOKEN_WHILE),
-                Map.entry("true", TokenType.TOKEN_TRUE),
                 Map.entry("return", TokenType.TOKEN_RETURN),
                 Map.entry("int", TokenType.TOKEN_INT),
                 Map.entry("float", TokenType.TOKEN_FLOAT),
@@ -153,10 +151,10 @@ public class Scanner {
         }
         if(currentChar == '.'){
             currentChar = getCurrentChar();
+            type = TokenType.TOKEN_FLOAT_LITERAL;
             while(!isOutOfBounds() && Character.isDigit(currentChar)){
                 currentChar = advance();
             }
-            type = TokenType.TOKEN_FLOAT_LITERAL;
         }
         this.index--;
         String literal = this.input.substring(startIndex, this.index);
@@ -219,7 +217,6 @@ public class Scanner {
             case '[' -> this.createToken(TokenType.TOKEN_LEFT_BRACKET, "[");
             case ']' -> this.createToken(TokenType.TOKEN_RIGHT_BRACKET, "]");
             case ';' -> this.createToken(TokenType.TOKEN_SEMICOLON, ";");
-            case ':' -> this.createToken(TokenType.TOKEN_COLON, ":");
             case '%' -> this.createToken(TokenType.TOKEN_MOD, "%");
             case ',' -> this.createToken(TokenType.TOKEN_COMMA, ",");
             case '#' ->

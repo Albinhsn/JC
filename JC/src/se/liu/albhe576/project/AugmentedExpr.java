@@ -1,15 +1,11 @@
 package se.liu.albhe576.project;
 
-import java.util.List;
-import java.util.Stack;
-
 public class AugmentedExpr extends Expr{
 
     @Override
     public String toString() {
-        return String.format("%s %s %s", target, op.literal, value);
+        return String.format("%s %s %s", target, op.literal(), value);
     }
-
 
     private final Token op;
     private final Expr target;
@@ -32,11 +28,11 @@ public class AugmentedExpr extends Expr{
         value.compile(symbolTable, valueQuads);
         Symbol valueSymbol = valueQuads.getLastResult();
 
-        DataType lType = targetSymbol.type;
-        DataType rType = valueSymbol.type;
+        DataType lType = targetSymbol.getType();
+        DataType rType = valueSymbol.getType();
 
         QuadOp op = QuadOp.fromToken(this.op);
-        BinaryExpr.typecheckBinaryExpr(op, lType, rType, this, this.op.literal);
+        BinaryExpr.typecheckBinaryExpr(op, lType, rType, this, this.op.literal());
 
         if(rType.isPointer()){
             this.error("Can't do augmented op with a pointer on the right side");
@@ -48,14 +44,14 @@ public class AugmentedExpr extends Expr{
         quads.createSetupBinary(valueQuads, targetSymbol, valueSymbol);
 
         boolean fpOp = false;
-        if(targetSymbol.type.isFloatingPoint() || valueSymbol.type.isFloatingPoint()){
+        if(targetSymbol.getType().isFloatingPoint() || valueSymbol.getType().isFloatingPoint()){
             op = op.convertToFloat();
             fpOp = true;
         }
 
         quads.addQuad(op, targetSymbol, valueSymbol, targetSymbol);
 
-        if(fpOp && !targetSymbol.type.isFloatingPoint()){
+        if(fpOp && !targetSymbol.getType().isFloatingPoint()){
             quads.createConvertFloatToInt(valueSymbol);
         }
 

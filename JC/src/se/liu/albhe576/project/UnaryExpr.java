@@ -4,7 +4,7 @@ package se.liu.albhe576.project;
 public class UnaryExpr extends Expr{
     @Override
     public String toString() {
-        return String.format("%s(%s)", op.literal, expr);
+        return String.format("%s(%s)", op.literal(), expr);
     }
 
     public Expr expr;
@@ -16,13 +16,13 @@ public class UnaryExpr extends Expr{
     }
 
     private QuadOp getUnaryQuadOp() throws CompileException {
-       switch(this.op.type){
+       switch(this.op.type()){
            case TOKEN_AND_BIT -> {return QuadOp.LOAD_POINTER;}
            case TOKEN_STAR -> {return QuadOp.DEREFERENCE;}
            case TOKEN_MINUS -> {return QuadOp.NEGATE;}
            case TOKEN_INCREMENT, TOKEN_DECREMENT -> {return QuadOp.fromToken(this.op);}
        }
-       throw new CompileException(String.format("Can't get quad op from unary op %s", this.op.literal));
+       throw new CompileException(String.format("Can't get quad op from unary op %s", this.op.literal()));
     }
 
     @Override

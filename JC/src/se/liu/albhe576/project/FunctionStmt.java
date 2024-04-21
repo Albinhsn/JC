@@ -45,22 +45,18 @@ public class FunctionStmt extends Stmt{
         if(symbolTable.functionExists(name)){
 
             Function declaredFunction = symbolTable.getFunction(name);
-            this.error(String.format("Trying to redeclare function %s in %s:%d, already declared at %s:%d", name, file, line, declaredFunction.file, declaredFunction.line));
+            this.error(String.format("Trying to redeclare function %s in %s:%d, already declared at %s:%d", name, file, line, declaredFunction.getFile(), declaredFunction.getLine()));
         }
-        symbolTable.addFunction(new Function(name, arguments, returnType, quads, file, line));
+        symbolTable.addFunction(name, new Function(arguments, returnType, quads, file, line, false));
 
         Map<String, VariableSymbol> localSymbols =new HashMap<>();
         int offset = 16;
         for(StructField arg : arguments){
-           localSymbols.put(arg.name, new VariableSymbol(arg.name, arg.type, offset, symbolTable.generateVariableId()));
-           offset += symbolTable.getStructSize(arg.type);
+           localSymbols.put(arg.name(), new VariableSymbol(arg.name(), arg.type(), offset, symbolTable.generateVariableId()));
+           offset += symbolTable.getStructSize(arg.type());
         }
 
         symbolTable.compileFunction(name, localSymbols);
-        symbolTable.enterScope();
-        for(Stmt stmt : body){
-            stmt.compile(symbolTable, quads);
-        }
-        symbolTable.exitScope();
+        Stmt.compileBlock(symbolTable, quads, body);
     }
 }

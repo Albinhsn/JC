@@ -4,12 +4,12 @@ public class LogicalExpr extends Expr{
 
     @Override
     public String toString() {
-        return String.format("%s %s %s", left, op.literal, right);
+        return String.format("%s %s %s", left, op.literal(), right);
     }
 
-    public Expr left;
-    public Expr right;
-    public Token op;
+    private final Expr left;
+    private final Expr right;
+    private final Token op;
     public LogicalExpr(Expr left, Expr right, Token op, int line, String file){
         super(line, file);
         this.left = left;
@@ -24,7 +24,7 @@ public class LogicalExpr extends Expr{
         Symbol shortCircuitLabel = Compiler.generateLabel();
         Symbol mergeLabel = Compiler.generateLabel();
 
-        boolean jumpIfTrue = op.type == TokenType.TOKEN_OR_LOGICAL;
+        boolean jumpIfTrue = op.type() == TokenType.TOKEN_OR_LOGICAL;
         String fstImm = jumpIfTrue ? "0" : "1";
         String sndImm = jumpIfTrue ? "1" : "0";
 

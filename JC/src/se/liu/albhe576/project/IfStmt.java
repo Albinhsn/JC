@@ -40,36 +40,18 @@ public class IfStmt extends Stmt{
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
         condition.compile(symbolTable, quads);
 
-        // insert conditional check
         QuadList ifQuad = new QuadList();
-        symbolTable.enterScope();
-        for(Stmt stmt : ifBody){
-            stmt.compile(symbolTable, ifQuad);
-        }
-        symbolTable.exitScope();
+        Stmt.compileBlock(symbolTable, ifQuad, ifBody);
 
-        // insert unconditional jump
         QuadList elseQuad = new QuadList();
-        symbolTable.enterScope();
-        for(Stmt stmt : elseBody){
-            stmt.compile(symbolTable, elseQuad);
-        }
-        symbolTable.exitScope();
+        Stmt.compileBlock(symbolTable, elseQuad, elseBody);
 
         Symbol elseLabel = Compiler.generateLabel();
         Symbol mergeLabel = Compiler.generateLabel();
 
-
         Symbol ifJmpLabel = elseBody.isEmpty() ? mergeLabel : elseLabel;
 
-        QuadOp conditionOp = quads.getLastOp();
-        if(conditionOp.isSet()){
-            quads.removeLastQuad();
-            QuadOp jmpCondition = conditionOp.getJmpFromSet().invertJmpCondition();
-            quads.createJmpOnCondition(jmpCondition, ifJmpLabel);
-        }else{
-            quads.insertJMPOnComparisonCheck(ifJmpLabel, false);
-        }
+        quads.createJumpOnComparison(ifJmpLabel, true);
 
         quads.addAll(ifQuad);
         if(!elseBody.isEmpty()){

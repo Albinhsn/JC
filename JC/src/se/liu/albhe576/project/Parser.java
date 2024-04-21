@@ -29,19 +29,62 @@ public class Parser {
     private Expr getEmptyExpr(int line){
         return new Expr(line, this.fileName);
     }
-
-    private final EnumMap<TokenType, ParseFunction> parseFunctions;
+    private final EnumMap<TokenType, ParseFunction> parseFunctions = new EnumMap<>(Map.ofEntries(
+        Map.entry(TokenType.TOKEN_LEFT_BRACKET, new ParseFunction(null, this::index, Precedence.CALL)),
+        Map.entry(TokenType.TOKEN_RIGHT_BRACKET, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_LEFT_PAREN, new ParseFunction(this::grouping, null, Precedence.CALL)),
+        Map.entry(TokenType.TOKEN_RIGHT_PAREN, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_LEFT_BRACE, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_RIGHT_BRACE, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_COMMA, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_DOT, new ParseFunction(null, this::dot, Precedence.CALL)),
+        Map.entry(TokenType.TOKEN_AUGMENTED_SLASH, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_AUGMENTED_STAR, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_AUGMENTED_MINUS, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_AUGMENTED_PLUS, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_AUGMENTED_XOR, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_AUGMENTED_OR, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_AUGMENTED_AND, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_MINUS, new ParseFunction(this::unary, this::binary, Precedence.TERM)),
+        Map.entry(TokenType.TOKEN_PLUS, new ParseFunction(null, this::binary, Precedence.TERM)),
+        Map.entry(TokenType.TOKEN_SEMICOLON, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_SLASH, new ParseFunction(null, this::binary, Precedence.FACTOR)),
+        Map.entry(TokenType.TOKEN_STAR, new ParseFunction(this::dereference, this::binary, Precedence.FACTOR)),
+        Map.entry(TokenType.TOKEN_BANG, new ParseFunction(this::unary, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_BANG_EQUAL, new ParseFunction(null, this::comparison, Precedence.EQUALITY)),
+        Map.entry(TokenType.TOKEN_EQUAL, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_EQUAL_EQUAL, new ParseFunction(null, this::comparison, Precedence.EQUALITY)),
+        Map.entry(TokenType.TOKEN_GREATER, new ParseFunction(null, this::comparison, Precedence.COMPARISON)),
+        Map.entry(TokenType.TOKEN_GREATER_EQUAL, new ParseFunction(null, this::comparison, Precedence.COMPARISON)),
+        Map.entry(TokenType.TOKEN_LESS, new ParseFunction(null, this::comparison, Precedence.COMPARISON)),
+        Map.entry(TokenType.TOKEN_LESS_EQUAL, new ParseFunction(null, this::comparison, Precedence.COMPARISON)),
+        Map.entry(TokenType.TOKEN_IDENTIFIER, new ParseFunction(this::variable, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_STRING, new ParseFunction(this::literal, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_INT_LITERAL, new ParseFunction(this::literal, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_FLOAT_LITERAL, new ParseFunction(this::literal, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_AND_LOGICAL, new ParseFunction(null, this::logical, Precedence.AND)),
+        Map.entry(TokenType.TOKEN_AND_BIT, new ParseFunction(this::unary, this::binary, Precedence.BITWISE)),
+        Map.entry(TokenType.TOKEN_OR_LOGICAL, new ParseFunction(null, this::logical, Precedence.OR)),
+        Map.entry(TokenType.TOKEN_OR_BIT, new ParseFunction(null, this::binary, Precedence.BITWISE)),
+        Map.entry(TokenType.TOKEN_XOR, new ParseFunction(null, this::binary, Precedence.BITWISE)),
+        Map.entry(TokenType.TOKEN_SHIFT_LEFT, new ParseFunction(null, this::binary, Precedence.BITWISE)),
+        Map.entry(TokenType.TOKEN_SHIFT_RIGHT, new ParseFunction(null, this::binary, Precedence.BITWISE)),
+        Map.entry(TokenType.TOKEN_INCREMENT, new ParseFunction(this::unary, null, Precedence.TERM)),
+        Map.entry(TokenType.TOKEN_DECREMENT, new ParseFunction(this::unary, null, Precedence.TERM)),
+        Map.entry(TokenType.TOKEN_MOD, new ParseFunction(null, this::binary, Precedence.TERM)),
+        Map.entry(TokenType.TOKEN_ELLIPSIS, new ParseFunction(null, null, Precedence.NONE))
+    ));
     private final Map<String, Token> defined;
     private final List<String> included;
     private final String fileName;
-    private final List<Function> extern;
+    private final Map<String, Function> extern;
     private final Map<String, Struct> structs;
     private final Scanner scanner;
     private Token current;
     private Token previous;
     private final List<Stmt> stmts;
 
-    public List<Function> getExtern(){
+    public Map<String, Function> getExtern(){
         return this.extern;
     }
     public Map<String, Struct> getStructs(){
@@ -49,10 +92,9 @@ public class Parser {
     }
 
     private void updateCurrent(){
-        if(this.current.type == TokenType.TOKEN_IDENTIFIER && this.defined.containsKey(this.current.literal)){
-            Token value = this.defined.get(this.current.literal);
-            this.current.type = value.type;
-            this.current.literal = value.literal;
+        if(this.current.type() == TokenType.TOKEN_IDENTIFIER && this.defined.containsKey(this.current.literal())){
+            Token value = this.defined.get(this.current.literal());
+            this.current = new Token(value.type(), this.scanner.getLine(), value.literal());
         }
     }
 
@@ -63,7 +105,7 @@ public class Parser {
     }
 
     private boolean matchType(TokenType type) throws CompileException{
-        if(this.current.type != type){
+        if(this.current.type() != type){
            return false;
         }
         advance();
@@ -76,7 +118,7 @@ public class Parser {
     }
 
     private boolean isVariableType() {
-        switch(this.current.type){
+        switch(this.current.type()){
             case TOKEN_INT:{}
             case TOKEN_FLOAT:{}
             case TOKEN_VOID:{
@@ -105,36 +147,35 @@ public class Parser {
 
     private StructField parseStructField() throws CompileException{
 
-        Token type = this.current;
         DataType dataType = this.parseType();
         if(!matchType(TokenType.TOKEN_IDENTIFIER)){
-            this.error(String.format("Expected identifier as argument but got %s", this.current.type));
+            this.error(String.format("Expected identifier as argument but got %s", this.current.type()));
         }
-        String name = this.previous.literal;
-        return new StructField(name, dataType, type.literal);
+        String name = this.previous.literal();
+        return new StructField(name, dataType);
     }
 
     private void structDeclaration() throws CompileException {
         if(!matchType(TokenType.TOKEN_IDENTIFIER)){
-            error(String.format("Expected identifier but got %s", this.current.type));
+            error(String.format("Expected identifier but got %s", this.current.type()));
         }
         Token name = this.previous;
         if(!matchType(TokenType.TOKEN_LEFT_BRACE)){
-            error(String.format("Expected left brace but got %s", this.current.type));
+            error(String.format("Expected left brace but got %s", this.current.type()));
         }
 
         List<StructField> fields = new ArrayList<>();
         while(!matchType(TokenType.TOKEN_RIGHT_BRACE)){
             fields.add(this.parseStructField());
             if(!matchType(TokenType.TOKEN_SEMICOLON)){
-                this.error(String.format("Expected semicolon after struct field but got %s", this.current.type));
+                this.error(String.format("Expected semicolon after struct field but got %s", this.current.type()));
             }
         }
-        if(this.structs.containsKey(name.literal)){
-            Struct struct = this.structs.get(name.literal);
-            this.error(String.format("Can't declare struct '%s' which is already declared from file %s", name.literal, struct.fileName));
+        if(this.structs.containsKey(name.literal())){
+            Struct struct = this.structs.get(name.literal());
+            this.error(String.format("Can't declare struct '%s' which is already declared from file %s", name.literal(), struct.getFilename()));
         }
-        this.structs.put(name.literal, new Struct(name.literal, fields, this.fileName));
+        this.structs.put(name.literal(), new Struct(fields, this.fileName));
     }
 
     private void consume(TokenType type, String msg) throws CompileException{
@@ -143,15 +184,15 @@ public class Parser {
         }
     }
     private Expr literal(Expr expr, boolean canAssign) {
-        return new LiteralExpr(this.previous, this.previous.line, this.fileName);
+        return new LiteralExpr(this.previous, this.previous.line(), this.fileName);
     }
 
     private Expr parseExpr(Expr expr, Precedence precedence) throws CompileException{
 
         advance();
-        ParseFunction prefix = this.parseFunctions.getOrDefault(this.previous.type, null);
+        ParseFunction prefix = this.parseFunctions.getOrDefault(this.previous.type(), null);
         if(prefix == null || prefix.prefixRule == null){
-            error(String.format("Expected expression but got %s %s", this.previous.literal, precedence));
+            error(String.format("Expected expression but got %s %s", this.previous.literal(), precedence));
         }
         assert prefix != null;
 
@@ -159,11 +200,11 @@ public class Parser {
         final boolean canAssign =  precedenceOrdinal <= Precedence.ASSIGNMENT.ordinal();
         expr = prefix.prefixRule.prefix(expr, canAssign);
 
-        ParseFunction currentRule = this.parseFunctions.get(this.current.type);
+        ParseFunction currentRule = this.parseFunctions.get(this.current.type());
         while(precedenceOrdinal <= currentRule.precedence.ordinal()){
             advance();
             expr = currentRule.infixRule.infix(expr, canAssign);
-            currentRule = this.parseFunctions.get(this.current.type);
+            currentRule = this.parseFunctions.get(this.current.type());
         }
 
         if(canAssign && matchType(TokenType.TOKEN_EQUAL)){
@@ -186,7 +227,7 @@ public class Parser {
 
     private Stmt expressionStatement() throws CompileException {
 
-        int line = this.current.line;
+        int line = this.current.line();
         Expr expr = parseExpr(this.getEmptyExpr(line), Precedence.OR);
         String file = this.fileName;
         if(matchType(TokenType.TOKEN_EQUAL)) {
@@ -201,15 +242,15 @@ public class Parser {
     private Stmt returnStatement() throws CompileException{
         this.advance();
         if(matchType(TokenType.TOKEN_SEMICOLON)){
-            return new ReturnStmt(null, this.previous.line, this.fileName);
+            return new ReturnStmt(null, this.previous.line(), this.fileName);
         }
-        Stmt out = new ReturnStmt(parseExpr(this.getEmptyExpr(this.current.line), Precedence.ASSIGNMENT), this.previous.line, this.fileName);
+        Stmt out = new ReturnStmt(parseExpr(this.getEmptyExpr(this.current.line()), Precedence.ASSIGNMENT), this.previous.line(), this.fileName);
         consume(TokenType.TOKEN_SEMICOLON, String.format("Expected ';' after return stmt %s", out));
         return out;
     }
     private Stmt forStatement() throws CompileException {
         this.advance();
-        int line = this.previous.line;
+        int line = this.previous.line();
         consume(TokenType.TOKEN_LEFT_PAREN, "Expected '(' after for");
         Stmt init = parseStmt();
         Stmt condition = expressionStatement();
@@ -226,7 +267,7 @@ public class Parser {
 
     private Stmt whileStatement() throws CompileException {
         this.advance();
-        int line = this.previous.line;
+        int line = this.previous.line();
         consume(TokenType.TOKEN_LEFT_PAREN, "expected '(' after while");
         Expr condition = parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT);
         consume(TokenType.TOKEN_RIGHT_PAREN, "expected ')' after while");
@@ -246,7 +287,7 @@ public class Parser {
     }
     private List<StructField> parseArguments() throws CompileException {
         List<StructField> args = new ArrayList<>();
-        if(this.current.type != TokenType.TOKEN_RIGHT_PAREN){
+        if(this.current.type() != TokenType.TOKEN_RIGHT_PAREN){
             do{
                 args.add(this.parseStructField());
             }while(matchType(TokenType.TOKEN_COMMA));
@@ -257,23 +298,23 @@ public class Parser {
     private Stmt function(DataType type, String name, int line) throws CompileException {
         List<StructField> args = this.parseArguments();
 
-        consume(TokenType.TOKEN_RIGHT_PAREN, String.format("Expected right paren after arguments but got %s", this.current.type));
-        consume(TokenType.TOKEN_LEFT_BRACE, String.format("Expected { to start function body but got %s", this.current.type));
+        consume(TokenType.TOKEN_RIGHT_PAREN, String.format("Expected right paren after arguments but got %s", this.current.type()));
+        consume(TokenType.TOKEN_LEFT_BRACE, String.format("Expected { to start function body but got %s", this.current.type()));
 
         List<Stmt> body = this.parseBody();
         return new FunctionStmt(type, name,args, body, line, this.fileName);
     }
 
     private Stmt variableDeclaration(DataType type) throws CompileException {
-        int line = this.current.line;
+        int line = this.current.line();
 
-        consume(TokenType.TOKEN_IDENTIFIER, String.format("Expected identifier after variable type but got %s", this.current.type));
-        String name = this.previous.literal;
+        consume(TokenType.TOKEN_IDENTIFIER, String.format("Expected identifier after variable type but got %s", this.current.type()));
+        String name = this.previous.literal();
 
         if(matchType(TokenType.TOKEN_EQUAL)){
 
             Expr value = parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT);
-            consume(TokenType.TOKEN_SEMICOLON, String.format("expected semicolon after assign expr but got %s", this.current.type));
+            consume(TokenType.TOKEN_SEMICOLON, String.format("expected semicolon after assign expr but got %s", this.current.type()));
             return new VariableStmt(type, name,value, line, this.fileName);
 
         }else if(matchType(TokenType.TOKEN_LEFT_PAREN)){
@@ -283,28 +324,28 @@ public class Parser {
         }
         // int a[5] = []; etc
         else if(matchType(TokenType.TOKEN_LEFT_BRACKET)){
-            ArrayDataType arrayType = ArrayDataType.fromDataType(type);
-            consume(TokenType.TOKEN_INT_LITERAL, String.format("Expected array size in form of int literal in array declaration, got %s", this.current.literal));
-            int size = Integer.parseInt(this.previous.literal);
-            consume(TokenType.TOKEN_RIGHT_BRACKET, String.format("Expected ']' after array size in array declaration, got %s", this.current.literal));
+            ArrayDataType arrayType = ArrayDataType.fromItemType(type);
+            consume(TokenType.TOKEN_INT_LITERAL, String.format("Expected array size in form of int literal in array declaration, got %s", this.current.literal()));
+            int size = Integer.parseInt(this.previous.literal());
+            consume(TokenType.TOKEN_RIGHT_BRACKET, String.format("Expected ']' after array size in array declaration, got %s", this.current.literal()));
 
             List<Expr> items = null;
             if(matchType(TokenType.TOKEN_EQUAL)){
                 consume(TokenType.TOKEN_LEFT_BRACKET, "Expected '[' after = in array declaration");
                 items = parseArrayItems(size);
             }
-            consume(TokenType.TOKEN_SEMICOLON, String.format("Expected ';' after array declaration, not %s?", this.current.literal));
+            consume(TokenType.TOKEN_SEMICOLON, String.format("Expected ';' after array declaration, not %s?", this.current.literal()));
             return new ArrayStmt(arrayType, name,items, size, line, fileName);
         }
 
 
-        this.error(String.format("Expected '=' or '(' after variable but got %s", this.current.type));
+        this.error(String.format("Expected '=' or '(' after variable but got %s", this.current.type()));
         // unreachable
         return null;
     }
     private Stmt ifStatement() throws CompileException {
         this.advance();
-        int line = this.previous.line;
+        int line = this.previous.line();
         consume(TokenType.TOKEN_LEFT_PAREN, "Expected '(' after if");
         Expr condition = parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT);
 
@@ -324,7 +365,7 @@ public class Parser {
         return new IfStmt(condition, ifBody, elseBody, line, this.fileName);
     }
     private Stmt parseStmt() throws CompileException {
-        switch(this.current.type){
+        switch(this.current.type()){
             case TOKEN_FOR -> {
                 return forStatement();
             }
@@ -338,7 +379,7 @@ public class Parser {
                 return returnStatement();
             }
             default -> {
-                if(isVariableType() || this.structs.containsKey(this.current.literal)){
+                if(isVariableType() || this.structs.containsKey(this.current.literal())){
                     DataType type = parseType();
                     return variableDeclaration(type);
                 }
@@ -354,7 +395,7 @@ public class Parser {
 
     private void parseInclude() throws IOException, CompileException {
         consume(TokenType.TOKEN_STRING, "Expected string after include?");
-        String fileName = this.previous.literal;
+        String fileName = this.previous.literal();
 
         if(this.included.stream().anyMatch(i -> i.equals(fileName))){
             System.out.printf("already included %s\n%n", fileName);
@@ -378,7 +419,7 @@ public class Parser {
 
     private void parseDefine() throws CompileException {
         consume(TokenType.TOKEN_IDENTIFIER, "expected identifier after define");
-        this.defined.put(this.previous.literal, this.current);
+        this.defined.put(this.previous.literal(), this.current);
         advance();
     }
     private void parseExtern() throws CompileException {
@@ -399,13 +440,13 @@ public class Parser {
         }
 
         consume(TokenType.TOKEN_IDENTIFIER, "Expected identifier for function name after #extern");
-        String funcName = this.previous.literal;
+        String funcName = this.previous.literal();
         consume(TokenType.TOKEN_LEFT_PAREN, "Expected ( for function args after function name in extern");
         if(matchType(TokenType.TOKEN_ELLIPSIS)){
-            this.extern.add(new Function(funcName, type, null, this.fileName, this.previous.line));
+            this.extern.put(funcName, new Function(type, null, this.fileName, this.previous.line()));
         }else{
             List<StructField> args = this.parseArguments();
-            this.extern.add(new Function(funcName, args, type, null, this.fileName, this.previous.line));
+            this.extern.put(funcName, new Function(args, type, null, this.fileName, this.previous.line(), true));
         }
         consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ) after function args in extern");
 
@@ -436,36 +477,36 @@ public class Parser {
         return this.stmts;
     }
     private Expr grouping(Expr expr, boolean canAssign) throws CompileException{
-        int line = this.previous.line;
+        int line = this.previous.line();
         Expr groupedExpr = parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT);
         consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ')' after grouped expression");
         return new GroupedExpr(groupedExpr, line, this.fileName);
     }
     private Expr dot(Expr expr, boolean canAssign) throws CompileException{
-        int line = this.previous.line;
+        int line = this.previous.line();
         consume(TokenType.TOKEN_IDENTIFIER, "Expected identifier after dot");
         Token var = this.previous;
 
         return new DotExpr(expr, var, line, this.fileName);
     }
     private Expr comparison(Expr left, boolean canAssign) throws CompileException{
-        int line = this.previous.line;
+        int line = this.previous.line();
         Token op = this.previous;
-        ParseFunction rule = this.parseFunctions.get(op.type);
+        ParseFunction rule = this.parseFunctions.get(op.type());
         Expr right = parseExpr(this.getEmptyExpr(line), Precedence.values()[rule.precedence.ordinal() + 1]);
         return new ComparisonExpr(left, right, op, line, this.fileName);
     }
 
     private Expr binary(Expr expr, boolean canAssign) throws CompileException{
         Token op = this.previous;
-        int line = this.previous.line;
-        ParseFunction rule = this.parseFunctions.get(op.type);
+        int line = this.previous.line();
+        ParseFunction rule = this.parseFunctions.get(op.type());
         Expr newExpr = parseExpr(this.getEmptyExpr(line), Precedence.values()[rule.precedence.ordinal() + 1]);
         return new BinaryExpr(expr, op, newExpr, line, this.fileName);
     }
     private Expr dereference(Expr expr, boolean canAssign) throws CompileException{
         Token op = this.previous;
-        int line = this.previous.line;
+        int line = this.previous.line();
         UnaryExpr headExpr = new UnaryExpr(this.getEmptyExpr(line), op, line, this.fileName);
         UnaryExpr unaryExpr = headExpr;
         while(matchType(TokenType.TOKEN_STAR)){
@@ -479,14 +520,14 @@ public class Parser {
 
     private Expr unary(Expr expr, boolean canAssign) throws CompileException{
         Token op = this.previous;
-        int line = this.previous.line;
+        int line = this.previous.line();
         Expr newExpr = parseExpr(this.getEmptyExpr(line), Precedence.UNARY);
         return new UnaryExpr(newExpr, op, line, this.fileName);
     }
     private Expr parseCall(Token var) throws CompileException {
-        int line = this.previous.line;
+        int line = this.previous.line();
         List<Expr> args = new ArrayList<>();
-        if(this.current.type != TokenType.TOKEN_RIGHT_PAREN){
+        if(this.current.type() != TokenType.TOKEN_RIGHT_PAREN){
             do{
                 args.add(parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT));
             }while(matchType(TokenType.TOKEN_COMMA));
@@ -496,7 +537,7 @@ public class Parser {
     }
     private Expr variable(Expr expr, boolean canAssign) throws CompileException{
         Token var = this.previous;
-        int line = this.previous.line;
+        int line = this.previous.line();
         if(matchType(TokenType.TOKEN_DECREMENT) || matchType(TokenType.TOKEN_INCREMENT)){
             return new PostfixExpr(var, this.previous, line, this.fileName);
         }
@@ -511,13 +552,13 @@ public class Parser {
     }
     private Expr logical(Expr expr, boolean canAssign) throws CompileException{
         Token op = this.previous;
-        int line = this.previous.line;
+        int line = this.previous.line();
         Expr newExpr = parseExpr(this.getEmptyExpr(line), Precedence.AND);
         return new LogicalExpr(expr, newExpr, op, line, this.fileName);
     }
 
     private List<Expr> parseArrayItems(int size) throws CompileException{
-        int line = this.previous.line;
+        int line = this.previous.line();
         List<Expr> items = new ArrayList<>();
         if(!matchType(TokenType.TOKEN_RIGHT_BRACKET)){
             while(true){
@@ -537,74 +578,22 @@ public class Parser {
     }
 
     private Expr index(Expr expr, boolean canAssign) throws CompileException{
-        int line = this.previous.line;
+        int line = this.previous.line();
         Expr out = new IndexExpr(expr, parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, this.fileName);
         consume(TokenType.TOKEN_RIGHT_BRACKET, "Expected ']' after index");
         return out;
-    }
-
-
-    private void buildParseFunctionMap(){
-        this.parseFunctions.put(TokenType.TOKEN_LEFT_BRACKET, new ParseFunction(null, this::index, Precedence.CALL));
-        this.parseFunctions.put(TokenType.TOKEN_RIGHT_BRACKET, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_LEFT_PAREN, new ParseFunction(this::grouping, null, Precedence.CALL));
-        this.parseFunctions.put(TokenType.TOKEN_RIGHT_PAREN, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_LEFT_BRACE, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_RIGHT_BRACE, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_COMMA, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_DOT, new ParseFunction(null, this::dot, Precedence.CALL));
-        this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_SLASH, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_STAR, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_MINUS, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_PLUS, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_XOR, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_OR, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_AUGMENTED_AND, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_MINUS, new ParseFunction(this::unary, this::binary, Precedence.TERM));
-        this.parseFunctions.put(TokenType.TOKEN_PLUS, new ParseFunction(null, this::binary, Precedence.TERM));
-        this.parseFunctions.put(TokenType.TOKEN_SEMICOLON, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_SLASH, new ParseFunction(null, this::binary, Precedence.FACTOR));
-        this.parseFunctions.put(TokenType.TOKEN_STAR, new ParseFunction(this::dereference, this::binary, Precedence.FACTOR));
-        this.parseFunctions.put(TokenType.TOKEN_BANG, new ParseFunction(this::unary, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_BANG_EQUAL, new ParseFunction(null, this::comparison, Precedence.EQUALITY));
-        this.parseFunctions.put(TokenType.TOKEN_EQUAL, new ParseFunction(null, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_EQUAL_EQUAL, new ParseFunction(null, this::comparison, Precedence.EQUALITY));
-        this.parseFunctions.put(TokenType.TOKEN_GREATER, new ParseFunction(null, this::comparison, Precedence.COMPARISON));
-        this.parseFunctions.put(TokenType.TOKEN_GREATER_EQUAL, new ParseFunction(null, this::comparison, Precedence.COMPARISON));
-        this.parseFunctions.put(TokenType.TOKEN_LESS, new ParseFunction(null, this::comparison, Precedence.COMPARISON));
-        this.parseFunctions.put(TokenType.TOKEN_LESS_EQUAL, new ParseFunction(null, this::comparison, Precedence.COMPARISON));
-        this.parseFunctions.put(TokenType.TOKEN_IDENTIFIER, new ParseFunction(this::variable, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_STRING, new ParseFunction(this::literal, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_INT_LITERAL, new ParseFunction(this::literal, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_FLOAT_LITERAL, new ParseFunction(this::literal, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_AND_LOGICAL, new ParseFunction(null, this::logical, Precedence.AND));
-        this.parseFunctions.put(TokenType.TOKEN_AND_BIT, new ParseFunction(this::unary, this::binary, Precedence.BITWISE));
-        this.parseFunctions.put(TokenType.TOKEN_OR_LOGICAL, new ParseFunction(null, this::logical, Precedence.OR));
-        this.parseFunctions.put(TokenType.TOKEN_OR_BIT, new ParseFunction(null, this::binary, Precedence.BITWISE));
-        this.parseFunctions.put(TokenType.TOKEN_XOR, new ParseFunction(null, this::binary, Precedence.BITWISE));
-        this.parseFunctions.put(TokenType.TOKEN_SHIFT_LEFT, new ParseFunction(null, this::binary, Precedence.BITWISE));
-        this.parseFunctions.put(TokenType.TOKEN_SHIFT_RIGHT, new ParseFunction(null, this::binary, Precedence.BITWISE));
-        this.parseFunctions.put(TokenType.TOKEN_TRUE, new ParseFunction(this::literal, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_FALSE, new ParseFunction(this::literal, null, Precedence.NONE));
-        this.parseFunctions.put(TokenType.TOKEN_INCREMENT, new ParseFunction(this::unary, null, Precedence.TERM));
-        this.parseFunctions.put(TokenType.TOKEN_DECREMENT, new ParseFunction(this::unary, null, Precedence.TERM));
-        this.parseFunctions.put(TokenType.TOKEN_MOD, new ParseFunction(null, this::binary, Precedence.TERM));
-        this.parseFunctions.put(TokenType.TOKEN_ELLIPSIS, new ParseFunction(null, null, Precedence.NONE));
     }
 
     public Parser(Scanner scanner, List<String> included, Map<String, Struct> structs, String fileName){
         this.included = included;
         this.stmts = new ArrayList<>();
         this.defined = new HashMap<>();
-        this.extern = new ArrayList<>();
+        this.extern = new HashMap<>();
         this.structs = structs;
         this.scanner = scanner;
         this.fileName = fileName;
         this.current = null;
         this.previous = null;
 
-
-        this.parseFunctions = new EnumMap<>(TokenType.class);
-        this.buildParseFunctionMap();
     }
 }

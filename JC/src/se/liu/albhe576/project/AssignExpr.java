@@ -13,8 +13,8 @@ public class AssignExpr extends Expr{
     private void compileStoreField(SymbolTable symbolTable, QuadList quads, QuadList variableQuads) throws CompileException {
         Quad lastQuad =  variableQuads.pop();
 
-        Symbol struct = lastQuad.operand1;
-        Symbol memberSymbol = symbolTable.getMemberSymbol(lastQuad.operand1, lastQuad.operand2.name);
+        Symbol struct = lastQuad.getOperand1();
+        Symbol memberSymbol = symbolTable.getMemberSymbol(lastQuad.getOperand1(), lastQuad.getOperand2().name);
         Symbol value = quads.getLastResult();
 
         if(value.type.isFloatingPoint() && !memberSymbol.type.isFloatingPoint()){
@@ -63,7 +63,6 @@ public class AssignExpr extends Expr{
         quads.addAll(variableQuads);
         quads.removeLastQuad();
         quads.createMovRegisterAToC(quads.getLastResult());
-        // ToDo check if they can be converted
         if(!resType.isSameType(toStore.type)){
             quads.createPop(toStore);
             if(resType.isFloatingPoint()){

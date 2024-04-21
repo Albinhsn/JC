@@ -29,14 +29,7 @@ public class WhileStmt extends Stmt{
         condition.compile(symbolTable, quads);
 
         Symbol mergeLabel = Compiler.generateLabel();
-        QuadOp conditionOp = quads.getLastOp();
-        if(conditionOp.isSet()){
-            quads.removeLastQuad();
-            QuadOp jmpCondition = conditionOp.getJmpFromSet().invertJmpCondition();
-            quads.createJmpOnCondition(jmpCondition, mergeLabel);
-        }else{
-            quads.insertJMPOnComparisonCheck(mergeLabel, false);
-        }
+        quads.createJumpOnComparison(mergeLabel, true);
 
         symbolTable.enterScope();
         for(Stmt stmt : body){

@@ -20,22 +20,25 @@ public class ReturnStmt extends Stmt{
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         Function currentFunction = symbolTable.getCurrentFunction();
+        String functionName = symbolTable.getCurrentFunctionName();
+        DataType returnType = currentFunction.getReturnType();
 
         if(expr != null){
             expr.compile(symbolTable, quads);
             Symbol returnSymbol = quads.getLastResult();
-            if(returnSymbol.type.isInteger() && currentFunction.returnType.isFloatingPoint()){
-                quads.createConvertIntToFloat(returnSymbol);
-            }else if(currentFunction.returnType.isInteger() && returnSymbol.type.isFloatingPoint()){
-                quads.createConvertFloatToInt(returnSymbol);
+            if(returnSymbol.type.isInteger() && returnType.isFloatingPoint()){
+                returnSymbol =quads.createConvertIntToFloat(returnSymbol);
+            }else if(returnType.isInteger() && returnSymbol.type.isFloatingPoint()){
+                returnSymbol = quads.createConvertFloatToInt(returnSymbol);
             }
-            else if(!returnSymbol.type.isSameType(currentFunction.returnType)){
-                this.error(String.format("Mismatch in return type in function %s, expected %s got %s", currentFunction.name, currentFunction.returnType.name, returnSymbol.type.name));
+
+            if(!returnSymbol.type.isSameType(returnType)){
+                this.error(String.format("Mismatch in return type in function %s, expected %s got %s", currentFunction, returnType.name, returnSymbol.type.name));
             }
 
         }
-        else if(currentFunction.returnType.type != DataTypes.VOID){
-            this.error(String.format("Expected return value in function %s", currentFunction.name));
+        else if(returnType.type != DataTypes.VOID){
+            this.error(String.format("Expected return value in function %s", functionName));
         }
         quads.createReturn();
     }
