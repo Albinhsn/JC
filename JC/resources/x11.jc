@@ -1,0 +1,57 @@
+
+
+#extern void * malloc(int size)
+#extern void  free(void * ptr)
+#extern void  printf(...)
+
+#extern int socket(int domain, int type, int protocol)
+#extern int connect(...)
+
+#define AF_UNIX 1
+#define SOCK_STREAM 1
+
+struct sockaddr_un{
+  int * path;
+}
+
+
+void create_sockaddr_un(sockaddr_un * addr){
+
+  string path = "/tmp/.X11-unix/X0"; 
+
+  addr.path    = malloc(112);
+  addr.path[0] = AF_UNIX;
+  addr.path[0] = addr.path[0] | (path[0] << 32);
+
+ 
+  addr.path[1] = (addr.path[0] << 32) >> 32;
+  addr.path[1] = addr.path[1] | (path[1] << 32);
+
+  addr.path[2] = (addr.path[1] << 32) >> 32;
+  addr.path[2] = addr.path[2] | (path[2] << 32);
+
+  addr.path[3] = (addr.path[2] << 32) >> 32;
+  addr.path[3] = addr.path[3] | (path[3] << 32);
+
+  addr.path[4] = (addr.path[3] << 32) >> 32;
+  addr.path[4] = addr.path[4] | (path[4] << 32);
+
+
+}
+
+int main(){
+
+  int s = socket(AF_UNIX, SOCK_STREAM, 0);
+
+  sockaddr_un addr;
+  create_sockaddr_un(&addr);
+
+  int res = connect(s, addr.path, 112);
+  printf("%d\n", res);
+  
+
+  return s;
+
+
+  
+}

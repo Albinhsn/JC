@@ -69,7 +69,7 @@ public class CallExpr extends Expr{
                }
            }
 
-           if(generalCount >= generalRegisters.length || floatCount >= floatRegisters.length){
+           if(generalCount > generalRegisters.length || floatCount > floatRegisters.length){
                this.error(String.format("Can't call library function with more then %d ints and %d floats, you called %d, %d", generalCount, floatCount, generalRegisters.length, floatRegisters.length));
            }
 
