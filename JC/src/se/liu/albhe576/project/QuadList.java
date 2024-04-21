@@ -129,7 +129,7 @@ public class QuadList extends ArrayList<Quad>{
         this.addQuad(QuadOp.DEC, symbol, null, decreased);
         return decreased;
     }
-    public void createSwapF(){this.addQuad(QuadOp.SWAPF, null, null, null);}
+    public void createJmpOnCondition(QuadOp condition, Symbol label){this.addQuad(condition, label, null, null);}
     public void createReturn(){this.addQuad(QuadOp.RET, null, null, null);}
     public void allocateArguments(int size){this.addQuad(QuadOp.ALLOCATE, new ImmediateSymbol("size", DataType.getInt(), String.valueOf(size)), null, null);}
     public void createMoveArgument(Symbol argSymbol, int offset){this.addQuad(QuadOp.MOVE_ARG, argSymbol, new ImmediateSymbol("size", DataType.getInt(), String.valueOf(offset)), null);}

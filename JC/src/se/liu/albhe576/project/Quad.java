@@ -159,6 +159,33 @@ public class Quad {
             case JE->{
                 return String.format("je %s", operand1.name);
             }
+            case JL ->{
+                return String.format("jl %s", operand1.name);
+            }
+            case JLE ->{
+                return String.format("jle %s", operand1.name);
+            }
+            case JG ->{
+                return String.format("jg %s", operand1.name);
+            }
+            case JGE ->{
+                return String.format("jge %s", operand1.name);
+            }
+            case JA ->{
+                return String.format("ja %s", operand1.name);
+            }
+            case JAE ->{
+                return String.format("jae %s", operand1.name);
+            }
+            case JB ->{
+                return String.format("jb %s", operand1.name);
+            }
+            case JBE ->{
+                return String.format("jbe %s", operand1.name);
+            }
+            case JNE ->{
+                return String.format("jne %s", operand1.name);
+            }
             case LABEL ->{
                 return operand1.name + ":";
             }

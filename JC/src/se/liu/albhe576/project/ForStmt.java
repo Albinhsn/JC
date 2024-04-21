@@ -32,7 +32,15 @@ public class ForStmt extends Stmt{
         condition.compile(symbolTable, quads);
 
         // check if we jump
-        quads.insertJMPOnComparisonCheck(mergeLabel, false);
+        QuadOp conditionOp = quads.getLastOp();
+        if(conditionOp.isSet()){
+            quads.removeLastQuad();
+            QuadOp jmpCondition = conditionOp.getJmpFromSet().invertJmpCondition();
+            quads.createJmpOnCondition(jmpCondition, mergeLabel);
+        }else{
+            quads.insertJMPOnComparisonCheck(mergeLabel, false);
+        }
+
         // Compile body
         for(Stmt stmt : body){
             stmt.compile(symbolTable, quads);

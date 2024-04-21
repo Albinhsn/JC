@@ -61,7 +61,15 @@ public class IfStmt extends Stmt{
 
 
         Symbol ifJmpLabel = elseBody.isEmpty() ? mergeLabel : elseLabel;
-        quads.insertJMPOnComparisonCheck(ifJmpLabel, false);
+
+        QuadOp conditionOp = quads.getLastOp();
+        if(conditionOp.isSet()){
+            quads.removeLastQuad();
+            QuadOp jmpCondition = conditionOp.getJmpFromSet().invertJmpCondition();
+            quads.createJmpOnCondition(jmpCondition, ifJmpLabel);
+        }else{
+            quads.insertJMPOnComparisonCheck(ifJmpLabel, false);
+        }
 
         quads.addAll(ifQuad);
         if(!elseBody.isEmpty()){

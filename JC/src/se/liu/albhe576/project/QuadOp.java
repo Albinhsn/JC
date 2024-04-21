@@ -1,5 +1,7 @@
 package se.liu.albhe576.project;
 
+import java.util.Map;
+
 public enum QuadOp {
 
     ALLOCATE,
@@ -9,15 +11,12 @@ public enum QuadOp {
     CVTSI2SD, CVTTSD2SI,
      FADD, FMUL, FDIV, FSUB,INC,DEC, ADD,SUB, MUL, DIV, SHL, SHR,MOD, IMUL,
     NEGATE, LOGICAL_NOT,AND, OR, XOR,
-    SETNE, SETB, SETBE, SETA, SETAE, SETE, CMP, JMP, JNZ, JE,
-    SETLE, SETGE, SETG, SETL,
+    SETNE, SETB, SETBE, SETA, SETAE, SETE, SETLE, SETGE, SETG, SETL,
+    JL, JLE, JG, JGE, JNZ, JE, JA, JAE, JB, JBE,JNE,
+    CMP,JMP,
     LABEL, POP,PUSH,CALL, RET,
      LOAD_IMM, LOAD, STORE,
     MOV_REG_AC, MOV_REG_CA;
-
-    public boolean isLoad(){
-        return this == LOAD || this == LOAD_IMM || this == LOAD_POINTER;
-    }
 
     public static QuadOp fromToken(Token token) throws CompileException {
         switch(token.type){
@@ -91,5 +90,46 @@ public enum QuadOp {
         }
 
         throw new CompileException(String.format("Can't convert op %s to float op?", this.name()));
+    }
+
+    public boolean isSet(){
+        return this == SETNE || this == SETB || this == SETBE || this== SETA || this == SETAE || this == SETE || this == SETLE || this ==  SETGE || this == SETG || this== SETL;
+    }
+    private static final Map<QuadOp, QuadOp> SET_TO_JMP_MAP = Map.of(
+            SETNE, JNE,
+            SETB, JB,
+            SETBE, JBE,
+            SETA, JA,
+            SETAE, JAE,
+            SETE, JE,
+            SETLE, JLE,
+            SETGE, JGE,
+            SETG, JG,
+            SETL, JL
+    );
+    public QuadOp getJmpFromSet() throws CompileException{
+        if(!SET_TO_JMP_MAP.containsKey(this)){
+            throw new CompileException(String.format("Can't transform set op %s to jump op?", this.name()));
+        }
+        return SET_TO_JMP_MAP.get(this);
+    }
+
+    private static final Map<QuadOp, QuadOp> INVERT_JMP_MAP = Map.of(
+             JNE, JE,
+             JB, JAE,
+             JBE, JA,
+             JA, JBE,
+             JAE, JB,
+             JE, JNE,
+             JLE, JG,
+             JGE, JL,
+             JG, JLE,
+             JL, JGE
+    );
+    public QuadOp invertJmpCondition() throws CompileException{
+        if(!INVERT_JMP_MAP.containsKey(this)){
+            throw new CompileException(String.format("Can't transform set op %s to jump op?", this.name()));
+        }
+        return INVERT_JMP_MAP.get(this);
     }
 }
