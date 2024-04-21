@@ -19,11 +19,11 @@ public class VariableStmt extends Stmt{
 
     private void checkValidTypes(Symbol lastResult, Symbol lastOperand, QuadList quads) throws CompileException {
         if(lastResult.type.isFloatingPoint() && type.isInteger()){
-            quads.addQuad(QuadOp.CVTTSD2SI, lastResult, null, Compiler.generateSymbol(DataType.getInt()));
+            quads.addQuad(QuadOp.CONVERT_FLOAT_TO_INT, lastResult, null, Compiler.generateSymbol(DataType.getInt()));
             return;
         }
         if(lastResult.type.isInteger() && type.isFloatingPoint()){
-            quads.addQuad(QuadOp.CVTSI2SD, lastResult, null, Compiler.generateSymbol(DataType.getFloat()));
+            quads.addQuad(QuadOp.CONVERT_INT_TO_FLOAT, lastResult, null, Compiler.generateSymbol(DataType.getFloat()));
             return;
         }
 
@@ -39,6 +39,9 @@ public class VariableStmt extends Stmt{
             this.error(String.format("Trying to redeclare existing variable %s\n", name));
         }
 
+        if(!symbolTable.isDeclaredStruct(type.name)){
+            this.error(String.format("Trying to declare variable with non existing type? %s\n", type.name));
+        }
 
         VariableSymbol variable = symbolTable.addVariable(name, type);
         if(value != null){
@@ -58,9 +61,6 @@ public class VariableStmt extends Stmt{
             quads.createStore(variable);
         }
 
-        if(!symbolTable.isDeclaredStruct(type.name)){
-            this.error(String.format("Trying to declare variable with non existing type? %s\n", type.name));
-        }
 
 
     }

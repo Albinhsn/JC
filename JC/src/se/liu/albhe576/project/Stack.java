@@ -25,6 +25,7 @@ public class Stack {
             s.append(this.moveStruct(argSymbol));
             return s.toString();
         }
+
         String move = Quad.getMovOpFromType(argSymbol.type);
         String register = Quad.getRegisterFromType(argSymbol.type, 0);
 

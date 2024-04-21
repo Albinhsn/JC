@@ -58,12 +58,12 @@ public class QuadList extends ArrayList<Quad>{
     public void createIMUL(String immediate){this.addQuad(QuadOp.IMUL , Compiler.generateImmediateSymbol(DataType.getInt(), immediate), null,Compiler.generateSymbol(DataType.getInt()));}
     public Symbol createConvertIntToFloat(Symbol toStore){
         Symbol newToStore = Compiler.generateSymbol(DataType.getFloat());
-        this.addQuad(QuadOp.CVTSI2SD, toStore, null, newToStore);
+        this.addQuad(QuadOp.CONVERT_INT_TO_FLOAT, toStore, null, newToStore);
         return newToStore;
     }
     public Symbol createConvertFloatToInt(Symbol toStore){
         Symbol newToStore = Compiler.generateSymbol(DataType.getInt());
-        this.addQuad(QuadOp.CVTTSD2SI, toStore, null, newToStore);
+        this.addQuad(QuadOp.CONVERT_FLOAT_TO_INT, toStore, null, newToStore);
         return newToStore;
     }
 
@@ -120,6 +120,40 @@ public class QuadList extends ArrayList<Quad>{
         }else{
             this.insertJMPOnComparisonCheck(label, !inverted);
         }
+    }
+
+
+    public static QuadListPair compileBinary(SymbolTable symbolTable, QuadList quads, Expr left, Expr right) throws CompileException {
+        left.compile(symbolTable, quads);
+        QuadList rQuads = new QuadList();
+        right.compile(symbolTable, rQuads);
+        return new QuadListPair(quads, rQuads);
+    }
+
+    public static boolean isIntegerPointerBinary(DataType lType, DataType rType){
+        return (lType.isPointer() && rType.isInteger()) || (lType.isInteger() && rType.isPointer());
+    }
+
+    public static boolean isIntegerFloatingPointBinary(DataType lType, DataType rType){
+        return (lType.isFloatingPoint() && rType.isInteger()) || (lType.isInteger() && rType.isFloatingPoint());
+    }
+
+    public static Symbol convertResultToCorrectType(QuadList quads, Symbol value, Symbol target){
+        if(value.type.isInteger() && target.type.isFloatingPoint()){
+            return quads.createConvertIntToFloat(value);
+        }else if(target.type.isInteger() && value.type.isFloatingPoint()){
+            return quads.createConvertFloatToInt(value);
+        }
+        return value;
+    }
+
+    public static SymbolPair convertBinaryToSameType(QuadList lQuads, QuadList rQuads, Symbol lResult, Symbol rResult){
+        if(lResult.type.isFloatingPoint() && !rResult.type.isFloatingPoint()){
+            rResult = rQuads.createConvertIntToFloat(rResult);
+        }else if(!lResult.type.isFloatingPoint() && rResult.type.isFloatingPoint()){
+            lResult = lQuads.createConvertIntToFloat(lResult);
+        }
+        return new SymbolPair(lResult, rResult);
     }
 
 }

@@ -62,15 +62,18 @@ public class BinaryExpr extends Expr{
 
         quads.addQuad(QuadOp.fromToken(op), lResult, rResult, Compiler.generateSymbol(DataType.getInt()));
     }
+
+
+
     private void arithmetic(SymbolTable symbolTable, QuadList quads)  throws CompileException{
 
-        // ToDo hoist
-        left.compile(symbolTable, quads);
+        QuadListPair quadPair = QuadList.compileBinary(symbolTable, quads, left, right);
+
         Symbol lResult = quads.getLastResult();
         DataType lType = lResult.getType();
+        DataType resultType = lType;
 
-        QuadList r = new QuadList();
-        right.compile(symbolTable, r);
+        QuadList r = quadPair.right();
         Symbol rResult = r.getLastResult();
         DataType rType = rResult.getType();
 
@@ -78,35 +81,23 @@ public class BinaryExpr extends Expr{
             this.error(String.format("Can't do arithmetic op '%s' on %s and %s", op.literal(), lType, rType));
         }
 
-        DataType resultType = lType;
-        QuadOp quadOp = QuadOp.fromToken(op);
 
-        if(lType.isFloatingPoint() || rType.isFloatingPoint()){
-            quadOp = quadOp.convertToFloat();
-            resultType = DataType.getFloat();
-        }
-
-        // (pointer op int) or opposite
-        // ToDo hoist
-        if((lType.isPointer() && rType.isInteger()) || (lType.isInteger() && rType.isPointer())){
+        if(QuadList.isIntegerPointerBinary(lType, rType)){
             resultType = lType.isPointer() ? lType : rType;
             QuadList quadsToIMUL = lType.isPointer() ? r : quads;
 
             int structSize = symbolTable.getStructSize(resultType);
             quadsToIMUL.createIMUL(String.valueOf(structSize));
 
-        // (float op int) or opposite
-        // ToDo hoist
-        }else if((lType.isFloatingPoint() && rType.isInteger()) || (lType.isInteger() && rType.isFloatingPoint())){
-            if(lType.isFloatingPoint()){
-                rResult = r.createConvertIntToFloat(rResult);
-            }else{
-                lResult = quads.createConvertIntToFloat(lResult);
-            }
+        }else if(QuadList.isIntegerFloatingPointBinary(lType, rType)){
+            resultType = DataType.getFloat();
+            SymbolPair results = QuadList.convertBinaryToSameType(quads, r, lResult, rResult);
+            lResult = results.left();
+            rResult = results.right();
         }
 
         quads.createSetupBinary(r, lResult, rResult);
-        quads.addQuad(quadOp, lResult, rResult, Compiler.generateSymbol(resultType));
+        quads.addQuad(QuadOp.fromToken(op), lResult, rResult, Compiler.generateSymbol(resultType));
     }
 
     @Override

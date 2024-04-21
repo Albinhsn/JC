@@ -15,35 +15,29 @@ public class IndexExpr extends Expr{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
-        // index = 1
-        // value = arr
-        value.compile(symbolTable, quads);
+
+        QuadListPair quadPair = QuadList.compileBinary(symbolTable, quads, value, index);
         Symbol valResult = quads.getLastResult();
-        quads.createPush(valResult);
 
         if(isInvalidValueToIndex(valResult.type)){
             this.error(String.format("Can't index type %s", valResult.type));
         }
 
-        index.compile(symbolTable, quads);
-        Symbol idxResult = quads.getLastResult();
+        quads.createPush(valResult);
+        quads.addAll(quadPair.right());
 
+        Symbol idxResult = quads.getLastResult();
         if(!idxResult.type.isInteger()){
             this.error(String.format("Can't index with none integer, is type %s", valResult.type));
         }
 
-        int structSize = symbolTable.getStructSize(idxResult.type);
+        int structSize = symbolTable.getStructSize(valResult.type.getTypeFromPointer());
         quads.createIMUL(String.valueOf(structSize));
 
-        Symbol right = Compiler.generateSymbol(DataType.getInt());
-        quads.createMovRegisterAToC(right);
-
-
-        Symbol left = Compiler.generateSymbol(DataType.getInt());
-        quads.createPop(left);
+        Symbol right = quads.createMovRegisterAToC(Compiler.generateSymbol(DataType.getInt()));
+        Symbol left = quads.createPop(Compiler.generateSymbol(DataType.getInt()));
 
         Symbol addResult = quads.createAdd(left, right);
-
         quads.createIndex(addResult, valResult);
     }
     public IndexExpr(Expr value, Expr index, int line, String file){

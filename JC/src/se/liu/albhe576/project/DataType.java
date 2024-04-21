@@ -40,9 +40,11 @@ public class DataType {
     }
     public boolean canBeCastedTo(DataType other){
         boolean same = this.isSameType(other);
+
         if((this.isFloatingPoint() && other.isInteger()) || (other.isFloatingPoint() && this.isInteger())){
             return true;
         }
+
         if((this.isArray() && (other.isPointer() && other.depth == 1)) || (other.isArray() && (this.isPointer() && this.depth == 1))){
             return true;
         }
@@ -52,6 +54,9 @@ public class DataType {
     public DataType getTypeFromPointer() throws CompileException {
         if(depth <= 0){
             throw new CompileException("How could this happen to me, depth < 0?");
+        }
+        if(this.type == DataTypes.STRING && this.depth == 1){
+            return new DataType("int", DataTypes.INT, 0);
         }
         return new DataType(this.name, this.type, this.depth - 1);
     }
@@ -85,7 +90,7 @@ public class DataType {
         switch(token.type()){
             case TOKEN_INT, TOKEN_INT_LITERAL -> {return DataType.getInt();}
             case TOKEN_FLOAT, TOKEN_FLOAT_LITERAL -> {return DataType.getFloat();}
-            case TOKEN_STRING-> {return DataType.getString();}
+            case TOKEN_STRING_LITERAL, TOKEN_STRING-> {return DataType.getString();}
             case TOKEN_IDENTIFIER -> {return getStruct(token.literal());}
             case TOKEN_VOID -> {return getVoid();}
         }

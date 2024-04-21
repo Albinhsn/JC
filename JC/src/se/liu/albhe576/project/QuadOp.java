@@ -3,20 +3,19 @@ package se.liu.albhe576.project;
 import java.util.Map;
 
 public enum QuadOp {
-
     ALLOCATE,
     MOV_XMM0, MOV_XMM1, MOV_XMM2, MOV_XMM3, MOV_XMM4, MOV_XMM5,
     MOV_R8, MOV_R9, MOV_RDX, MOV_RSI, MOV_RDI, MOV_RCX,
     STORE_INDEX, PUSH_STRUCT, INDEX, DEREFERENCE,LOAD_POINTER,GET_FIELD, SET_FIELD, MOVE_STRUCT, MOVE_ARG,
-    CVTSI2SD, CVTTSD2SI,
-     FADD, FMUL, FDIV, FSUB,INC,DEC, ADD,SUB, MUL, DIV, SHL, SHR,MOD, IMUL,
+    CONVERT_INT_TO_FLOAT, CONVERT_FLOAT_TO_INT,
+    INC,DEC, ADD,SUB, MUL, DIV, SHL, SHR,MOD, IMUL,
     NEGATE, LOGICAL_NOT,AND, OR, XOR,
     SETNE, SETB, SETBE, SETA, SETAE, SETE, SETLE, SETGE, SETG, SETL,
     JL, JLE, JG, JGE, JNZ, JE, JA, JAE, JB, JBE,JNE,
     CMP,JMP,
     LABEL, POP,PUSH,CALL, RET,
-     LOAD_IMM, LOAD, STORE,
-    MOV_REG_AC, MOV_REG_CA;
+    LOAD_IMM, LOAD, STORE,
+    MOV_REG_CA;
 
     public static QuadOp fromToken(Token token) throws CompileException {
         switch(token.type()){
@@ -79,17 +78,6 @@ public enum QuadOp {
             }
         }
         throw new CompileException(String.format("Unknown token to quad op? %s", token.literal()));
-    }
-
-    public QuadOp convertToFloat() throws CompileException {
-        switch(this){
-            case ADD, FADD -> {return FADD;}
-            case SUB, FSUB -> {return FSUB;}
-            case DIV, FDIV -> {return FDIV;}
-            case MUL, FMUL -> {return FMUL;}
-        }
-
-        throw new CompileException(String.format("Can't convert op %s to float op?", this.name()));
     }
 
     public boolean isSet(){

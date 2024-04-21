@@ -9,9 +9,9 @@
 #include "resources/tests.jc"
 
 int main(){
+
     run_tests();
 
-    return 0;
 }
 
 

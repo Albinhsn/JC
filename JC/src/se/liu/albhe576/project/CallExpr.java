@@ -81,6 +81,10 @@ public class CallExpr extends Expr{
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
 
+       if(!symbolTable.functionExists(name.literal())){
+           this.error(String.format("Trying to call undeclared function %s", name.literal()));
+
+       }
         if(symbolTable.isExternFunction(name.literal())){
             this.callExternFunction(symbolTable, quads);
             return;

@@ -108,7 +108,7 @@ public class Scanner {
         }
 
         String literal = this.input.substring(startIndex, this.index - 1);
-        return createToken(TokenType.TOKEN_STRING, literal);
+        return createToken(TokenType.TOKEN_STRING_LITERAL, literal);
     }
     public TokenType getKeyword(String literal){
     final Map<String, TokenType> reservedWords = Map.ofEntries(

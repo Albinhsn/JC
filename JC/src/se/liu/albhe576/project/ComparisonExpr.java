@@ -29,12 +29,12 @@ public class ComparisonExpr extends Expr {
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads)  throws CompileException{
-        left.compile(symbolTable, quads);
+
+        QuadListPair quadPair = QuadList.compileBinary(symbolTable, quads, left, right);
         Symbol lResult = quads.getLastResult();
         DataType lType = lResult.getType();
 
-        QuadList rQuads = new QuadList();
-        right.compile(symbolTable, rQuads);
+        QuadList rQuads = quadPair.right();
         Symbol rResult = rQuads.getLastResult();
         DataType rType = rResult.getType();
 
@@ -45,11 +45,10 @@ public class ComparisonExpr extends Expr {
             op = convertOpToFloat(op);
         }
 
-        if(lType.isFloatingPoint() && !rType.isFloatingPoint()){
-            rResult = rQuads.createConvertIntToFloat(rResult);
-        }else if(!lType.isFloatingPoint() && rType.isFloatingPoint()){
-            lResult = quads.createConvertIntToFloat(lResult);
-        }
+        SymbolPair result = QuadList.convertBinaryToSameType(quads, rQuads, lResult, rResult);
+        lResult = result.left();
+        rResult = result.right();
+
 
         quads.createSetupBinary(rQuads, lResult, rResult);
         quads.createCmp(lResult, rResult);

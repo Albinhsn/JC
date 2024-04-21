@@ -25,12 +25,7 @@ public class ReturnStmt extends Stmt{
 
         if(expr != null){
             expr.compile(symbolTable, quads);
-            Symbol returnSymbol = quads.getLastResult();
-            if(returnSymbol.type.isInteger() && returnType.isFloatingPoint()){
-                returnSymbol =quads.createConvertIntToFloat(returnSymbol);
-            }else if(returnType.isInteger() && returnSymbol.type.isFloatingPoint()){
-                returnSymbol = quads.createConvertFloatToInt(returnSymbol);
-            }
+            Symbol returnSymbol = QuadList.convertResultToCorrectType(quads, quads.getLastResult(), Compiler.generateSymbol(returnType));
 
             if(!returnSymbol.type.isSameType(returnType)){
                 this.error(String.format("Mismatch in return type in function %s, expected %s got %s", currentFunction, returnType.name, returnSymbol.type.name));

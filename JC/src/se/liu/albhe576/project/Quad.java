@@ -70,20 +70,6 @@ public class Quad {
         }
         return generalRegisters[registerIndex];
     }
-    public String setupFloatingPointBinary(){
-        StringBuilder builder = new StringBuilder();
-        // This means rax is not floating point
-        // That means we have to both transfer it to xmm0 and cast it
-        if(operand1.type.type != DataTypes.FLOAT){
-            builder.append("cvtsi2sd xmm0, rax\n");
-        // Same but for rcx
-        }else if(operand2.type.type != DataTypes.FLOAT){
-            builder.append("cvtsi2sd xmm1, rcx\n");
-        }
-
-        return builder.toString();
-    }
-
     public static String getMovOpFromType(DataType type){
         return  type.isFloatingPoint() ? "movsd" : "mov";
     }
@@ -115,45 +101,41 @@ public class Quad {
                 return "dec rax";
             }
             case ADD -> {
+                if(result.type.isFloatingPoint()){
+                    return "addsd xmm0, xmm1";
+                }
                 return "add rax, rcx";
             }
-            case FADD -> {
-                String setup = this.setupFloatingPointBinary();
-                return setup + "addsd xmm0, xmm1";
-            }
             case SUB -> {
+                if(result.type.isFloatingPoint()){
+                    return "subsd xmm0, xmm1";
+                }
                 return "sub rax, rcx";
             }
-            case FSUB -> {
-                String setup = this.setupFloatingPointBinary();
-                return setup + "subsd xmm0, xmm1";
-            }
             case MUL -> {
+                if(result.type.isFloatingPoint()){
+                    return "mulsd xmm0, xmm1";
+                }
                 return "mul rcx";
             }
             case IMUL -> {
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) this.operand1;
                 return String.format("imul rax, %s", immediateSymbol.getValue());
             }
-            case CVTTSD2SI -> {
+            case CONVERT_FLOAT_TO_INT -> {
                 return "cvttsd2si rax, xmm0";
             }
-            case CVTSI2SD-> {
+            case CONVERT_INT_TO_FLOAT -> {
                 return "cvtsi2sd xmm0, rax";
             }
-            case FMUL -> {
-                String setup = this.setupFloatingPointBinary();
-                return setup + "mulsd xmm0, xmm1";
-            }
             case DIV -> {
+                if(result.type.isFloatingPoint()){
+                    return "divsd xmm0, xmm1";
+                }
                 return "xor rdx, rdx\nidiv rcx";
             }
             case MOD -> {
                 return "cdq\nxor rdx, rdx\nidiv rcx\nmov rax, rdx\n";
-            }
-            case FDIV -> {
-                String setup = this.setupFloatingPointBinary();
-                return setup + "divsd xmm0, xmm1";
             }
             case LOAD_POINTER ->{
                 VariableSymbol variableSymbol = (VariableSymbol)  operand1;
@@ -293,12 +275,6 @@ public class Quad {
                 String register1 = getRegisterFromType(operand1.type, 0);
                 String register2 = getRegisterFromType(operand1.type, 1);
                 return String.format("%s %s, %s", movOp, register2, register1);
-            }
-            case MOV_REG_AC ->{
-                String movOp = getMovOpFromType(operand1.type);
-                String register1 = getRegisterFromType(operand1.type, 0);
-                String register2 = getRegisterFromType(operand1.type, 1);
-                return String.format("%s %s, %s", movOp, register1, register2);
             }
             case PUSH_STRUCT ->{
                 return stack.pushStruct(operand1);

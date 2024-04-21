@@ -19,7 +19,7 @@ public class LiteralExpr extends Expr{
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
         DataType type = DataType.getDataTypeFromToken(token);
 
-        if(token.type() == TokenType.TOKEN_STRING || token.type() == TokenType.TOKEN_FLOAT_LITERAL){
+        if(token.type() == TokenType.TOKEN_STRING_LITERAL || token.type() == TokenType.TOKEN_FLOAT_LITERAL){
             symbolTable.addConstant(token.literal(), type.type);
         }
 

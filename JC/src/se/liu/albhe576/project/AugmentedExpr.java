@@ -21,39 +21,30 @@ public class AugmentedExpr extends Expr{
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
 
-        target.compile(symbolTable, quads);
+        QuadListPair quadPair = QuadList.compileBinary(symbolTable, quads, target, value);
         Symbol targetSymbol = quads.getLastOperand1();
+        DataType targetType = targetSymbol.getType();
 
-        QuadList valueQuads = new QuadList();
-        value.compile(symbolTable, valueQuads);
+
+        QuadList valueQuads = quadPair.right();
         Symbol valueSymbol = valueQuads.getLastResult();
-
-        DataType lType = targetSymbol.getType();
-        DataType rType = valueSymbol.getType();
+        DataType valueType = valueSymbol.getType();
 
         QuadOp op = QuadOp.fromToken(this.op);
-        BinaryExpr.typecheckBinaryExpr(op, lType, rType, this, this.op.literal());
+        BinaryExpr.typecheckBinaryExpr(op, targetType, valueType, this, this.op.literal());
 
-        if(rType.isPointer()){
+        // Augmented expressions (+= etc) have more conditions in order to be valid
+        if(valueType.isPointer()){
             this.error("Can't do augmented op with a pointer on the right side");
-        }else if(lType.isPointer() && rType.isInteger()){
-            int structSize = symbolTable.getStructSize(lType);
+        }else if(targetType.isPointer() && valueType.isInteger()){
+            int structSize = symbolTable.getStructSize(targetType);
             valueQuads.createIMUL(String.valueOf(structSize));
         }
 
+        valueSymbol = QuadList.convertResultToCorrectType(valueQuads, valueSymbol, targetSymbol);
+
         quads.createSetupBinary(valueQuads, targetSymbol, valueSymbol);
-
-        boolean fpOp = false;
-        if(targetSymbol.getType().isFloatingPoint() || valueSymbol.getType().isFloatingPoint()){
-            op = op.convertToFloat();
-            fpOp = true;
-        }
-
         quads.addQuad(op, targetSymbol, valueSymbol, targetSymbol);
-
-        if(fpOp && !targetSymbol.getType().isFloatingPoint()){
-            quads.createConvertFloatToInt(valueSymbol);
-        }
 
         quads.createStore(targetSymbol);
     }

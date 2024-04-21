@@ -10,27 +10,32 @@ public class AssignExpr extends Expr{
         this.value = value;
     }
 
+    private Symbol convertValue(Symbol value, Symbol target, QuadList quads){
+        if(value.type.isFloatingPoint() && !target.type.isFloatingPoint()){
+            value = quads.createConvertFloatToInt(value);
+        }
+        else if(target.type.isFloatingPoint() && !value.type.isFloatingPoint()){
+            value = quads.createConvertIntToFloat(value);
+        }
+        return value;
+    }
+
     private void compileStoreField(SymbolTable symbolTable, QuadList quads, QuadList variableQuads) throws CompileException {
+        // Last op will be a GET_FIELD, which means it will not have the pointer to the struct in rax
+        // So we have to remove the op
         Quad lastQuad =  variableQuads.pop();
 
         Symbol struct = lastQuad.getOperand1();
         Symbol memberSymbol = symbolTable.getMemberSymbol(lastQuad.getOperand1(), lastQuad.getOperand2().name);
         Symbol value = quads.getLastResult();
 
-        if(value.type.isFloatingPoint() && !memberSymbol.type.isFloatingPoint()){
-             value = quads.createConvertFloatToInt(value);
-        }
-        else if(memberSymbol.type.isFloatingPoint() && !value.type.isFloatingPoint()){
-            value = quads.createConvertIntToFloat(value);
-        }
+        value = this.convertValue(value, memberSymbol, quads);
 
         quads.createPush(value);
         quads.addAll(variableQuads);
         Symbol varResult = quads.getLastResult();
 
-        if(!memberSymbol.type.isFloatingPoint()){
-            quads.createMovRegisterAToC(varResult);
-        }
+        quads.createMovRegisterAToC(varResult);
 
         quads.createPop(value);
         quads.createSetField(memberSymbol, struct);
@@ -38,16 +43,12 @@ public class AssignExpr extends Expr{
 
     private void compileStoreDereference(QuadList valueQuads, QuadList variableQuads) {
         Symbol dereferenced = variableQuads.getLastOperand1();
-        Symbol valueResult = valueQuads.getLastResult();
         Symbol variableType = variableQuads.getLastResult();
+
+        Symbol valueResult = valueQuads.getLastResult();
         variableQuads.removeLastQuad();
 
-        if(valueResult.type.isFloatingPoint() && !variableType.type.isFloatingPoint()){
-            valueResult = valueQuads.createConvertFloatToInt(valueResult);
-        }
-        else if(!valueResult.type.isFloatingPoint() && variableType.type.isFloatingPoint()){
-            valueResult = valueQuads.createConvertIntToFloat(valueResult);
-        }
+        valueResult = this.convertValue(valueResult, variableType, valueQuads);
 
         valueQuads.createSetupBinary(variableQuads, valueResult, dereferenced);
         valueQuads.createStoreIndex(valueResult, dereferenced);
@@ -61,22 +62,19 @@ public class AssignExpr extends Expr{
 
         DataType resType = res.type.getTypeFromPointer();
         quads.addAll(variableQuads);
-        quads.removeLastQuad();
-        quads.createMovRegisterAToC(quads.getLastResult());
-        if(!resType.isSameType(toStore.type)){
-            quads.createPop(toStore);
-            if(resType.isFloatingPoint()){
-                toStore = quads.createConvertIntToFloat(toStore);
-            }else if(toStore.type.isFloatingPoint()){
-                toStore = quads.createConvertFloatToInt(toStore);
-            }else{
-                this.error("What are you trying to do?");
-            }
-        }else{
-            quads.createPop(toStore);
-        }
 
-        quads.createStoreIndex(Compiler.generateSymbol(res.type.getTypeFromPointer()), toStore);
+        // When storing to an index the index expression doesn't know whether or not it's an assignment
+        // which means it will end with INDEX, so we need to remove it and leave the pointer
+        // Otherwise the value we want to store to ends up in rax and not a pointer to it
+        quads.removeLastQuad();
+
+        quads.createMovRegisterAToC(quads.getLastResult());
+        quads.createPop(toStore);
+
+        Symbol result = Compiler.generateSymbol(resType);
+        toStore = this.convertValue(toStore, result, quads);
+
+        quads.createStoreIndex(result, toStore);
     }
 
     @Override
@@ -92,29 +90,44 @@ public class AssignExpr extends Expr{
         Symbol variableType = variableQuads.getLastResult();
 
 
-        if(!variableType.type.isSameType(valueResult.type) && !variableType.type.canBeCastedTo(valueResult.type)){
+        // Type check the assignment
+        boolean same = variableType.type.isSameType(valueResult.type);
+        boolean canBeCasted = variableType.type.canBeCastedTo(valueResult.type);
+        boolean isNull = quads.getLastOperand1().isNull();
+        if(!(same || canBeCasted || isNull)){
             this.error(String.format("Trying to assign type %s to %s", valueResult.type.name, variableType.type.name));
         }
 
 
         if(lastOp == QuadOp.GET_FIELD){
+            // We store into a struct
             this.compileStoreField(symbolTable, quads, variableQuads);
+
         }else if(lastOp == QuadOp.DEREFERENCE){
+            // Or where a pointer points to
             this.compileStoreDereference(quads, variableQuads);
         }
         else if(lastOp == QuadOp.INDEX){
+            // Or an index
             this.compileStoreIndex(quads, variableQuads);
         }
         else if (valueResult.type.isStruct()){
+
+            // Storing a struct takes a pointer to the location in rcx
+            // And a pointer to the value in rax
+            // Then some hack to move everything (depends on the size) is handled in Stack
             quads.createSetupBinary(variableQuads, valueResult, variableType);
             quads.addQuad(QuadOp.MOVE_STRUCT, valueResult, variableType, null);
         }else{
+
+            // Do we need to case the value from float to int or other way around
             if(valueResult.type.isFloatingPoint() && !variableType.type.isFloatingPoint()){
                 valueResult = quads.createConvertFloatToInt(valueResult);
             }
             else if(!valueResult.type.isFloatingPoint() && variableType.type.isFloatingPoint()){
                 valueResult = quads.createConvertIntToFloat(valueResult);
             }
+
             quads.createSetupBinary(variableQuads, valueResult, variableType);
             quads.createStore(variableQuads.getLastOperand1());
         }

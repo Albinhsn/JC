@@ -59,7 +59,7 @@ public class Parser {
         Map.entry(TokenType.TOKEN_LESS, new ParseFunction(null, this::comparison, Precedence.COMPARISON)),
         Map.entry(TokenType.TOKEN_LESS_EQUAL, new ParseFunction(null, this::comparison, Precedence.COMPARISON)),
         Map.entry(TokenType.TOKEN_IDENTIFIER, new ParseFunction(this::variable, null, Precedence.NONE)),
-        Map.entry(TokenType.TOKEN_STRING, new ParseFunction(this::literal, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_STRING_LITERAL, new ParseFunction(this::literal, null, Precedence.NONE)),
         Map.entry(TokenType.TOKEN_INT_LITERAL, new ParseFunction(this::literal, null, Precedence.NONE)),
         Map.entry(TokenType.TOKEN_FLOAT_LITERAL, new ParseFunction(this::literal, null, Precedence.NONE)),
         Map.entry(TokenType.TOKEN_AND_LOGICAL, new ParseFunction(null, this::logical, Precedence.AND)),
@@ -121,6 +121,7 @@ public class Parser {
         switch(this.current.type()){
             case TOKEN_INT:{}
             case TOKEN_FLOAT:{}
+            case TOKEN_STRING:{}
             case TOKEN_VOID:{
                 return true;
             }
@@ -394,7 +395,7 @@ public class Parser {
 
 
     private void parseInclude() throws IOException, CompileException {
-        consume(TokenType.TOKEN_STRING, "Expected string after include?");
+        consume(TokenType.TOKEN_STRING_LITERAL, "Expected string after include?");
         String fileName = this.previous.literal();
 
         if(this.included.stream().anyMatch(i -> i.equals(fileName))){
