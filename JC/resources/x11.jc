@@ -10,32 +10,26 @@
 #define AF_UNIX 1
 #define SOCK_STREAM 1
 
+
+void place_byte(int * s, int idx, int b){
+    
+}
+
 struct sockaddr_un{
-  int * path;
+  int * p;
 }
 
 
 void create_sockaddr_un(sockaddr_un * addr){
 
   string path = "/tmp/.X11-unix/X0"; 
+  
+  addr.p = malloc(16);
+  addr.p[0] = AF_UNIX;
+  addr.p[0] = addr.p[0] | (path[0] << 16);
 
-  addr.path    = malloc(112);
-  addr.path[0] = AF_UNIX;
-  addr.path[0] = addr.path[0] | (path[0] << 32);
-
- 
-  addr.path[1] = (addr.path[0] << 32) >> 32;
-  addr.path[1] = addr.path[1] | (path[1] << 32);
-
-  addr.path[2] = (addr.path[1] << 32) >> 32;
-  addr.path[2] = addr.path[2] | (path[2] << 32);
-
-  addr.path[3] = (addr.path[2] << 32) >> 32;
-  addr.path[3] = addr.path[3] | (path[3] << 32);
-
-  addr.path[4] = (addr.path[3] << 32) >> 32;
-  addr.path[4] = addr.path[4] | (path[4] << 32);
-
+  addr.p[1] = (path[0] << 48) >> 48;
+  addr.p[1] = addr.p[1] | (path[1] << 16);
 
 }
 
@@ -46,7 +40,7 @@ int main(){
   sockaddr_un addr;
   create_sockaddr_un(&addr);
 
-  int res = connect(s, addr.path, 112);
+  int res = connect(s, &addr, 16);
   printf("%d\n", res);
   
 
