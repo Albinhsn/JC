@@ -1,21 +1,23 @@
 package se.liu.albhe576.project;
 
-public class AssignExpr extends Expr{
+public class AssignStmt extends Stmt{
     private final Expr variable;
     private final Expr value;
 
-    public AssignExpr(Expr variable, Expr value, int line, String file){
+    public AssignStmt(Expr variable, Expr value, int line, String file){
         super(line, file);
         this.variable = variable;
         this.value = value;
     }
 
-    private static Symbol convertValue(Symbol value, Symbol target, QuadList quads){
+    public static Symbol convertValue(Symbol value, Symbol target, QuadList quads){
         if(value.type.isFloatingPoint() && !target.type.isFloatingPoint()){
             value = quads.createConvertFloatToInt(value);
         }
         else if(target.type.isFloatingPoint() && !value.type.isFloatingPoint()){
             value = quads.createConvertIntToFloat(value);
+        }else if((target.type.isByte() && value.type.isInteger()) || (target.type.isInteger() && value.type.isByte())){
+            return Compiler.generateSymbol(target.type);
         }
         return value;
     }

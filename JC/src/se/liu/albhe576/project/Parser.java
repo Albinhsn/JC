@@ -235,14 +235,13 @@ public class Parser {
 
         int line = this.current.line();
         Expr expr = parseExpr(this.getEmptyExpr(line), Precedence.OR);
-        String file = this.fileName;
         if(matchType(TokenType.TOKEN_EQUAL)) {
-            return new ExprStmt(new AssignExpr(expr, parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, file), line, file);
+            return new AssignStmt(expr, parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, this.fileName);
         }
         else if(matchAugmented()){
-            return new ExprStmt(new AssignExpr(expr, new BinaryExpr(expr, this.previous,parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, file), line, file), line, file);
+            return new AssignStmt(expr, new BinaryExpr(expr, this.previous,parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, this.fileName), line, this.fileName);
         }
-        return new ExprStmt(expr, line, file);
+        return new ExprStmt(expr, line, this.fileName);
     }
 
     private Stmt returnStatement() throws CompileException{
@@ -555,10 +554,6 @@ public class Parser {
         int line = this.previous.line();
         if(matchType(TokenType.TOKEN_LEFT_PAREN)){
             return this.parseCall(var);
-        }else if(canAssign && matchType(TokenType.TOKEN_EQUAL)){
-            return new AssignExpr(new VarExpr(var, line, this.fileName), parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, fileName);
-        }else if (canAssign && matchAugmented()){
-            return new AssignExpr(expr, new BinaryExpr(expr, this.previous,parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, this.fileName), line, this.fileName);
         }
         return new VarExpr(var, line, this.fileName);
     }

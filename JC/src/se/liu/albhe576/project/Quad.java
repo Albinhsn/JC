@@ -94,9 +94,15 @@ public class Quad {
                 throw new CompileException(String.format("Can't load this type? %s", imm.type.type));
             }
             case INC -> {
+                if(operand1.type.isFloatingPoint()){
+                    return "mov rcx, 1\ncvtsi2sd xmm1, rcx\naddsd xmm0, xmm1";
+                }
                 return "inc rax";
             }
             case DEC -> {
+                if(operand1.type.isFloatingPoint()){
+                    return "mov rcx, 1\ncvtsi2sd xmm1, rcx\nsubsd xmm0, xmm1";
+                }
                 return "dec rax";
             }
             case ADD -> {

@@ -22,7 +22,7 @@ public class DotExpr extends Expr{
         Symbol lastSymbol = quads.getLastResult();
 
         if(!lastSymbol.type.isStruct() && lastSymbol.type.depth > 1){
-            this.error(String.format("Trying to access member of none struct %s", lastSymbol.type.name));
+            this.error(String.format("Trying to access member of none struct '%s'", lastSymbol.type.name));
         }
         if(!symbolTable.isMemberOfStruct(lastSymbol.type, this.member.literal())){
             this.error(String.format("Trying to access member %s of struct %s, doesn't exist!", lastSymbol.type.name, this.member.literal()));

@@ -110,9 +110,14 @@ public class CallExpr extends Expr{
             Quad lastQuad = argQuads.getLastQuad();
             Symbol argSymbol = lastQuad.getResult();
             DataType funcArgType = functionArguments.get(i).type();
-            if(!argSymbol.type.isSameType(funcArgType)){
-                this.error(String.format("Function parameter type mismatch expected %s got %s", argSymbol.type.name, funcArgType.name));
+            if(!argSymbol.type.isSameType(funcArgType) && funcArgType.canBeCastedTo(argSymbol.type)){
+                argSymbol = AssignStmt.convertValue(argSymbol, Compiler.generateSymbol(funcArgType), argQuads);
             }
+
+            if(!argSymbol.type.isSameType(funcArgType)){
+                this.error(String.format("Function parameter type mismatch expected %s got %s", funcArgType.name,argSymbol.type.name));
+            }
+
             argQuads.createMoveArgument(argSymbol, argSize);
             argSize += SymbolTable.getStructSize(symbolTable.getStructs(), argSymbol.type);
         }

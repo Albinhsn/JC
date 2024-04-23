@@ -13,7 +13,7 @@ int main(){
 
     run_tests();
 
-    return 0b0;
+    return 0;
 
 }
 

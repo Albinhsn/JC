@@ -43,6 +43,9 @@ public class DataType {
         if((this.isFloatingPoint() && other.isInteger()) || (other.isFloatingPoint() && this.isInteger())){
             return true;
         }
+        if((this.isFloatingPoint() && other.isByte()) || (other.isFloatingPoint() && this.isByte())){
+            return true;
+        }
         if((this.isByte() && other.isInteger()) || (other.isByte() && this.isInteger())){
             return true;
         }

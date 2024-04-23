@@ -136,6 +136,42 @@ void test_arrays(){
 
 void test_augmented(){
 
+    byte b = 5;
+
+    b += 3;
+    print_testi(b, 8, "+= b");
+
+    b -= 2;
+    print_testi(b, 6, "-= b");
+
+    b *= 3;
+    print_testi(b, 18, "*= b");
+
+    b /= 18;
+    print_testi(b, 1, "/= b");
+
+    b ^= 6;
+    print_testi(b, 7, "^=");
+
+    b &= 5;
+    print_testi(b, 5, "&=");
+
+    b |= 8;
+    print_testi(b, 13, "|=");
+
+    b = 5;
+    b += 3.0;
+    print_testi(b, 8, "+=");
+
+    b -= 2.0;
+    print_testi(b, 6, "-=");
+
+    b *= 3.0;
+    print_testi(b, 18, "-=");
+
+    b /= 18.0;
+    print_testi(b, 1, "/=");
+
     int a = 5;
 
     a += 3;
@@ -365,8 +401,6 @@ void test_return_struct(){
    foo1 = return_foo_pointer(5);
    print_testi(foo1.a, 5, "Return struct pointer with assign expr from function");
 
-
-
 }
 
 void test_fib(){
@@ -585,21 +619,6 @@ void test_assign(){
 
 }
 
-void test_string(){
-    string s = "Hello Sailor!";
-    s = "Hello World!";
-
-    int c = s[0];
-
-    int H = c & 255;
-    int e = (c >> 8) & 255;
-    int l = (c >> 16) & 255;
-    int l1 = (c >> 24) & 255;
-    printf("%c%c%c%c\n", H,e,l,l1);
-
-
-}
-
 void test_byte(){
     string s = "Hello Sailor!";
     s = "Hello World!";
@@ -611,6 +630,14 @@ void test_byte(){
     printf("%c%c%c%c\n", H,e,l,l1);
 }
 
+struct Foof{
+    float a;
+    float b;
+}
+struct Foob{
+    byte a;
+    byte b;
+}
 void test_postfix(){
     int a = 5;
     a++;
@@ -628,6 +655,42 @@ void test_postfix(){
     Foo *foo1 = malloc(16);
     foo1[0].a++;
     print_testi(foo1[0].a, 1, "foo1[0].a++");
+
+    float c = 5;
+    c++;
+    print_testf(c, 6.0, "b++");
+
+    float * d = &c;
+    (*d)++;
+    print_testf(*d, 7.0, "(*d)++");
+
+    Foof foo2;
+    foo2.a = 5.0;
+    foo2.a++;
+    print_testf(foo2.a, 6.0, "foo2.a++");
+
+    Foof *foo3 = malloc(16);
+    foo3[0].a = 0.0;
+    foo3[0].a++;
+    print_testf(foo3[0].a, 1.0, "foo3[0].a++");
+
+    byte ba = 5;
+    ba++;
+    print_testb(ba, 6, "a++");
+
+    byte * bb = &ba;
+    (*bb)++;
+    print_testb(*bb, 7, "*b++");
+
+    Foob foob;
+    foob.a = 5;
+    foob.a++;
+    print_testb(foob.a, 6, "foob.a++");
+
+    Foob *foob1 = malloc(16);
+    foob1[0].a++;
+    print_testb(foob1[0].a, 1, "foob1[0].a++");
+
 }
 
 int run_tests(){
@@ -645,7 +708,6 @@ int run_tests(){
     test_augmented();
     test_logical();
     test_return_struct();
-    test_string();
     test_byte();
     test_postfix();
 

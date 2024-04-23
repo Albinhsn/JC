@@ -107,7 +107,7 @@ public class Compiler {
         QuadList intermediates = function.getIntermediates();
         boolean shouldOutputRet = intermediates.isEmpty();
         for (Quad intermediate : intermediates) {
-            fileWriter.write("; " + intermediate + "\n");
+            // fileWriter.write("; " + intermediate + "\n");
             fileWriter.write(intermediate.emit(stack, functions, constants) + "\n");
         }
 

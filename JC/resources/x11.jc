@@ -8,7 +8,8 @@
 #extern int connect(...)
 #extern int write(...)
 #extern int read(...)
-#extern int fcntl(...);
+#extern int fcntl(...)
+#extern int poll(...)
 
 #define AF_UNIX 1
 #define SOCK_STREAM 1
@@ -335,7 +336,7 @@ int poll_messages(int fd, int window_id, int gc_id){
     }
     
     int * pollerr;
-    if(POLLERR == poller){
+    if(POLLERR == pollerr){
       printf("Poll error!\n");
       return -1;
     }
@@ -369,10 +370,10 @@ int main(){
   sockaddr_un addr;
   create_sockaddr_un(&addr);
 
-  if(connect_to_fd(fd, addr.p) == 0){
-    return 1;
-  }
-  printf("Connected to %d\n", fd);
+     if(connect_to_fd(fd, addr.p) == 0){
+        return 1;
+      }
+      printf("Connected to %d\n", fd);
 
 
   x11_connection_req_t req;
@@ -431,10 +432,10 @@ printf("Created and mapped window!\n");
 
   while(1 == 1){
     
-    int msg = poll_messages();
-    if(msg == -1){
+    // int msg = poll_messages();
+    // if(msg == -1){
       return 1;
-    }
+    //}
 
   }
 

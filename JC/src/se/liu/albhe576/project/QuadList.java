@@ -134,14 +134,14 @@ public class QuadList extends ArrayList<Quad>{
         return (lType.isPointer() && rType.isInteger()) || (lType.isInteger() && rType.isPointer());
     }
 
-    public static boolean isIntegerFloatingPointBinary(DataType lType, DataType rType){
-        return (lType.isFloatingPoint() && rType.isInteger()) || (lType.isInteger() && rType.isFloatingPoint());
+    public static boolean isFloatingPointBinary(DataType lType, DataType rType){
+        return (lType.isFloatingPoint() && (rType.isInteger() || rType.isByte())) || ((lType.isInteger() || lType.isByte()) && rType.isFloatingPoint());
     }
 
     public static Symbol convertResultToCorrectType(QuadList quads, Symbol value, Symbol target){
-        if(value.type.isInteger() && target.type.isFloatingPoint()){
+        if((value.type.isInteger() || value.type.isByte()) && target.type.isFloatingPoint()){
             return quads.createConvertIntToFloat(value);
-        }else if(target.type.isInteger() && value.type.isFloatingPoint()){
+        }else if((target.type.isInteger() || target.type.isByte()) && value.type.isFloatingPoint()){
             return quads.createConvertFloatToInt(value);
         }
         return value;

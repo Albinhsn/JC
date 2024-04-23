@@ -75,7 +75,7 @@ public class BinaryExpr extends Expr{
             int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), resultType);
             quadsToIMUL.createIMUL(String.valueOf(structSize));
 
-        }else if(QuadList.isIntegerFloatingPointBinary(lType, rType)){
+        }else if(QuadList.isFloatingPointBinary(lType, rType)){
             resultType = DataType.getFloat();
             SymbolPair results = QuadList.convertBinaryToSameType(quads, r, lResult, rResult);
             lResult = results.left();
