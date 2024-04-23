@@ -6,9 +6,21 @@ public class Stack {
     private final Map<Integer, VariableSymbol> stackSymbols;
     private final Map<String, Struct> structs;
 
-    public Struct getStruct(String name){return this.structs.get(name);}
     public Map<String, Struct> getStructs(){return this.structs;}
 
+    public String loadFieldPointer(int variableId, String field) throws CompileException {
+        VariableSymbol variable = this.stackSymbols.get(variableId);
+        Struct struct = this.getStructs().get(variable.type.name);
+        int fieldOffset = this.getFieldOffset(struct, field);
+        VariableSymbol symbol = this.stackSymbols.get(variableId);
+
+        int offset = symbol.offset + fieldOffset;
+        if(offset < 0){
+            return String.format("lea rax, [rbp %d]", offset);
+        }else{
+            return String.format("lea rax, [rbp + %d]", offset);
+        }
+    }
     public String loadVariablePointer(int id) {
         VariableSymbol symbol = this.stackSymbols.get(id);
         if(symbol.offset < 0){
@@ -41,6 +53,7 @@ public class Stack {
         s.append("mov rbx, [rax]\n");
         s.append("mov [rcx], rbx\n");
 
+        // ToDo this alignment won't always be correct
         int sizeInBytes = size / 8;
 
         for(int i = 1; i < sizeInBytes; i++){
@@ -87,7 +100,7 @@ public class Stack {
             if(field.name().equals(memberName)){
                 return size;
             }
-            size += 8;
+            size += SymbolTable.getStructSize(this.structs, field.type());
         }
         throw new CompileException(String.format("Couldn't find member %s?\n", memberName));
     }

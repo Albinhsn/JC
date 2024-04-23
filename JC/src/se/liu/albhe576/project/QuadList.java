@@ -37,7 +37,7 @@ public class QuadList extends ArrayList<Quad>{
 
     public void createSetupUnary(SymbolTable symbolTable, Symbol result){
 
-        int structSize = symbolTable.getStructSize(result.type);
+        int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), result.type);
         this.createPush(result);
         Symbol immSymbol = this.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
         this.createMovRegisterAToC(immSymbol);
@@ -69,7 +69,7 @@ public class QuadList extends ArrayList<Quad>{
 
     public Symbol createLoadPointer(Symbol toLoad){
         Symbol loaded = Compiler.generateSymbol(toLoad.type);
-        this.addQuad(QuadOp.LOAD_POINTER, toLoad, null, loaded);
+        this.addQuad(QuadOp.LOAD_VARIABLE_POINTER, toLoad, null, loaded);
         return loaded;
     }
     public void createIndex(Symbol index, Symbol value) throws CompileException {

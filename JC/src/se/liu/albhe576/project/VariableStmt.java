@@ -27,7 +27,7 @@ public class VariableStmt extends Stmt{
             return;
         }
 
-        if(!lastResult.type.isSameType(type) && !lastOperand.isNull()){
+        if(!lastResult.type.isSameType(type) && !lastOperand.isNull() && !lastResult.type.canBeCastedTo(type)){
             this.error(String.format("Trying to access type %s to type %s", lastResult.type, type));
         }
     }

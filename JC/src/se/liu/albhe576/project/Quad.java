@@ -48,13 +48,9 @@ public class Quad {
             return 0;
         }
         if(function.getArguments() != null){
+            Map<String, Struct> structs = stack.getStructs();
             for(StructField field : function.getArguments()){
-                Struct struct = stack.getStruct(field.type().name);
-                if(struct == null || field.type().isPointer()){
-                    argSize += 8;
-                }else{
-                    argSize += struct.getSize(stack.getStructs());
-                }
+               argSize +=  SymbolTable.getStructSize(structs, field.type());
             }
         }
 
@@ -65,8 +61,11 @@ public class Quad {
     public static String getRegisterFromType(DataType type, int registerIndex){
         final String[] floatRegisters = new String[]{"xmm0", "xmm1"};
         final String[] generalRegisters = new String[]{"rax", "rcx"};
+        final String[] byteRegisters = new String[]{"al", "cl"};
         if(type.isFloatingPoint()){
             return floatRegisters[registerIndex];
+        }else if(type.isByte()){
+            return byteRegisters[registerIndex];
         }
         return generalRegisters[registerIndex];
     }
@@ -137,9 +136,16 @@ public class Quad {
             case MOD -> {
                 return "cdq\nxor rdx, rdx\nidiv rcx\nmov rax, rdx\n";
             }
-            case LOAD_POINTER ->{
+            case LOAD_VARIABLE_POINTER ->{
                 VariableSymbol variableSymbol = (VariableSymbol)  operand1;
                 return stack.loadVariablePointer(variableSymbol.id);
+            }
+            case LOAD_POINTER -> {
+                return "lea rax, [rax]";
+            }
+            case LOAD_FIELD_POINTER ->{
+                VariableSymbol variable = (VariableSymbol) operand1;
+                return stack.loadFieldPointer(variable.id,operand2.name);
             }
             case DEREFERENCE, INDEX ->{
                 String movOp = getMovOpFromType(result.type);
@@ -268,13 +274,20 @@ public class Quad {
                 return "pop rax";
             }
             case MOV_RCX ->{
+               if(operand1.type.isByte()){
+                   return "movzx rax, al\nmov rcx, rax";
+               }
                return "mov rcx, rax";
             }
             case MOV_REG_CA ->{
                 String movOp = getMovOpFromType(operand1.type);
                 String register1 = getRegisterFromType(operand1.type, 0);
                 String register2 = getRegisterFromType(operand1.type, 1);
-                return String.format("%s %s, %s", movOp, register2, register1);
+                String out = String.format("%s %s, %s", movOp, register2, register1);
+                if(operand1.type.isByte()){
+                    out += "\nmovzx cl";
+                }
+                return out;
             }
             case PUSH_STRUCT ->{
                 return stack.pushStruct(operand1);
@@ -283,6 +296,9 @@ public class Quad {
                 return stack.moveStruct(operand1);
             }
             case MOV_RDI->{
+                if(operand1.type.isByte()){
+                    return "movzx rax, al\nmov rdi, rax";
+                }
                 return "mov rdi, rax";
             }
             case MOV_XMM0->{
@@ -304,23 +320,35 @@ public class Quad {
                 return "movsd xmm5, xmm0";
             }
             case MOV_RSI->{
+                if(operand1.type.isByte()){
+                    return "movzx rax, al\nmov rsi, rax";
+                }
                 return "mov rsi, rax";
             }
             case MOV_RDX->{
+                if(operand1.type.isByte()){
+                    return "movzx rax, al\nmov rdx, rax";
+                }
                 return "mov rdx, rax";
             }
             case MOV_R8->{
+                if(operand1.type.isByte()){
+                    return "movzx rax, al\nmov r8, rax";
+                }
                 return "mov r8, rax";
             }
             case MOV_R9->{
+                if(operand1.type.isByte()){
+                    return "movzx rax, al\nmov r9, rax";
+                }
                 return "mov r9, rax";
             }
             case CALL ->{
                 int stackAligment = getStackAlignment(operand1.name, functions, stack);
 
                 if(stackAligment!= 0){
-                    if(stackAligment% 16 == 8){
-                        stackAligment+= 8;
+                    if(stackAligment% 16 != 0){
+                        stackAligment+= 16 - (stackAligment % 16);
                     }
                     return String.format("call %s\nadd rsp, %d", operand1.name, stackAligment);
                 }

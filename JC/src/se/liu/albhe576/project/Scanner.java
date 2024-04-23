@@ -121,6 +121,7 @@ public class Scanner {
                 Map.entry("while", TokenType.TOKEN_WHILE),
                 Map.entry("return", TokenType.TOKEN_RETURN),
                 Map.entry("int", TokenType.TOKEN_INT),
+                Map.entry("byte", TokenType.TOKEN_BYTE),
                 Map.entry("float", TokenType.TOKEN_FLOAT),
                 Map.entry("void", TokenType.TOKEN_VOID)
         );

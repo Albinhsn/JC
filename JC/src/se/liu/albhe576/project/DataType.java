@@ -23,9 +23,8 @@ public class DataType {
     public boolean isArray(){
         return this.type == DataTypes.ARRAY && depth == 0;
     }
-    public boolean isString(){
-        return this.type == DataTypes.STRING && depth == 0;
-    }
+    public boolean isString(){return this.type == DataTypes.STRING && depth == 0;}
+    public boolean isByte(){return this.type == DataTypes.BYTE && depth == 0;}
 
     public boolean isPointer(){
         return this.depth > 0;
@@ -44,6 +43,9 @@ public class DataType {
         if((this.isFloatingPoint() && other.isInteger()) || (other.isFloatingPoint() && this.isInteger())){
             return true;
         }
+        if((this.isByte() && other.isInteger()) || (other.isByte() && this.isInteger())){
+            return true;
+        }
 
         if((this.isArray() && (other.isPointer() && other.depth == 1)) || (other.isArray() && (this.isPointer() && this.depth == 1))){
             return true;
@@ -53,10 +55,10 @@ public class DataType {
 
     public DataType getTypeFromPointer() throws CompileException {
         if(depth <= 0){
-            throw new CompileException("How could this happen to me, depth < 0?");
+            throw new CompileException("depth < 0?");
         }
         if(this.type == DataTypes.STRING && this.depth == 1){
-            return new DataType("int", DataTypes.INT, 0);
+            return getByte();
         }
         return new DataType(this.name, this.type, this.depth - 1);
     }
@@ -85,6 +87,9 @@ public class DataType {
     public static DataType getVoid(){
         return new DataType("void", DataTypes.VOID, 0);
     }
+    public static DataType getByte(){
+        return new DataType("byte", DataTypes.BYTE, 0);
+    }
 
     public static DataType getDataTypeFromToken(Token token) throws CompileException {
         switch(token.type()){
@@ -93,6 +98,7 @@ public class DataType {
             case TOKEN_STRING_LITERAL, TOKEN_STRING-> {return DataType.getString();}
             case TOKEN_IDENTIFIER -> {return getStruct(token.literal());}
             case TOKEN_VOID -> {return getVoid();}
+            case TOKEN_BYTE -> {return getByte();}
         }
         throw new CompileException(String.format("Can't parse value type from %s", token));
     }

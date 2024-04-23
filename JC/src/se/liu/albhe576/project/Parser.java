@@ -122,6 +122,7 @@ public class Parser {
             case TOKEN_INT:{}
             case TOKEN_FLOAT:{}
             case TOKEN_STRING:{}
+            case TOKEN_BYTE:{}
             case TOKEN_VOID:{
                 return true;
             }
@@ -235,7 +236,7 @@ public class Parser {
             return new ExprStmt(new AssignExpr(expr, parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, file), line, file);
         }
         else if(matchAugmented()){
-            return new ExprStmt(new AugmentedExpr(this.previous, expr, parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, file), line, file);
+            return new ExprStmt(new AssignExpr(expr, new BinaryExpr(expr, this.previous,parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, file), line, file), line, file);
         }
         return new ExprStmt(expr, line, file);
     }
@@ -330,7 +331,7 @@ public class Parser {
             int size = Integer.parseInt(this.previous.literal());
             consume(TokenType.TOKEN_RIGHT_BRACKET, String.format("Expected ']' after array size in array declaration, got %s", this.current.literal()));
 
-            List<Expr> items = null;
+            List<Expr> items = new ArrayList<>();
             if(matchType(TokenType.TOKEN_EQUAL)){
                 consume(TokenType.TOKEN_LEFT_BRACKET, "Expected '[' after = in array declaration");
                 items = parseArrayItems(size);
@@ -547,7 +548,7 @@ public class Parser {
         }else if(canAssign && matchType(TokenType.TOKEN_EQUAL)){
             return new AssignExpr(new VarExpr(var, line, this.fileName), parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, fileName);
         }else if (canAssign && matchAugmented()){
-            return new AugmentedExpr(this.previous, new VarExpr(var, line, this.fileName), parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, fileName);
+            return new AssignExpr(expr, new BinaryExpr(expr, this.previous,parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, this.fileName), line, this.fileName);
         }
         return new VarExpr(var, line, this.fileName);
     }

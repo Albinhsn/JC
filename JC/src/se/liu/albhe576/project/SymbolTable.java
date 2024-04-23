@@ -25,6 +25,7 @@ public class SymbolTable {
         final String[] internal = new String[]{
                 "int",
                 "float",
+                "byte",
                 "string",
         };
         if(Arrays.asList(internal).contains(name)){
@@ -33,9 +34,11 @@ public class SymbolTable {
         return this.structs.containsKey(name);
     }
 
-    public int getStructSize(DataType type){
-        if(this.structs.containsKey(type.name) && type.isStruct()){
-            return this.structs.get(type.name).getSize(this.structs);
+    public static int getStructSize(Map<String, Struct> structs, DataType type){
+        if(structs.containsKey(type.name) && type.isStruct()){
+            return structs.get(type.name).getSize(structs);
+        }else if(type.isByte()){
+            return 1;
         }
         return 8;
     }
@@ -87,7 +90,7 @@ public class SymbolTable {
     public void exitScope(){this.getCurrentScope().closeScope();}
 
     public VariableSymbol addVariable(String name, DataType type){
-        int offset = -this.getStructSize(type) - this.getLocalVariableStackSize(this.currentFunctionName);
+        int offset = -SymbolTable.getStructSize(structs, type) - this.getLocalVariableStackSize(this.currentFunctionName);
         VariableSymbol variableSymbol = new VariableSymbol(name, type, offset, this.generateVariableId());
         getCurrentScope().addVariable(name, variableSymbol);
         return variableSymbol;
@@ -177,6 +180,9 @@ public class SymbolTable {
     }
     public boolean isMemberOfStruct(DataType type, String member) {
         Struct struct = this.structs.get(type.name);
+        if(struct == null){
+            System.out.println("");
+        }
         for(StructField field : struct.getFields()){
             if(field.name().equals(member)){
                 return true;

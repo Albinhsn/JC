@@ -27,9 +27,11 @@ public class ReturnStmt extends Stmt{
             expr.compile(symbolTable, quads);
             Symbol returnSymbol = QuadList.convertResultToCorrectType(quads, quads.getLastResult(), Compiler.generateSymbol(returnType));
 
-            if(!returnSymbol.type.isSameType(returnType)){
+
+            if(!returnSymbol.type.isSameType(returnType) && !returnSymbol.type.canBeCastedTo(returnType)){
                 this.error(String.format("Mismatch in return type in function %s, expected %s got %s", currentFunction, returnType.name, returnSymbol.type.name));
             }
+
 
         }
         else if(returnType.type != DataTypes.VOID){

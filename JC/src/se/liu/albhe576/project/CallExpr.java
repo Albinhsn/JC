@@ -5,6 +5,23 @@ import java.util.List;
 public class CallExpr extends Expr{
    private final Token name;
    private final List<Expr> args;
+
+   private static final QuadOp[] LINUX_GENERAL_ARGUMENT_LOCATIONS = {
+           QuadOp.MOV_RDI,
+           QuadOp.MOV_RSI,
+           QuadOp.MOV_RDX,
+           QuadOp.MOV_RCX,
+           QuadOp.MOV_R8,
+           QuadOp.MOV_R9,
+   };
+    private static final QuadOp[] LINUX_FLOATING_POINT_ARGUMENT_LOCATIONS = {
+            QuadOp.MOV_XMM0,
+            QuadOp.MOV_XMM1,
+            QuadOp.MOV_XMM2,
+            QuadOp.MOV_XMM3,
+            QuadOp.MOV_XMM4,
+            QuadOp.MOV_XMM5,
+    };
    public CallExpr(Token name, List<Expr> args, int line, String file){
        super(line, file);
        this.name = name;
@@ -14,23 +31,9 @@ public class CallExpr extends Expr{
    private void callExternFunction(SymbolTable symbolTable, QuadList quads) throws CompileException {
 
        Function function = symbolTable.getFunction(this.name.literal());
-       QuadOp[] generalRegisters = new QuadOp[]{
-              QuadOp.MOV_RDI,
-               QuadOp.MOV_RSI,
-               QuadOp.MOV_RDX,
-               QuadOp.MOV_RCX,
-               QuadOp.MOV_R8,
-               QuadOp.MOV_R9,
-       };
-       QuadOp[] floatRegisters = new QuadOp[]{
-               QuadOp.MOV_XMM0,
-               QuadOp.MOV_XMM1,
-               QuadOp.MOV_XMM2,
-               QuadOp.MOV_XMM3,
-               QuadOp.MOV_XMM4,
-               QuadOp.MOV_XMM5,
-       };
 
+       int generalRegistersLength = LINUX_GENERAL_ARGUMENT_LOCATIONS.length;
+       int floatRegistersLength = LINUX_FLOATING_POINT_ARGUMENT_LOCATIONS.length;
        int generalCount = 0;
        int floatCount = 0;
 
@@ -45,12 +48,17 @@ public class CallExpr extends Expr{
            QuadList argQuads = new QuadList();
            arg.compile(symbolTable, argQuads);
            Symbol result = argQuads.getLastResult();
+
+           if(generalCount >= generalRegistersLength || floatCount >= floatRegistersLength){
+               this.error(String.format("Can't call library function with more then %d ints and %d floats, you called %d, %d", generalCount, floatCount, generalRegistersLength, floatRegistersLength));
+           }
+
            if (result.type.isFloatingPoint()) {
                if(floatCount >= 1){
                    quads.createPush(floatType);
                }
                quads.addAll(argQuads);
-               quads.addQuad(floatRegisters[floatCount], null, null, null);
+               quads.addQuad(LINUX_FLOATING_POINT_ARGUMENT_LOCATIONS[floatCount], result, null, null);
                if(floatCount >= 1){
                    quads.createPop(floatType);
                }
@@ -58,7 +66,7 @@ public class CallExpr extends Expr{
                floatCount++;
            } else {
                quads.addAll(argQuads);
-               quads.addQuad(generalRegisters[generalCount], null, null, null);
+               quads.addQuad(LINUX_GENERAL_ARGUMENT_LOCATIONS[generalCount], result, null, null);
                generalCount++;
            }
 
@@ -69,9 +77,6 @@ public class CallExpr extends Expr{
                }
            }
 
-           if(generalCount > generalRegisters.length || floatCount > floatRegisters.length){
-               this.error(String.format("Can't call library function with more then %d ints and %d floats, you called %d, %d", generalCount, floatCount, generalRegisters.length, floatRegisters.length));
-           }
 
        }
 
@@ -109,11 +114,11 @@ public class CallExpr extends Expr{
                 this.error(String.format("Function parameter type mismatch expected %s got %s", argSymbol.type.name, funcArgType.name));
             }
             argQuads.createMoveArgument(argSymbol, argSize);
-            argSize += symbolTable.getStructSize(argSymbol.type);
+            argSize += SymbolTable.getStructSize(symbolTable.getStructs(), argSymbol.type);
         }
         if(argSize > 0){
-            if(argSize % 16 == 8){
-                argSize += 8;
+            if(argSize % 16 != 0){
+                argSize += 16 - (argSize % 16);
             }
             quads.allocateArguments(argSize);
             quads.addAll(argQuads);

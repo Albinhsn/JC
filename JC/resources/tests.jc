@@ -204,6 +204,12 @@ void test_augmented(){
 
     print_testi(*ap, 5, "int * a += 1");
 
+    Foo * foo = malloc(8);
+    foo.a = 2;
+    foo.a |= 5;
+
+    print_testi(foo.a, 7, "foo.a |= 5");
+
 }
 
 void test_logical(){
@@ -594,6 +600,17 @@ void test_string(){
 
 }
 
+void test_byte(){
+    string s = "Hello Sailor!";
+    s = "Hello World!";
+
+    byte H = s[0];
+    byte e = s[1];
+    byte l = s[2];
+    byte l1 = s[3];
+    printf("%c%c%c%c\n", H,e,l,l1);
+}
+
 int run_tests(){
 
     test_assign();
@@ -610,6 +627,7 @@ int run_tests(){
     test_logical();
     test_return_struct();
     test_string();
+    test_byte();
 
     printf("Finished tests!\n");
     return 0;

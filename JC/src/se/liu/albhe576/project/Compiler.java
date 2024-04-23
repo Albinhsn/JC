@@ -29,6 +29,16 @@ public class Compiler {
             stmt.compile(symbolTable, quads);
         }
 
+        final Map<String, Function> functions = this.symbolTable.getInternalFunctions();
+        for(Map.Entry<String, Function> function : functions.entrySet()){
+            String k = function.getKey();
+            Function f = function.getValue();
+            System.out.println(k + ":");
+            for(Quad quad : f.getIntermediates()){
+                System.out.println(quad);
+            }
+        }
+
         // Output intel assembly
         this.generateAssembly(name);
     }
@@ -79,7 +89,7 @@ public class Compiler {
 
     private void handleStackAlignment(FileWriter fileWriter, String functionName) throws IOException{
         int scopeSize = this.symbolTable.getLocalVariableStackSize(functionName);
-        scopeSize += (scopeSize % 16) == 0 ? 0 : 8;
+        scopeSize += (scopeSize % 16) == 0 ? 0 : (16 - (scopeSize % 16));
         if(scopeSize != 0){
             fileWriter.write(String.format("sub rsp, %d\n", scopeSize));
         }
@@ -97,7 +107,7 @@ public class Compiler {
         QuadList intermediates = function.getIntermediates();
         boolean shouldOutputRet = intermediates.isEmpty();
         for (Quad intermediate : intermediates) {
-             fileWriter.write("; " + intermediate + "\n");
+            //fileWriter.write("; " + intermediate + "\n");
             fileWriter.write(intermediate.emit(stack, functions, constants) + "\n");
         }
 

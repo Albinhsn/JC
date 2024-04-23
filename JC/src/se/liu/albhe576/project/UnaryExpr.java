@@ -28,21 +28,36 @@ public class UnaryExpr extends Expr{
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         expr.compile(symbolTable, quads);
-        Symbol symbol = quads.getLastResult();
-        Symbol result = Compiler.generateSymbol(symbol.type);
+        Symbol op1 = quads.getLastResult();
+        Symbol op2 = null;
+        Symbol result = Compiler.generateSymbol(op1.type);
         QuadOp quadOp = this.getUnaryQuadOp();
 
         // ToDo Type check that it isn't an immediate
 
-        // Take reference
+        // Take reference (&foo)
         if(quadOp == QuadOp.LOAD_POINTER){
-            symbol = quads.getLastOperand1();
-            quads.removeLastQuad();
-            result = Compiler.generateSymbol(DataType.getPointerFromType(symbol.type));
+            Quad lastQuad = quads.pop();
+            QuadOp lastOp = lastQuad.getOp();
+
+            if(lastOp == QuadOp.GET_FIELD){
+                // load field pointer?
+                quadOp = QuadOp.LOAD_FIELD_POINTER;
+                op2 = lastQuad.getOperand2();
+                op1 = quads.getLastOperand1();
+                result = Compiler.generateSymbol(DataType.getPointerFromType(op2.type));
+            }else if(lastOp == QuadOp.INDEX){
+                result = Compiler.generateSymbol(DataType.getPointerFromType(lastQuad.getOperand2().type));
+            }
+            else{
+                quadOp = QuadOp.LOAD_VARIABLE_POINTER;
+                op1 = lastQuad.getOperand1();
+                result = Compiler.generateSymbol(DataType.getPointerFromType(op1.type));
+            }
         }
         // Dereference
         else if(quadOp == QuadOp.DEREFERENCE){
-            symbol = quads.getLastOperand1();
+            op1 = quads.getLastOperand1();
             result = Compiler.generateSymbol(result.type.getTypeFromPointer());
         }
         // inc/dec
@@ -56,6 +71,6 @@ public class UnaryExpr extends Expr{
             return;
         }
 
-        quads.addQuad(quadOp, symbol, null, result);
+        quads.addQuad(quadOp, op1, op2, result);
     }
 }

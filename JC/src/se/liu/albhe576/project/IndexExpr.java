@@ -31,7 +31,7 @@ public class IndexExpr extends Expr{
             this.error(String.format("Can't index with none integer, is type %s", valResult.type));
         }
 
-        int structSize = symbolTable.getStructSize(valResult.type.getTypeFromPointer());
+        int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), valResult.type.getTypeFromPointer());
         quads.createIMUL(String.valueOf(structSize));
 
         Symbol right = quads.createMovRegisterAToC(Compiler.generateSymbol(DataType.getInt()));

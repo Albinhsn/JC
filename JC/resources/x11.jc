@@ -6,31 +6,89 @@
 
 #extern int socket(int domain, int type, int protocol)
 #extern int connect(...)
+#extern int write(...)
+#extern int read(...)
 
 #define AF_UNIX 1
 #define SOCK_STREAM 1
 
 
-void place_byte(int * s, int idx, int b){
-    
+struct short{
+    byte low;
+    byte high;
 }
 
 struct sockaddr_un{
-  int * p;
+  byte * p;
 }
 
+struct x11_connection_req_t{
+    byte order;
+    byte pad1;
+    short major;
+    short minor;
+    short auto_proto;
+    short auth_data;
+    short pad2;
+}
+struct x11_data{
+    int id; // 32 bit
+    int id_base; // 32 bit
+    int id_mask;
+    int root_visual_id;
+}
+
+void place_int(int * numb, byte * b){
+
+    *numb = 0;
+    for(int i = 0; i < 4; i++){
+       *numb |= b[i] << (i * 8);
+    }
+    printf("%d\n", *numb);
+}
+
+void init_data(x11_data * data, byte * res, int server_read){
+
+
+    // id_base is offset 4, int
+    place_int(&(data.id), &res[4]);
+    printf("%d\n", data.id);
+
+    // id_mask is offset 8, int
+    place_int(&(data.id_base), &res[8]);
+    printf("%d\n", data.id_base);
+
+    // vendor length is offset 16, short
+
+    // number of formats, 21 offset, byte, is the size in bytes
+
+    // (32 + vendor length + 3) & -4 from start O
+    // id at O, int
+    // root_visual_id is 32 bit at O + 32
+
+
+}
+
+void init_connection_req(x11_connection_req_t * req){
+    req.order = 108; // 'l' in ascii
+    req.major.low = 11;
+}
 
 void create_sockaddr_un(sockaddr_un * addr){
 
+  int len = 17;
   string path = "/tmp/.X11-unix/X0"; 
   
-  addr.p = malloc(16);
+  addr.p = malloc(110);
   addr.p[0] = AF_UNIX;
-  addr.p[0] = addr.p[0] | (path[0] << 16);
+  addr.p[1] = 0;
 
-  addr.p[1] = (path[0] << 48) >> 48;
-  addr.p[1] = addr.p[1] | (path[1] << 16);
-
+  for(int i = 0; i < len; i++){
+    addr.p[i + 2] = path[i];
+  }
+  for(int i = len + 2; i < 110; i++){
+    addr.p[i] = 0;
+  }
 }
 
 int main(){
@@ -40,12 +98,38 @@ int main(){
   sockaddr_un addr;
   create_sockaddr_un(&addr);
 
-  int res = connect(s, &addr, 16);
-  printf("%d\n", res);
-  
+  int res = connect(s, addr.p, 110);
+  printf("Connection results: %d %d\n",s, res);
+  if(res < 0){
+    return 1;
+  }
 
-  return s;
+  x11_connection_req_t req;
+  init_connection_req(&req);
 
+  int written = write(s, &req, 12);
+  printf("wrote %d\n", written);
 
-  
+  byte response[8];
+  int actually_read = read(s, response, 8);
+  printf("Actually read %d\n", actually_read);
+  printf("Response first byte %d\n", response[0]);
+  if(response[0] == 0){
+    printf("Failed to read?\n");
+    return 1;
+  }
+
+  int server_res_size = (1<<15) / 4;
+  byte * server_res = malloc(server_res_size);
+
+  int server_read = read(s, server_res, server_res_size);
+  if(server_read <= 0){
+    printf("Failed to do the big read, read %d\n", server_read);
+  }
+  printf("BiG read %d\n", server_read);
+  x11_data data;
+  init_data(&data, server_res, server_read);
+
+  return 0;
+
 }

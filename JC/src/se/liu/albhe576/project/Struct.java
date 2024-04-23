@@ -16,12 +16,7 @@ public class Struct {
     public int getSize(Map<String, Struct> structs){
         int size = 0;
         for(StructField field : fields){
-            if(structs.containsKey(field.type().name) && field.type().isStruct()){
-                size += structs.get(field.type().name).getSize(structs);
-            }else{
-                size += 8;
-            }
-
+            size += SymbolTable.getStructSize(structs, field.type());
         }
         return size;
     }

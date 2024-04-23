@@ -19,22 +19,8 @@ public class BinaryExpr extends Expr{
     }
 
 
-    public static void typecheckBinaryExpr(QuadOp op, DataType lType, DataType rType, Expr expr, String opLiteral) throws CompileException {
-        if(QuadOp.isArithmeticOp(op)){
-            if(BinaryExpr.isInvalidArithmetic(lType, rType)){
-                expr.error(String.format("Can't do arithmetic op '%s' on %s and %s", opLiteral, lType, rType));
-            }
-        }else if(QuadOp.isBitwiseOp(op)){
-            if(BinaryExpr.isInvalidBitwise(lType, rType)){
-                expr.error(String.format("Can't do bitwise op '%s' on %s and %s", opLiteral, lType, rType));
-            }
-        }else{
-            expr.error(String.format("Can't do augmented expression with op %s", opLiteral));
-        }
-    }
-
     public static boolean isInvalidBitwise(DataType left, DataType right){
-        return !left.isInteger() || !right.isInteger();
+        return !(left.isInteger() || left.isByte()) || !(right.isInteger() || right.isByte());
     }
     public static boolean isInvalidArithmetic(DataType left, DataType right){
         if((left.isPointer() && !right.isInteger()) || (right.isPointer() && !left.isInteger())){
@@ -86,7 +72,7 @@ public class BinaryExpr extends Expr{
             resultType = lType.isPointer() ? lType : rType;
             QuadList quadsToIMUL = lType.isPointer() ? r : quads;
 
-            int structSize = symbolTable.getStructSize(resultType);
+            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), resultType);
             quadsToIMUL.createIMUL(String.valueOf(structSize));
 
         }else if(QuadList.isIntegerFloatingPointBinary(lType, rType)){

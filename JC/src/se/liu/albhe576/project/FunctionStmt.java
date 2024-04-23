@@ -53,7 +53,7 @@ public class FunctionStmt extends Stmt{
         int offset = 16;
         for(StructField arg : arguments){
            localSymbols.put(arg.name(), new VariableSymbol(arg.name(), arg.type(), offset, symbolTable.generateVariableId()));
-           offset += symbolTable.getStructSize(arg.type());
+           offset += SymbolTable.getStructSize(symbolTable.getStructs(), arg.type());
         }
 
         symbolTable.compileFunction(name, localSymbols);

@@ -10,7 +10,7 @@ public class AssignExpr extends Expr{
         this.value = value;
     }
 
-    private Symbol convertValue(Symbol value, Symbol target, QuadList quads){
+    private static Symbol convertValue(Symbol value, Symbol target, QuadList quads){
         if(value.type.isFloatingPoint() && !target.type.isFloatingPoint()){
             value = quads.createConvertFloatToInt(value);
         }
@@ -20,7 +20,7 @@ public class AssignExpr extends Expr{
         return value;
     }
 
-    private void compileStoreField(SymbolTable symbolTable, QuadList quads, QuadList variableQuads) throws CompileException {
+    private static void compileStoreField(SymbolTable symbolTable, QuadList quads, QuadList variableQuads) throws CompileException {
         // Last op will be a GET_FIELD, which means it will not have the pointer to the struct in rax
         // So we have to remove the op
         Quad lastQuad =  variableQuads.pop();
@@ -29,7 +29,7 @@ public class AssignExpr extends Expr{
         Symbol memberSymbol = symbolTable.getMemberSymbol(lastQuad.getOperand1(), lastQuad.getOperand2().name);
         Symbol value = quads.getLastResult();
 
-        value = this.convertValue(value, memberSymbol, quads);
+        value = convertValue(value, memberSymbol, quads);
 
         quads.createPush(value);
         quads.addAll(variableQuads);
@@ -41,20 +41,20 @@ public class AssignExpr extends Expr{
         quads.createSetField(memberSymbol, struct);
     }
 
-    private void compileStoreDereference(QuadList valueQuads, QuadList variableQuads) {
+    private static void compileStoreDereference(QuadList valueQuads, QuadList variableQuads) {
         Symbol dereferenced = variableQuads.getLastOperand1();
         Symbol variableType = variableQuads.getLastResult();
 
         Symbol valueResult = valueQuads.getLastResult();
         variableQuads.removeLastQuad();
 
-        valueResult = this.convertValue(valueResult, variableType, valueQuads);
+        valueResult = convertValue(valueResult, variableType, valueQuads);
 
         valueQuads.createSetupBinary(variableQuads, valueResult, dereferenced);
         valueQuads.createStoreIndex(valueResult, dereferenced);
     }
 
-    private void compileStoreIndex(QuadList quads, QuadList variableQuads) throws CompileException{
+    private static void compileStoreIndex(QuadList quads, QuadList variableQuads) throws CompileException{
         Symbol res = variableQuads.getLastOperand2();
         Symbol toStore = quads.getLastResult();
 
@@ -72,7 +72,7 @@ public class AssignExpr extends Expr{
         quads.createPop(toStore);
 
         Symbol result = Compiler.generateSymbol(resType);
-        toStore = this.convertValue(toStore, result, quads);
+        toStore = convertValue(toStore, result, quads);
 
         quads.createStoreIndex(result, toStore);
     }
@@ -101,15 +101,15 @@ public class AssignExpr extends Expr{
 
         if(lastOp == QuadOp.GET_FIELD){
             // We store into a struct
-            this.compileStoreField(symbolTable, quads, variableQuads);
+            compileStoreField(symbolTable, quads, variableQuads);
 
         }else if(lastOp == QuadOp.DEREFERENCE){
             // Or where a pointer points to
-            this.compileStoreDereference(quads, variableQuads);
+            compileStoreDereference(quads, variableQuads);
         }
         else if(lastOp == QuadOp.INDEX){
             // Or an index
-            this.compileStoreIndex(quads, variableQuads);
+            compileStoreIndex(quads, variableQuads);
         }
         else if (valueResult.type.isStruct()){
 
