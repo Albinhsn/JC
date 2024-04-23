@@ -69,8 +69,8 @@ public class Parser {
         Map.entry(TokenType.TOKEN_XOR, new ParseFunction(null, this::binary, Precedence.BITWISE)),
         Map.entry(TokenType.TOKEN_SHIFT_LEFT, new ParseFunction(null, this::binary, Precedence.BITWISE)),
         Map.entry(TokenType.TOKEN_SHIFT_RIGHT, new ParseFunction(null, this::binary, Precedence.BITWISE)),
-        Map.entry(TokenType.TOKEN_INCREMENT, new ParseFunction(this::unary, null, Precedence.TERM)),
-        Map.entry(TokenType.TOKEN_DECREMENT, new ParseFunction(this::unary, null, Precedence.TERM)),
+        Map.entry(TokenType.TOKEN_INCREMENT, new ParseFunction(this::unary, this::postfix, Precedence.TERM)),
+        Map.entry(TokenType.TOKEN_DECREMENT, new ParseFunction(this::unary,this::postfix, Precedence.TERM)),
         Map.entry(TokenType.TOKEN_MOD, new ParseFunction(null, this::binary, Precedence.TERM)),
         Map.entry(TokenType.TOKEN_ELLIPSIS, new ParseFunction(null, null, Precedence.NONE))
     ));
@@ -155,6 +155,10 @@ public class Parser {
         }
         String name = this.previous.literal();
         return new StructField(name, dataType);
+    }
+
+    private Expr postfix(Expr expr, boolean canAssign){
+        return new PostfixExpr(expr, this.previous, this.scanner.getLine(), this.fileName);
     }
 
     private void structDeclaration() throws CompileException {
@@ -283,7 +287,11 @@ public class Parser {
     private List<Stmt> parseBody() throws CompileException {
         List<Stmt> body = new ArrayList<>();
         while(!matchType(TokenType.TOKEN_RIGHT_BRACE)) {
-            body.add(parseStmt());
+            if(matchType(TokenType.TOKEN_SEMICOLON)){
+                System.out.printf("Extra semicolon in file %s at line %d?", fileName, this.scanner.getLine());
+            }else{
+                body.add(parseStmt());
+            }
         }
         return body;
     }
@@ -328,7 +336,8 @@ public class Parser {
         else if(matchType(TokenType.TOKEN_LEFT_BRACKET)){
             ArrayDataType arrayType = ArrayDataType.fromItemType(type);
             consume(TokenType.TOKEN_INT_LITERAL, String.format("Expected array size in form of int literal in array declaration, got %s", this.current.literal()));
-            int size = Integer.parseInt(this.previous.literal());
+            // Probably no reason that you should allow a[0xF] but why not
+            int size = Integer.decode(this.previous.literal());
             consume(TokenType.TOKEN_RIGHT_BRACKET, String.format("Expected ']' after array size in array declaration, got %s", this.current.literal()));
 
             List<Expr> items = new ArrayList<>();
@@ -467,7 +476,11 @@ public class Parser {
                 }else if(matchType(TokenType.TOKEN_EXTERN)){
                     this.parseExtern();
                 }
-                else{
+                else if(matchType(TokenType.TOKEN_SEMICOLON)){
+                    // ToDo loggin
+                    System.out.printf("Extra semicolon in file %s at line %d?", fileName, this.scanner.getLine());
+                }else{
+
                     this.stmts.add(parseStmt());
 
                 }
@@ -540,10 +553,7 @@ public class Parser {
     private Expr variable(Expr expr, boolean canAssign) throws CompileException{
         Token var = this.previous;
         int line = this.previous.line();
-        if(matchType(TokenType.TOKEN_DECREMENT) || matchType(TokenType.TOKEN_INCREMENT)){
-            return new PostfixExpr(var, this.previous, line, this.fileName);
-        }
-        else if(matchType(TokenType.TOKEN_LEFT_PAREN)){
+        if(matchType(TokenType.TOKEN_LEFT_PAREN)){
             return this.parseCall(var);
         }else if(canAssign && matchType(TokenType.TOKEN_EQUAL)){
             return new AssignExpr(new VarExpr(var, line, this.fileName), parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, fileName);

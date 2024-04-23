@@ -14,6 +14,7 @@ public class Main {
         String filePath = "resources/x11.jc";
         String s = Files.readString(Path.of(filePath));
         System.out.println(s);
+
         Scanner scanner = new Scanner(s);
         List<String> included = new ArrayList<>();
         Map<String, Struct> structs = new HashMap<>();

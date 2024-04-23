@@ -11,14 +11,11 @@ public class Stack {
     public String loadFieldPointer(int variableId, String field) throws CompileException {
         VariableSymbol variable = this.stackSymbols.get(variableId);
         Struct struct = this.getStructs().get(variable.type.name);
-        int fieldOffset = this.getFieldOffset(struct, field);
-        VariableSymbol symbol = this.stackSymbols.get(variableId);
-
-        int offset = symbol.offset + fieldOffset;
-        if(offset < 0){
-            return String.format("lea rax, [rbp %d]", offset);
+        int offset = this.getFieldOffset(struct, field);
+        if(offset == 0){
+            return "lea rax, [rax]";
         }else{
-            return String.format("lea rax, [rbp + %d]", offset);
+            return String.format("lea rax, [rax + %d]", offset);
         }
     }
     public String loadVariablePointer(int id) {

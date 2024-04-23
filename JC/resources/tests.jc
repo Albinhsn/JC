@@ -611,6 +611,25 @@ void test_byte(){
     printf("%c%c%c%c\n", H,e,l,l1);
 }
 
+void test_postfix(){
+    int a = 5;
+    a++;
+    print_testi(a, 6, "a++");
+
+    int * b = &a;
+    (*b)++;
+    print_testi(*b, 7, "*b++");
+
+    Foo foo;
+    foo.a = 5;
+    foo.a++;
+    print_testi(foo.a, 6, "foo.a++");
+
+    Foo *foo1 = malloc(16);
+    foo1[0].a++;
+    print_testi(foo1[0].a, 1, "foo1[0].a++");
+}
+
 int run_tests(){
 
     test_assign();
@@ -628,6 +647,7 @@ int run_tests(){
     test_return_struct();
     test_string();
     test_byte();
+    test_postfix();
 
     printf("Finished tests!\n");
     return 0;

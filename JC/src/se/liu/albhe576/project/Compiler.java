@@ -33,7 +33,7 @@ public class Compiler {
         for(Map.Entry<String, Function> function : functions.entrySet()){
             String k = function.getKey();
             Function f = function.getValue();
-            System.out.println(k + ":");
+            System.out.println("\n\n" + k + ":");
             for(Quad quad : f.getIntermediates()){
                 System.out.println(quad);
             }
@@ -107,7 +107,7 @@ public class Compiler {
         QuadList intermediates = function.getIntermediates();
         boolean shouldOutputRet = intermediates.isEmpty();
         for (Quad intermediate : intermediates) {
-            //fileWriter.write("; " + intermediate + "\n");
+            fileWriter.write("; " + intermediate + "\n");
             fileWriter.write(intermediate.emit(stack, functions, constants) + "\n");
         }
 

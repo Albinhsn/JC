@@ -8,6 +8,7 @@
 #extern int connect(...)
 #extern int write(...)
 #extern int read(...)
+#extern int fcntl(...);
 
 #define AF_UNIX 1
 #define SOCK_STREAM 1
@@ -18,67 +19,41 @@ struct short{
     byte high;
 }
 
-struct sockaddr_un{
-  byte * p;
+void write_i16_to_bytes(short x, byte * b){
+    b[0] = x.low;
+    b[1] = x.high;
 }
 
-struct x11_connection_req_t{
-    byte order;
-    byte pad1;
-    short major;
-    short minor;
-    short auto_proto;
-    short auth_data;
-    short pad2;
-}
-struct x11_data{
-    int id; // 32 bit
-    int id_base; // 32 bit
-    int id_mask;
-    int root_visual_id;
+short create_short(int a){
+    short out;
+    out.low = a & 0xFF;
+    out.high = (a >> 8) & 0xFF;
+
+    return out;
 }
 
 void place_int(int * numb, byte * b){
-
     *numb = 0;
     for(int i = 0; i < 4; i++){
-       *numb |= b[i] << (i * 8);
+        *numb |= b[3 - i] << (i * 8);
     }
-    printf("%d\n", *numb);
+}
+void place_short(int * numb, byte * b){
+    *numb = 0;
+    for(int i = 0; i < 2; i++){
+        *numb |= b[1 - i] << (i * 8);
+    }
 }
 
-void init_data(x11_data * data, byte * res, int server_read){
-
-
-    // id_base is offset 4, int
-    place_int(&(data.id), &res[4]);
-    printf("%d\n", data.id);
-
-    // id_mask is offset 8, int
-    place_int(&(data.id_base), &res[8]);
-    printf("%d\n", data.id_base);
-
-    // vendor length is offset 16, short
-
-    // number of formats, 21 offset, byte, is the size in bytes
-
-    // (32 + vendor length + 3) & -4 from start O
-    // id at O, int
-    // root_visual_id is 32 bit at O + 32
-
-
-}
-
-void init_connection_req(x11_connection_req_t * req){
-    req.order = 108; // 'l' in ascii
-    req.major.low = 11;
+struct sockaddr_un{
+  byte * p;
 }
 
 void create_sockaddr_un(sockaddr_un * addr){
 
   int len = 17;
-  string path = "/tmp/.X11-unix/X0"; 
-  
+  string path = "/tmp/.X11-unix/X0";
+
   addr.p = malloc(110);
   addr.p[0] = AF_UNIX;
   addr.p[1] = 0;
@@ -91,44 +66,377 @@ void create_sockaddr_un(sockaddr_un * addr){
   }
 }
 
+struct x11_connection_req_t{
+    byte order;
+    byte pad1;
+    short major;
+    short minor;
+    short auto_proto;
+    short auth_data;
+    short pad2;
+}
+
+void init_connection_req(x11_connection_req_t * req, int fd){
+    req.order = 108; // 'l' in ascii
+    req.major.low = 11;
+
+  int written = write(fd, req, 12);
+  if(written != 12){
+    printf("failed to write connection req!\n");
+  }
+  printf("Wrote %d bytes!\n", written);
+}
+
+struct x11_data{
+    int id; // 32 bit
+    int id_base; // 32 bit
+    int id_mask;
+    int root_visual_id;
+}
+
+
+void init_data(x11_data * data, byte * res, int server_read){
+
+
+    // id_base is offset 4, int
+    place_int(&data.id, &res[4]);
+    printf("%d\n", data.id_base);
+
+    // id_mask is offset 8, int
+    place_int(&data.id_base, &res[8]);
+    printf("%d\n", data.id_mask);
+
+    // vendor length is offset 16, short
+    int vendor_length;
+    place_short(&vendor_length, &res[16]);
+
+    // number of formats, 21 offset, byte, is the size in bytes
+    byte formats = res[21];
+
+    // (32 + vendor length + 3) & -4 from start O
+    int offset = ((32 + vendor_length + 3) & -4) + formats;
+    printf("offset: %d\n", offset);
+
+    place_int(&data.id, &res[offset]);
+    place_int(&data.root_visual_id, &res[offset + 32]);
+
+    printf("parsed data %d %d %d %d\n", data.id, data.id_base, data.id_mask, data.root_visual_id);
+}
+
+int x11_next_id(x11_data * data){
+
+    int out =  data.id_mask & data.id | data.id_base;
+    data.id++;
+    return out;
+}
+
+#define OPEN_FONT_NAME_BYTE_COUNT 5
+#define OPEN_FONT_PADDING 3
+#define OPEN_FONT_PACKET_U32_COUNT 5
+#define X11_OP_REQ_OPEN_FONT 0x2d
+
+void write_i64_to_bytes(int a, byte * b){
+    for(int i = 0; i < 8; i++){
+        b[i] = (a >> (i * 8)) & 0xFF;
+    }
+}
+
+void write_i32_to_bytes(int a, byte * b){
+    for(int i = 0; i < 4; i++){
+        b[i] = (a >> (i * 8)) & 0xFF;
+    }
+}
+
+int open_font(int fd, x11_data * data){
+
+    byte * req = malloc(20);
+
+    // first 4 bytes are
+    int fst = X11_OP_REQ_OPEN_FONT | (OPEN_FONT_NAME_BYTE_COUNT << 16);
+    write_i32_to_bytes(fst, &req[0]);
+
+    // snd ?
+    int font_id = x11_next_id(data);
+    write_i32_to_bytes(font_id, &req[4]);
+
+    // third
+    int third = OPEN_FONT_NAME_BYTE_COUNT;
+    write_i32_to_bytes(fst, &req[8]);
+
+    string fixed = "fixed";
+    for(int i = 0; i < 5; i++){
+        req[12] = fixed[i];
+    }
+
+    int written = write(fd, req, 20);
+    printf("Font req got %d written\n", written);
+}
+
+#define X11_OP_REQ_CREATE_GC 0x37
+#define X11_FLAG_GC_BG 0x00000004
+#define X11_FLAG_GC_FG 0x00000008
+#define X11_FLAG_GC_FONT 0x00004000
+#define X11_FLAG_GC_EXPOSE 0x00010000
+
+#define CREATE_GC_PACKET_FLAG_COUNT 3
+#define CREATE_GC_PACKET_U32_COUNT 7
+#define MY_COLOR_RGB 0x0000FFFF
+
+
+void x11_create_gc(int fd, int font_id, int gc_id, int window_root_id){
+    int create_gc_flags = X11_FLAG_GC_BG | X11_FLAG_GC_FG | X11_FLAG_GC_FONT;
+
+    byte * req = malloc(28);
+
+    int fst = X11_OP_REQ_CREATE_GC | (CREATE_GC_PACKET_U32_COUNT << 16);
+    write_i32_to_bytes(fst, &req[0]);
+
+
+    // Graphical context id
+    write_i32_to_bytes(gc_id, &req[4]);
+
+    // Window root id
+    write_i32_to_bytes(window_root_id, &req[8]);
+
+    write_i32_to_bytes(create_gc_flags, &req[12]);
+    write_i32_to_bytes(MY_COLOR_RGB, &req[16]);
+    write_i32_to_bytes(0, &req[20]);
+    write_i32_to_bytes(font_id, &req[24]);
+
+
+    int written = write(fd, req, 28);
+    if(written != 28){
+        printf("Failed to write everything!\n");
+        return;
+    }
+    printf("Created gc context!\n");
+
+}
+
+#define X11_OP_REQ_CREATE_WINDOW 0x01
+#define X11_FLAG_WIN_BG_COLOR 0x00000002
+#define X11_EVENT_FLAG_KEY_RELEASE 0x0002
+#define X11_EVENT_FLAG_EXPOSURE 0x8000
+#define X11_FLAG_WIN_EVENT 0x00000800
+
+#define CREATE_WINDOW_FLAG_COUNT 2
+#define CREATE_WINDOW_PACKET_U32_COUNT 10
+#define CREATE_WINDOW_BORDER 1
+#define CREATE_WINDOW_GROUP 1
+
+void x11_create_window(int fd, int new_window_id, int window_root_id, int root_visual_id, short x, short y, short w, short h){
+
+    byte * req = malloc(40);
+
+    int fst = X11_OP_REQ_CREATE_WINDOW | (CREATE_WINDOW_PACKET_U32_COUNT << 16);
+    write_i32_to_bytes(fst, req);
+
+    write_i32_to_bytes(new_window_id, &req[4]);
+    write_i32_to_bytes(window_root_id, &req[8]);
+
+    write_i16_to_bytes(x, &req[12]);
+    write_i16_to_bytes(y, &req[14]);
+    write_i16_to_bytes(w, &req[16]);
+    write_i16_to_bytes(h, &req[18]);
+
+    write_i32_to_bytes(CREATE_WINDOW_GROUP | (CREATE_WINDOW_BORDER << 16), &req[20]);
+    write_i32_to_bytes(root_visual_id, &req[24]);
+    write_i32_to_bytes(X11_FLAG_WIN_BG_COLOR | X11_FLAG_WIN_EVENT, &req[28]);
+    write_i32_to_bytes(0, &req[32]);
+    write_i32_to_bytes(X11_EVENT_FLAG_KEY_RELEASE | X11_EVENT_FLAG_EXPOSURE, &req[36]);
+
+
+    int written = write(fd, req, 40);
+    if(written != 40){
+        printf("Failed to write create window!\n");
+        return;
+    }
+    printf("Created window!\n");
+}
+
+#define X11_OP_REQ_MAP_WINDOW 0x08
+
+void x11_map_window(int fd, int window_id){
+
+    byte * req = malloc(8);
+    write_i32_to_bytes(X11_OP_REQ_MAP_WINDOW | (2 << 16), req);
+    write_i32_to_bytes(window_id, &req[4]);
+
+    int written = write(fd, req, 8);
+    if(written != 8){
+        printf("Failed to map window!\n");
+        return;
+    }
+    printf("Mapped window!\n");
+
+}
+
+int connect_to_fd(int fd, byte * addr){
+  int res = connect(fd, addr, 110);
+  if(res < 0){
+    printf("Failed to connect!\n");
+    return 0;
+  }
+  return 1;
+}
+
+#define F_GETFL 3
+#define F_SETFL 4
+#define O_NONBLOCK 4000
+
+int set_fd_non_blocking(int fd){
+
+    int res = fcntl(fd, F_GETFL, 0);
+    printf("fcntl F_GETFL got %d\n", res);
+    if(res <= 0){
+        return 0;
+    }
+
+    res |= O_NONBLOCK;
+    res = fcntl(fd, F_SETFL, res);
+    printf("fcntl F_SETFL got %d\n", res);
+    if(res <= 0){
+        return 0;
+    }
+    return 1;
+
+}
+
+byte read_reply(int fd){
+
+    byte response[32];
+    int res = read(fd, response, 32);
+    if(res <= 1){
+        printf("Failed to read more then 1?\n");
+        return 0;
+    }
+    return response[0];
+}
+
+#define POLLIN 0x001
+#define POLLPRI 0x002
+#define POLLOUT 0x004
+#define POLLERR  0x008
+#define POLLHUP  0x010
+#define POLLNVAL 0x020
+
+int poll_messages(int fd, int window_id, int gc_id){
+    byte * req = malloc(32);
+    
+    write_i32_to_bytes(fd, &req[0]);
+    write_i32_to_bytes(POLLIN, &req[4]);
+    write_i32_to_bytes(window_id, &req[16]);
+    write_i32_to_bytes(gc_id, &req[20]);
+
+    int res = poll(req, 1, -1);
+    if(res == 0){
+      printf("Failed to poll?\n");
+      return -1;
+    }
+    
+    int * pollerr;
+    if(POLLERR == poller){
+      printf("Poll error!\n");
+      return -1;
+    }
+    int * pollhup;
+    if(POLLHUP == pollhup){
+      printf("Poll hup!\n");
+      return -1;
+    }
+
+    free(req);
+    return read_reply(fd);
+
+}
+
+void x11_draw_text(int fd, string s, int s_length, int window_id, int gc_id, short x, short y){
+    
+  byte * req = malloc(1024);
+  write_i32_to_bytes(window_id, &req[4]);
+  write_i32_to_bytes(gc_id, &req[8]);
+
+  write_i16_to_bytes(x, &req[12]);
+  write_i16_to_bytes(y, &req[14]);
+
+  write_i64_to_bytes(fd, &req[1016]);
+}
+
 int main(){
 
-  int s = socket(AF_UNIX, SOCK_STREAM, 0);
+  int fd = socket(AF_UNIX, SOCK_STREAM, 0);
 
   sockaddr_un addr;
   create_sockaddr_un(&addr);
 
-  int res = connect(s, addr.p, 110);
-  printf("Connection results: %d %d\n",s, res);
-  if(res < 0){
+  if(connect_to_fd(fd, addr.p) == 0){
+    return 1;
+  }
+  printf("Connected to %d\n", fd);
+
+
+  x11_connection_req_t req;
+  init_connection_req(&req, fd);
+
+  printf("Sent init connection req\n");
+  byte response[8];
+  int actually_read = read(fd, response, 8);
+
+  if(actually_read != 8){
+    printf("Didn't read the 8 bytes expected but %d!\n", actually_read);
     return 1;
   }
 
-  x11_connection_req_t req;
-  init_connection_req(&req);
-
-  int written = write(s, &req, 12);
-  printf("wrote %d\n", written);
-
-  byte response[8];
-  int actually_read = read(s, response, 8);
-  printf("Actually read %d\n", actually_read);
-  printf("Response first byte %d\n", response[0]);
   if(response[0] == 0){
     printf("Failed to read?\n");
     return 1;
   }
+  printf("Finished handshake\n");
+
 
   int server_res_size = (1<<15) / 4;
   byte * server_res = malloc(server_res_size);
 
-  int server_read = read(s, server_res, server_res_size);
+  int server_read = read(fd, server_res, server_res_size);
   if(server_read <= 0){
     printf("Failed to do the big read, read %d\n", server_read);
   }
-  printf("BiG read %d\n", server_read);
+printf("Read the rest from server\n");
+
   x11_data data;
   init_data(&data, server_res, server_read);
+printf("Init x11_data\n");
+
+  int font_id = open_font(fd, &data);
+printf("Opened font!\n");
+
+  int gc_id = x11_next_id(&data);
+  int window_root_id = x11_next_id(&data);
+  x11_create_gc(fd, font_id, gc_id, window_root_id);
+
+  short x = create_short(400);
+  short y = create_short(400);
+
+  short w = create_short(400);
+  short h = create_short(400);
+
+  int new_window_id = x11_next_id(&data);
+  x11_create_window(fd, new_window_id, window_root_id, data.root_visual_id, x, y,w, h);
+  x11_map_window(fd, new_window_id);
+printf("Created and mapped window!\n");
+
+  if(set_fd_non_blocking(fd) == 0){
+    return 1;
+  }
+
+  while(1 == 1){
+    
+    int msg = poll_messages();
+    if(msg == -1){
+      return 1;
+    }
+
+  }
 
   return 0;
 

@@ -42,6 +42,7 @@ public class UnaryExpr extends Expr{
 
             if(lastOp == QuadOp.GET_FIELD){
                 // load field pointer?
+
                 quadOp = QuadOp.LOAD_FIELD_POINTER;
                 op2 = lastQuad.getOperand2();
                 op1 = quads.getLastOperand1();

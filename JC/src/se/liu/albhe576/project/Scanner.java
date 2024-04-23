@@ -143,10 +143,44 @@ public class Scanner {
         TokenType keyword = getKeyword(literal);
         return createToken(keyword, literal);
     }
+
+    private boolean isValidHexChar(char c){
+        return ('a' <= c &&  c <= 'f') || ('A' <= c && c <= 'F');
+    }
+
+    private Token parseHex(int startIndex){
+        char currentChar = advance();
+        while(!isOutOfBounds() && (Character.isDigit(currentChar) || (this.isValidHexChar(currentChar)))){
+            currentChar = advance();
+        }
+        this.index--;
+        String literal = this.input.substring(startIndex, this.index);
+        return createToken(TokenType.TOKEN_INT_LITERAL, literal);
+
+    }
+    private Token parseBinary(int startIndex){
+        char currentChar = advance();
+
+        while(!isOutOfBounds() && (currentChar == '0' || currentChar == '1')){
+            currentChar = advance();
+        }
+        this.index--;
+        String literal = this.input.substring(startIndex, this.index);
+        return createToken(TokenType.TOKEN_INT_LITERAL, literal);
+    }
     private Token parseNumber(){
         int startIndex = this.index - 1;
-        char currentChar = advance();
         TokenType type = TokenType.TOKEN_INT_LITERAL;
+        char currentChar = advance();
+        if(this.input.charAt(startIndex) == '0'){
+            if(currentChar == 'x'){
+                return this.parseHex(startIndex);
+            }
+            else if(currentChar == 'b'){
+                return this.parseBinary(startIndex);
+            }
+        }
+
         while(!isOutOfBounds() && Character.isDigit(currentChar)){
             currentChar = advance();
         }

@@ -164,7 +164,7 @@ public class SymbolTable {
             }
         }
     }
-    public Symbol findSymbol(String name) throws CompileException{
+    public Symbol findSymbol(String name){
         Scope scope = this.scopes.get(this.currentFunctionName);
         java.util.Stack<Scope> scopes = new Stack<>();
         scopes.add(scope);
@@ -176,12 +176,12 @@ public class SymbolTable {
             scopes.addAll(scope.getChildren());
             scope = scopes.pop();
         }
-        throw new CompileException(String.format("Couldn't find symbol %s", name));
+        return null;
     }
-    public boolean isMemberOfStruct(DataType type, String member) {
+    public boolean isMemberOfStruct(DataType type, String member) throws CompileException {
         Struct struct = this.structs.get(type.name);
         if(struct == null){
-            System.out.println("");
+            throw new CompileException(String.format("Can't find member of non existing struct %s", type.name));
         }
         for(StructField field : struct.getFields()){
             if(field.name().equals(member)){

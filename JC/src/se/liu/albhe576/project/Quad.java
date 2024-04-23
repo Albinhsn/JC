@@ -148,6 +148,9 @@ public class Quad {
                 return stack.loadFieldPointer(variable.id,operand2.name);
             }
             case DEREFERENCE, INDEX ->{
+                if(result.type.isStruct() && operand2.type.isPointer()){
+                    return "lea rax, [rax]";
+                }
                 String movOp = getMovOpFromType(result.type);
                 String register = getRegisterFromType(result.type, 0);
                 return String.format("%s %s, [rax]", movOp, register);
@@ -271,6 +274,9 @@ public class Quad {
                 if(this.result.type.isFloatingPoint()){
                     return "movsd xmm0, [rsp]\nadd rsp, 8";
                 }
+                if(this.result.type.isByte()){
+                    return "pop rax\nmovzx rax, al";
+                }
                 return "pop rax";
             }
             case MOV_RCX ->{
@@ -285,7 +291,7 @@ public class Quad {
                 String register2 = getRegisterFromType(operand1.type, 1);
                 String out = String.format("%s %s, %s", movOp, register2, register1);
                 if(operand1.type.isByte()){
-                    out += "\nmovzx cl";
+                    out += "\nmovzx rcx, cl";
                 }
                 return out;
             }
