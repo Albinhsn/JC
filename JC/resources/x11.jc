@@ -14,6 +14,47 @@
 #define AF_UNIX 1
 #define SOCK_STREAM 1
 
+#define OPEN_FONT_NAME_BYTE_COUNT 5
+#define OPEN_FONT_PADDING 3
+#define OPEN_FONT_PACKET_U32_COUNT 5
+#define X11_OP_REQ_OPEN_FONT 0x2d
+
+#define X11_OP_REQ_CREATE_GC 0x37
+#define X11_FLAG_GC_BG 0x00000004
+#define X11_FLAG_GC_FG 0x00000008
+#define X11_FLAG_GC_FONT 0x00004000
+#define X11_FLAG_GC_EXPOSE 0x00010000
+
+#define CREATE_GC_PACKET_FLAG_COUNT 3
+#define CREATE_GC_PACKET_U32_COUNT 7
+#define MY_COLOR_RGB 0x0000FFFF
+
+#define X11_OP_REQ_MAP_WINDOW 0x08
+
+#define X11_OP_REQ_CREATE_WINDOW 0x01
+#define X11_FLAG_WIN_BG_COLOR 0x00000002
+#define X11_EVENT_FLAG_KEY_RELEASE 0x0002
+#define X11_EVENT_FLAG_EXPOSURE 0x8000
+#define X11_FLAG_WIN_EVENT 0x00000800
+
+#define X11_EVENT_EXPOSURE 0xc
+
+#define CREATE_WINDOW_FLAG_COUNT 2
+#define CREATE_WINDOW_PACKET_U32_COUNT 10
+#define CREATE_WINDOW_BORDER 1
+#define CREATE_WINDOW_GROUP 1
+
+#define F_GETFL 3
+#define F_SETFL 4
+#define O_NONBLOCK 4000
+
+#define POLLIN 0x001
+#define POLLPRI 0x002
+#define POLLOUT 0x004
+#define POLLERR  0x008
+#define POLLHUP  0x010
+#define POLLNVAL 0x020
+
 
 struct short{
     byte low;
@@ -36,13 +77,13 @@ short create_short(int a){
 void place_int(int * numb, byte * b){
     *numb = 0;
     for(int i = 0; i < 4; i++){
-        *numb |= b[3 - i] << (i * 8);
+        *numb |= b[i] << (i * 8);
     }
 }
 void place_short(int * numb, byte * b){
     *numb = 0;
     for(int i = 0; i < 2; i++){
-        *numb |= b[1 - i] << (i * 8);
+        *numb |= b[i] << (i * 8);
     }
 }
 
@@ -77,16 +118,6 @@ struct x11_connection_req_t{
     short pad2;
 }
 
-void init_connection_req(x11_connection_req_t * req, int fd){
-    req.order = 108; // 'l' in ascii
-    req.major.low = 11;
-
-  int written = write(fd, req, 12);
-  if(written != 12){
-    printf("failed to write connection req!\n");
-  }
-  printf("Wrote %d bytes!\n", written);
-}
 
 struct x11_data{
     int id; // 32 bit
@@ -99,29 +130,35 @@ struct x11_data{
 void init_data(x11_data * data, byte * res, int server_read){
 
 
+    // eax global id 0
+    // edi id_base 0x1c00000, 29360128
+    // edx id_mask 0x1fffff, 2097151
+
     // id_base is offset 4, int
-    place_int(&data.id, &res[4]);
-    printf("%d\n", data.id_base);
+    place_int(&data.id_base, &res[4]);
+    printf("base: %d\n", data.id_base);
 
     // id_mask is offset 8, int
-    place_int(&data.id_base, &res[8]);
-    printf("%d\n", data.id_mask);
+    place_int(&data.id_mask, &res[8]);
+    printf("mask: %d\n", data.id_mask);
 
     // vendor length is offset 16, short
     int vendor_length;
     place_short(&vendor_length, &res[16]);
 
     // number of formats, 21 offset, byte, is the size in bytes
-    byte formats = res[21];
+    byte formats = res[21] * 8;
+    printf("Formats %d\n", formats);
+
 
     // (32 + vendor length + 3) & -4 from start O
-    int offset = ((32 + vendor_length + 3) & -4) + formats;
+    int offset = ((35 + vendor_length) & -4) + formats;
     printf("offset: %d\n", offset);
 
     place_int(&data.id, &res[offset]);
+    printf("id: %d\n", data.id);
     place_int(&data.root_visual_id, &res[offset + 32]);
 
-    printf("parsed data %d %d %d %d\n", data.id, data.id_base, data.id_mask, data.root_visual_id);
 }
 
 int x11_next_id(x11_data * data){
@@ -131,10 +168,6 @@ int x11_next_id(x11_data * data){
     return out;
 }
 
-#define OPEN_FONT_NAME_BYTE_COUNT 5
-#define OPEN_FONT_PADDING 3
-#define OPEN_FONT_PACKET_U32_COUNT 5
-#define X11_OP_REQ_OPEN_FONT 0x2d
 
 void write_i64_to_bytes(int a, byte * b){
     for(int i = 0; i < 8; i++){
@@ -148,7 +181,7 @@ void write_i32_to_bytes(int a, byte * b){
     }
 }
 
-int open_font(int fd, x11_data * data){
+int open_font(int fd, x11_data * data, int font_id){
 
     byte * req = malloc(20);
 
@@ -157,14 +190,13 @@ int open_font(int fd, x11_data * data){
     write_i32_to_bytes(fst, &req[0]);
 
     // snd ?
-    int font_id = x11_next_id(data);
     write_i32_to_bytes(font_id, &req[4]);
 
     // third
     int third = OPEN_FONT_NAME_BYTE_COUNT;
     write_i32_to_bytes(fst, &req[8]);
 
-    string fixed = "fixed";
+    string fixed = "fndry";
     for(int i = 0; i < 5; i++){
         req[12] = fixed[i];
     }
@@ -173,15 +205,6 @@ int open_font(int fd, x11_data * data){
     printf("Font req got %d written\n", written);
 }
 
-#define X11_OP_REQ_CREATE_GC 0x37
-#define X11_FLAG_GC_BG 0x00000004
-#define X11_FLAG_GC_FG 0x00000008
-#define X11_FLAG_GC_FONT 0x00004000
-#define X11_FLAG_GC_EXPOSE 0x00010000
-
-#define CREATE_GC_PACKET_FLAG_COUNT 3
-#define CREATE_GC_PACKET_U32_COUNT 7
-#define MY_COLOR_RGB 0x0000FFFF
 
 
 void x11_create_gc(int fd, int font_id, int gc_id, int window_root_id){
@@ -214,16 +237,6 @@ void x11_create_gc(int fd, int font_id, int gc_id, int window_root_id){
 
 }
 
-#define X11_OP_REQ_CREATE_WINDOW 0x01
-#define X11_FLAG_WIN_BG_COLOR 0x00000002
-#define X11_EVENT_FLAG_KEY_RELEASE 0x0002
-#define X11_EVENT_FLAG_EXPOSURE 0x8000
-#define X11_FLAG_WIN_EVENT 0x00000800
-
-#define CREATE_WINDOW_FLAG_COUNT 2
-#define CREATE_WINDOW_PACKET_U32_COUNT 10
-#define CREATE_WINDOW_BORDER 1
-#define CREATE_WINDOW_GROUP 1
 
 void x11_create_window(int fd, int new_window_id, int window_root_id, int root_visual_id, short x, short y, short w, short h){
 
@@ -236,9 +249,14 @@ void x11_create_window(int fd, int new_window_id, int window_root_id, int root_v
     write_i32_to_bytes(window_root_id, &req[8]);
 
     write_i16_to_bytes(x, &req[12]);
+    printf("%d %d\n", x.low, x.high);
     write_i16_to_bytes(y, &req[14]);
+    printf("%d %d\n", req[14], req[15]);
     write_i16_to_bytes(w, &req[16]);
+    printf("%d %d\n", req[16], req[17]);
     write_i16_to_bytes(h, &req[18]);
+    printf("%d %d\n", req[18], req[19]);
+
 
     write_i32_to_bytes(CREATE_WINDOW_GROUP | (CREATE_WINDOW_BORDER << 16), &req[20]);
     write_i32_to_bytes(root_visual_id, &req[24]);
@@ -255,7 +273,6 @@ void x11_create_window(int fd, int new_window_id, int window_root_id, int root_v
     printf("Created window!\n");
 }
 
-#define X11_OP_REQ_MAP_WINDOW 0x08
 
 void x11_map_window(int fd, int window_id){
 
@@ -281,9 +298,6 @@ int connect_to_fd(int fd, byte * addr){
   return 1;
 }
 
-#define F_GETFL 3
-#define F_SETFL 4
-#define O_NONBLOCK 4000
 
 int set_fd_non_blocking(int fd){
 
@@ -296,7 +310,7 @@ int set_fd_non_blocking(int fd){
     res |= O_NONBLOCK;
     res = fcntl(fd, F_SETFL, res);
     printf("fcntl F_SETFL got %d\n", res);
-    if(res <= 0){
+    if(res < 0){
         return 0;
     }
     return 1;
@@ -304,24 +318,17 @@ int set_fd_non_blocking(int fd){
 }
 
 byte read_reply(int fd){
-
     byte response[32];
     int res = read(fd, response, 32);
     if(res <= 1){
         printf("Failed to read more then 1?\n");
-        return 0;
+        return -1;
     }
     return response[0];
 }
 
-#define POLLIN 0x001
-#define POLLPRI 0x002
-#define POLLOUT 0x004
-#define POLLERR  0x008
-#define POLLHUP  0x010
-#define POLLNVAL 0x020
 
-int poll_messages(int fd, int window_id, int gc_id){
+byte poll_messages(int fd, int window_id, int gc_id){
     byte * req = malloc(32);
     
     write_i32_to_bytes(fd, &req[0]);
@@ -351,8 +358,9 @@ int poll_messages(int fd, int window_id, int gc_id){
 
 }
 
-void x11_draw_text(int fd, string s, int s_length, int window_id, int gc_id, short x, short y){
-    
+#define X11_OP_REQ_IMAGE_TEXT8 0x4c
+int x11_draw_text(int fd, string s, int s_length, int window_id, int gc_id, short x, short y){
+
   byte * req = malloc(1024);
   write_i32_to_bytes(window_id, &req[4]);
   write_i32_to_bytes(gc_id, &req[8]);
@@ -360,8 +368,43 @@ void x11_draw_text(int fd, string s, int s_length, int window_id, int gc_id, sho
   write_i16_to_bytes(x, &req[12]);
   write_i16_to_bytes(y, &req[14]);
 
-  write_i64_to_bytes(fd, &req[1016]);
+  int count = (4-(s_length % 4)) % 4;
+  int packets = ((count + s_length) >> 2) + 4;
+
+  int fst = (packets << 16) | (s_length << 8) | X11_OP_REQ_IMAGE_TEXT8;
+  write_i32_to_bytes(fst, req);
+
+  for(int i = 0; i < s_length; i++){
+    req[16 + i] = s[i];
+  }
+
+  int write_count = 4 * packets;
+
+  int written = write(fd, req, write_count);
+  free(req);
+
+  if(written != write_count){
+    printf("Failed to write when writing text! %d out of %d\n", written, write_count);
+    return -1;
+  }
+  return 1;
 }
+
+void init_req(x11_connection_req_t * req){
+  req.order = 108; // 'l' in ascii
+  req.pad1 = 0;
+  req.major.low = 11;
+  req.major.high = 0;
+  req.minor.low = 0;
+  req.minor.high = 0;
+  req.auto_proto.low = 0;
+  req.auto_proto.high = 0;
+  req.auth_data.low = 0;
+  req.auth_data.high = 0;
+  req.pad2.low = 0;
+  req.pad2.high = 0;
+}
+
 
 int main(){
 
@@ -370,16 +413,21 @@ int main(){
   sockaddr_un addr;
   create_sockaddr_un(&addr);
 
-     if(connect_to_fd(fd, addr.p) == 0){
-        return 1;
-      }
-      printf("Connected to %d\n", fd);
+  if(connect_to_fd(fd, addr.p) == 0){
+    return 1;
+  }
 
+  printf("Connected to %d\n", fd);
 
   x11_connection_req_t req;
-  init_connection_req(&req, fd);
+  init_req(&req);
 
-  printf("Sent init connection req\n");
+  if(write(fd, &req, 12) != 12){
+    printf("failed to write connection req!\n");
+    return 1;
+  }
+  printf("Sent init connection req!\n");
+
   byte response[8];
   int actually_read = read(fd, response, 8);
 
@@ -394,7 +442,6 @@ int main(){
   }
   printf("Finished handshake\n");
 
-
   int server_res_size = (1<<15) / 4;
   byte * server_res = malloc(server_res_size);
 
@@ -402,21 +449,19 @@ int main(){
   if(server_read <= 0){
     printf("Failed to do the big read, read %d\n", server_read);
   }
-printf("Read the rest from server\n");
 
   x11_data data;
   init_data(&data, server_res, server_read);
-printf("Init x11_data\n");
-
-  int font_id = open_font(fd, &data);
-printf("Opened font!\n");
-
+  int window_root_id = data.id;
   int gc_id = x11_next_id(&data);
-  int window_root_id = x11_next_id(&data);
+  int font_id = x11_next_id(&data);
+  open_font(fd, &data, font_id);
+    printf("Opened font!\n");
+
   x11_create_gc(fd, font_id, gc_id, window_root_id);
 
-  short x = create_short(400);
-  short y = create_short(400);
+  short x = create_short(200);
+  short y = create_short(200);
 
   short w = create_short(400);
   short h = create_short(400);
@@ -424,19 +469,28 @@ printf("Opened font!\n");
   int new_window_id = x11_next_id(&data);
   x11_create_window(fd, new_window_id, window_root_id, data.root_visual_id, x, y,w, h);
   x11_map_window(fd, new_window_id);
-printf("Created and mapped window!\n");
+  printf("new_window %d\ngc_id %d\nwindow_root %d\n", new_window_id, gc_id, window_root_id);
 
   if(set_fd_non_blocking(fd) == 0){
     return 1;
   }
 
+  byte exposed = 0;
   while(1 == 1){
-    
-    // int msg = poll_messages();
-    // if(msg == -1){
-      return 1;
-    //}
+    byte polled = poll_messages(fd, new_window_id, gc_id);
+    if(polled == -1){
+        return 0;
+    }else{
 
+        if(polled == X11_EVENT_EXPOSURE){
+            exposed = 1;
+        }
+    }
+    if(exposed == 1){
+        if(x11_draw_text(fd, "hello world", 13, new_window_id, gc_id, create_short(100), create_short(100)) == -1){
+            return 1;
+        }
+    }
   }
 
   return 0;
