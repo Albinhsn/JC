@@ -463,7 +463,7 @@ static poll_messages:function
     cmp DWORD [rsp + 2*4], POLLHUP  
     je die
 
-    mov rdi, [rsp + 0*4]
+    mov edi, [rsp + 0*4]
     call x11_read_reply
 
     %define X11_EVENT_EXPOSURE 0xc

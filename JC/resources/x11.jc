@@ -19,6 +19,7 @@
 #define OPEN_FONT_PACKET_U32_COUNT 5
 #define X11_OP_REQ_OPEN_FONT 0x2d
 
+#define X11_OP_REQ_MAP_WINDOW 0x08
 #define X11_OP_REQ_CREATE_GC 0x37
 #define X11_FLAG_GC_BG 0x00000004
 #define X11_FLAG_GC_FG 0x00000008
@@ -29,7 +30,6 @@
 #define CREATE_GC_PACKET_U32_COUNT 7
 #define MY_COLOR_RGB 0x0000FFFF
 
-#define X11_OP_REQ_MAP_WINDOW 0x08
 
 #define X11_OP_REQ_CREATE_WINDOW 0x01
 #define X11_FLAG_WIN_BG_COLOR 0x00000002
@@ -74,6 +74,12 @@ short create_short(int a){
     return out;
 }
 
+void place_long(int * numb, byte * b){
+    *numb = 0;
+    for(int i = 0; i < 8; i++){
+        *numb |= b[i] << (i * 8);
+    }
+}
 void place_int(int * numb, byte * b){
     *numb = 0;
     for(int i = 0; i < 4; i++){
@@ -135,12 +141,12 @@ void init_data(x11_data * data, byte * res, int server_read){
     // edx id_mask 0x1fffff, 2097151
 
     // id_base is offset 4, int
+    data.id_base = 0;
     place_int(&data.id_base, &res[4]);
-    printf("base: %d\n", data.id_base);
 
     // id_mask is offset 8, int
+    data.id_mask = 0;
     place_int(&data.id_mask, &res[8]);
-    printf("mask: %d\n", data.id_mask);
 
     // vendor length is offset 16, short
     int vendor_length;
@@ -148,15 +154,14 @@ void init_data(x11_data * data, byte * res, int server_read){
 
     // number of formats, 21 offset, byte, is the size in bytes
     byte formats = res[21] * 8;
-    printf("Formats %d\n", formats);
 
 
     // (32 + vendor length + 3) & -4 from start O
     int offset = ((35 + vendor_length) & -4) + formats;
-    printf("offset: %d\n", offset);
 
+    data.id = 0;
     place_int(&data.id, &res[offset]);
-    printf("id: %d\n", data.id);
+    data.root_visual_id = 0;
     place_int(&data.root_visual_id, &res[offset + 32]);
 
 }
@@ -188,21 +193,16 @@ int open_font(int fd, x11_data * data, int font_id){
     // first 4 bytes are
     int fst = X11_OP_REQ_OPEN_FONT | (OPEN_FONT_NAME_BYTE_COUNT << 16);
     write_i32_to_bytes(fst, &req[0]);
-
-    // snd ?
     write_i32_to_bytes(font_id, &req[4]);
+    write_i32_to_bytes(OPEN_FONT_NAME_BYTE_COUNT, &req[8]);
 
-    // third
-    int third = OPEN_FONT_NAME_BYTE_COUNT;
-    write_i32_to_bytes(fst, &req[8]);
-
-    string fixed = "fndry";
+    string fixed = "fixed";
     for(int i = 0; i < 5; i++){
-        req[12] = fixed[i];
+        req[12 + i] = fixed[i];
     }
 
     int written = write(fd, req, 20);
-    printf("Font req got %d written\n", written);
+    return written == 20;
 }
 
 
@@ -214,7 +214,6 @@ void x11_create_gc(int fd, int font_id, int gc_id, int window_root_id){
 
     int fst = X11_OP_REQ_CREATE_GC | (CREATE_GC_PACKET_U32_COUNT << 16);
     write_i32_to_bytes(fst, &req[0]);
-
 
     // Graphical context id
     write_i32_to_bytes(gc_id, &req[4]);
@@ -233,7 +232,6 @@ void x11_create_gc(int fd, int font_id, int gc_id, int window_root_id){
         printf("Failed to write everything!\n");
         return;
     }
-    printf("Created gc context!\n");
 
 }
 
@@ -249,13 +247,9 @@ void x11_create_window(int fd, int new_window_id, int window_root_id, int root_v
     write_i32_to_bytes(window_root_id, &req[8]);
 
     write_i16_to_bytes(x, &req[12]);
-    printf("%d %d\n", x.low, x.high);
     write_i16_to_bytes(y, &req[14]);
-    printf("%d %d\n", req[14], req[15]);
     write_i16_to_bytes(w, &req[16]);
-    printf("%d %d\n", req[16], req[17]);
     write_i16_to_bytes(h, &req[18]);
-    printf("%d %d\n", req[18], req[19]);
 
 
     write_i32_to_bytes(CREATE_WINDOW_GROUP | (CREATE_WINDOW_BORDER << 16), &req[20]);
@@ -270,7 +264,6 @@ void x11_create_window(int fd, int new_window_id, int window_root_id, int root_v
         printf("Failed to write create window!\n");
         return;
     }
-    printf("Created window!\n");
 }
 
 
@@ -285,7 +278,6 @@ void x11_map_window(int fd, int window_id){
         printf("Failed to map window!\n");
         return;
     }
-    printf("Mapped window!\n");
 
 }
 
@@ -302,14 +294,12 @@ int connect_to_fd(int fd, byte * addr){
 int set_fd_non_blocking(int fd){
 
     int res = fcntl(fd, F_GETFL, 0);
-    printf("fcntl F_GETFL got %d\n", res);
     if(res <= 0){
         return 0;
     }
 
     res |= O_NONBLOCK;
     res = fcntl(fd, F_SETFL, res);
-    printf("fcntl F_SETFL got %d\n", res);
     if(res < 0){
         return 0;
     }
@@ -358,7 +348,40 @@ byte poll_messages(int fd, int window_id, int gc_id){
 
 }
 
+#define X11_OP_REQ_POLY_RECTANGLE 70
+
+int x11_draw_rect(int fd, int window_id, int gc_id, short x, short y, short w, short h){
+  byte * req = malloc(1024);
+
+  // drawable and gc
+  write_i32_to_bytes(window_id, &req[4]);
+  write_i32_to_bytes(gc_id, &req[8]);
+
+  write_i16_to_bytes(x, &req[12]);
+  write_i16_to_bytes(y, &req[14]);
+  write_i16_to_bytes(w, &req[16]);
+  write_i16_to_bytes(h, &req[18]);
+
+  int packets = 5; // 3 + 2 * 1
+
+  int fst = (packets << 16) | X11_OP_REQ_POLY_RECTANGLE;
+  write_i32_to_bytes(fst, req);
+
+  int write_count = 4 * packets;
+
+  int written = write(fd, req, write_count);
+  free(req);
+
+  if(written != write_count){
+    printf("Failed to write when writing text! %d out of %d\n", written, write_count);
+    return -1;
+  }
+  return 1;
+  
+}
+
 #define X11_OP_REQ_IMAGE_TEXT8 0x4c
+
 int x11_draw_text(int fd, string s, int s_length, int window_id, int gc_id, short x, short y){
 
   byte * req = malloc(1024);
@@ -378,7 +401,12 @@ int x11_draw_text(int fd, string s, int s_length, int window_id, int gc_id, shor
     req[16 + i] = s[i];
   }
 
+
   int write_count = 4 * packets;
+  for(int i = 16 + s_length; i < write_count; i++){
+    req[i] = 0;
+  }
+	
 
   int written = write(fd, req, write_count);
   free(req);
@@ -417,8 +445,6 @@ int main(){
     return 1;
   }
 
-  printf("Connected to %d\n", fd);
-
   x11_connection_req_t req;
   init_req(&req);
 
@@ -426,7 +452,6 @@ int main(){
     printf("failed to write connection req!\n");
     return 1;
   }
-  printf("Sent init connection req!\n");
 
   byte response[8];
   int actually_read = read(fd, response, 8);
@@ -440,7 +465,6 @@ int main(){
     printf("Failed to read?\n");
     return 1;
   }
-  printf("Finished handshake\n");
 
   int server_res_size = (1<<15) / 4;
   byte * server_res = malloc(server_res_size);
@@ -452,11 +476,12 @@ int main(){
 
   x11_data data;
   init_data(&data, server_res, server_read);
+
   int window_root_id = data.id;
   int gc_id = x11_next_id(&data);
   int font_id = x11_next_id(&data);
+
   open_font(fd, &data, font_id);
-    printf("Opened font!\n");
 
   x11_create_gc(fd, font_id, gc_id, window_root_id);
 
@@ -469,7 +494,6 @@ int main(){
   int new_window_id = x11_next_id(&data);
   x11_create_window(fd, new_window_id, window_root_id, data.root_visual_id, x, y,w, h);
   x11_map_window(fd, new_window_id);
-  printf("new_window %d\ngc_id %d\nwindow_root %d\n", new_window_id, gc_id, window_root_id);
 
   if(set_fd_non_blocking(fd) == 0){
     return 1;
@@ -487,9 +511,13 @@ int main(){
         }
     }
     if(exposed == 1){
-        if(x11_draw_text(fd, "hello world", 13, new_window_id, gc_id, create_short(100), create_short(100)) == -1){
+        if(x11_draw_text(fd, "Hello, world!", 13, new_window_id, gc_id, create_short(100), create_short(100)) == -1){
             return 1;
         }
+        if(x11_draw_rect(fd, new_window_id, gc_id, create_short(200), create_short(200), create_short(50), create_short(50)) == -1){
+            return 1;
+        }
+
     }
   }
 

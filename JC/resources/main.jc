@@ -5,44 +5,29 @@
 #extern float sqrt(float x)
 
 
+#include "resources/time.jc"
 #include "resources/foo.jc"
 //#include "resources/tests.jc"
 
-struct short{
-    byte low;
-    byte high;
+#extern int time(...)
+
+struct x11_data{
+    int id;
+    int id_base;
+    int id_mask;
 }
 
-short create_short(int a){
-    short out;
-    out.low = a & 0xFF;
-    out.high = (a >> 8) & 0xFF;
+place_int(int * numb, byte * data){
 
-    return out;
 }
-
-void idk(short x, short y, short w, short h){
-    print_testi(x.low, 200, "x.low");
-    print_testi(y.low, 200, "y.low");
-    print_testi(w.low, 200, "w.low");
-    print_testi(h.low, 200, "h.low");
-}
-
 
 int main(){
 
-  short x = create_short(200);
-  short y = create_short(200);
-
-  short w = create_short(200);
-  short h = create_short(200);
-    print_testi(x.low, 200, "x.low");
-    print_testi(y.low, 200, "y.low");
-    print_testi(w.low, 200, "w.low");
-    print_testi(h.low, 200, "h.low");
-  idk(x,y,w,h);
-    // run_tests();
-
+    int t = time(0);
+    while(1 == 1){
+        t = time(0);
+        printf("%d\n", t);
+    }
     return 0;
 
 }
