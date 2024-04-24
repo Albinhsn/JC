@@ -18,7 +18,7 @@ public class PostfixExpr extends Expr{
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         this.target.compile(symbolTable, quads);
         Quad lastQuad = quads.getLastQuad();
-        Symbol target = lastQuad.getResult();
+        Symbol target = lastQuad.result();
 
         if(isInvalidPostfixTarget(target.type)){
             Compiler.error(String.format("Can't postfix type %s", target.type), line, file);
@@ -43,11 +43,11 @@ public class PostfixExpr extends Expr{
         QuadList varQuads = new QuadList();
         this.target.compile(symbolTable, varQuads);
 
-        switch(lastQuad.getOp()){
+        switch(lastQuad.op()){
             case DEREFERENCE -> {AssignStmt.compileStoreDereferenced(quads, varQuads);}
             case GET_FIELD-> {AssignStmt.compileStoreField(quads, varQuads);}
             case INDEX -> {AssignStmt.compileStoreIndex(quads, varQuads);}
-            default -> {quads.createStore(lastQuad.getOperand1());}
+            default -> {quads.createStore(lastQuad.operand1());}
         }
     }
 }

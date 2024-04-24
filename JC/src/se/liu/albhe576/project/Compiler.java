@@ -118,7 +118,7 @@ public class Compiler {
 
         if(!shouldOutputRet){
             Quad lastQuad = intermediates.getLastQuad();
-            shouldOutputRet = lastQuad.getOp() != QuadOp.RET;
+            shouldOutputRet = lastQuad.op() != QuadOp.RET;
         }
 
         if(shouldOutputRet){

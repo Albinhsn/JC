@@ -29,10 +29,8 @@ public class Stack {
 
     public String moveArg(Symbol argSymbol, int offset){
         if(argSymbol.type.isStruct()){
-            StringBuilder s = new StringBuilder();
-            s.append(String.format("lea rcx, [rsp + %d]\n", offset));
-            s.append(this.moveStruct(argSymbol));
-            return s.toString();
+            return String.format("lea rcx, [rsp + %d]\n", offset) +
+                    this.moveStruct(argSymbol);
         }
 
         String move = Quad.getMovOpFromType(argSymbol.type);
@@ -75,26 +73,11 @@ public class Stack {
 
     public String pushStruct(Symbol structSymbol){
         Struct struct = this.structs.get(structSymbol.type.name);
-        StringBuilder s = new StringBuilder();
         int size = struct.getSize(this.structs);
-        s.append(String.format("sub rsp, %d\n", size));
-        int sizeInBytes = size / 8;
 
-
-        s.append("mov rcx, [rax]\n");
-        s.append("mov [rsp], rcx\n");
-
-        for(int i = 1; i < sizeInBytes; i++){
-            int offset = i * 8;
-            s.append(String.format("mov rcx, [rax + %d]\n", offset));
-            s.append(String.format("mov [rsp + %d], rcx", offset));
-
-            if(i != sizeInBytes - 1){
-                s.append("\n");
-            }
-        }
-
-        return s.toString();
+        return String.format("sub rsp, %d\n", size) +
+                "lea rcx, [rsp]" +
+                this.moveStruct(structSymbol);
     }
 
     private int getFieldOffset(Struct struct, String memberName)throws CompileException  {
@@ -107,15 +90,17 @@ public class Stack {
         }
         throw new CompileException(String.format("Couldn't find member %s?\n", memberName));
     }
+
     public String loadField(DataType type, String memberName) throws CompileException {
         Struct struct = this.structs.get(type.name);
         for(StructField field : struct.getFields()){
             if(field.name().equals(memberName)){
                 String move = Quad.getMovOpFromType(field.type());
                 String register = Quad.getRegisterFromType(field.type(), 0);
+
                 move = field.type().isStruct() ? "lea" : move;
-                int offset = this.getFieldOffset(struct, memberName);
-                String out = String.format("%s %s, [rax + %d]",move, register, offset);
+
+                String out = String.format("%s %s, [rax + %d]",move, register, this.getFieldOffset(struct, memberName));
                 if(field.type().isByte()){
                     out += String.format("\nmovzx %s, %s", Quad.getRegisterFromType(DataType.getInt(), 0), register);
                 }
@@ -132,26 +117,7 @@ public class Stack {
         int offset = this.getFieldOffset(struct, memberSymbol.name);
 
         if(memberSymbol.type.isStruct()){
-            Struct memberStruct = this.structs.get(memberSymbol.type.name);
-            StringBuilder s = new StringBuilder();
-            int size = memberStruct.getSize(this.structs);
-
-            s.append("mov rbx, [rax]\n");
-            s.append(String.format("mov [rcx + %d], rbx\n", offset));
-
-            int sizeInBytes = size / 8;
-
-            for(int i = 1; i < sizeInBytes; i++){
-                int memberOffset = i * 8;
-                s.append(String.format("mov rbx, [rax + %d]\n", memberOffset));
-                s.append(String.format("mov [rcx + %d], rbx", memberOffset + offset));
-
-                if(i != sizeInBytes - 1){
-                    s.append("\n");
-                }
-            }
-
-            return s.toString();
+            return String.format("lea rcx, [rcx + %d]\n", offset) + this.moveStruct(memberSymbol);
         }else{
             if(offset != 0){
                 return String.format("%s [rcx + %d], %s", move, offset, register);

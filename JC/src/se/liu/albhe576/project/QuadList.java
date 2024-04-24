@@ -10,13 +10,13 @@ public class QuadList extends ArrayList<Quad>{
        return out;
     }
 
-    public QuadOp getLastOp(){return this.getLastQuad().getOp();}
+    public QuadOp getLastOp(){return this.getLastQuad().op();}
     public Quad getLastQuad(){return this.get(this.size() - 1);}
     public void addQuad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result){this.add(new Quad(op, operand1, operand2, result));}
-    public Symbol getLastResult(){return this.getLastQuad().getResult();}
+    public Symbol getLastResult(){return this.getLastQuad().result();}
     public void removeLastQuad(){this.remove(this.size() - 1);}
-    public Symbol getLastOperand1(){return this.getLastQuad().getOperand1();}
-    public Symbol getLastOperand2(){return this.get(this.size() - 1).getOperand2();}
+    public Symbol getLastOperand1(){return this.getLastQuad().operand1();}
+    public Symbol getLastOperand2(){return this.get(this.size() - 1).operand2();}
     public void insertLabel(Symbol label){this.add(new Quad(QuadOp.LABEL, label, null, null));}
     public Symbol createPop(Symbol toBePopped){
         Symbol popped = Compiler.generateSymbol(toBePopped.type);

@@ -20,10 +20,7 @@ public class Scanner {
     public void skipWhiteSpace(){
         for(;;){
             char currentChar = this.getCurrentChar();
-            if(currentChar == 0){
-                return;
-            }
-            if(Character.isDigit(currentChar) || Character.isAlphabetic(currentChar)){
+            if(currentChar == 0 || Character.isDigit(currentChar) || Character.isAlphabetic(currentChar)){
                 return;
             }
             switch(currentChar){
@@ -35,52 +32,30 @@ public class Scanner {
                         }
                         line++;
                         break;
-                    }else{
-                        this.index--;
                     }
+                    this.index--;
                 }
-                case '\"':{
-                }
-                case '{':{
-                }
-                case '[':{
-                }
-                case ']':{
-                }
-                case '}':{
-                }
-                case '*':{
-                }
-                case ';':{
-                }
-                case '<':{
-                }
-                case '>':{
-                }
-                case '(':{
-                }
-                case ')':{
-                }
-                case '!':{
-                }
-                case '%':{
-                }
-                case '.':{
-                }
-                case '#':{
-                }
-                case '^':{
-                }
-                case ',':{
-                }
-                case '&':{
-                }
-                case '|':{
-                }
-                case '-':{
-                }
-                case '+':{
-                }
+                case '\"':
+                case '{':
+                case '[':
+                case ']':
+                case '}':
+                case '*':
+                case ';':
+                case '<':
+                case '>':
+                case '(':
+                case ')':
+                case '!':
+                case '%':
+                case '.':
+                case '#':
+                case '^':
+                case ',':
+                case '&':
+                case '|':
+                case '-':
+                case '+':
                 case '=':{
                     return;
                 }

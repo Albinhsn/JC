@@ -32,8 +32,8 @@ public class AssignStmt extends Stmt{
         // So we have to remove the op
         Quad lastQuad =  variableQuads.pop();
 
-        Symbol struct = lastQuad.getOperand1();
-        Symbol memberSymbol = lastQuad.getOperand2();
+        Symbol struct = lastQuad.operand1();
+        Symbol memberSymbol = lastQuad.operand2();
         Symbol value = quads.getLastResult();
 
         value = convertValue(value, memberSymbol, quads);

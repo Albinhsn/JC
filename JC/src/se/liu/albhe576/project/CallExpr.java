@@ -109,7 +109,7 @@ public class CallExpr extends Expr{
 
             arg.compile(symbolTable, argQuads);
             Quad lastQuad = argQuads.getLastQuad();
-            Symbol argSymbol = lastQuad.getResult();
+            Symbol argSymbol = lastQuad.result();
 
             DataType funcArgType = functionArguments.get(i).type();
             argSymbol = AssignStmt.convertValue(argSymbol, Compiler.generateSymbol(funcArgType), argQuads);
