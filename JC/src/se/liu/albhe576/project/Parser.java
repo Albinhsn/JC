@@ -87,6 +87,9 @@ public class Parser {
     public Map<String, Function> getExtern(){
         return this.extern;
     }
+    public Map<String, Token> getDefined(){
+        return this.defined;
+    }
     public Map<String, Struct> getStructs(){
         return this.structs;
     }
@@ -417,6 +420,11 @@ public class Parser {
 
         Parser includeParser = new Parser(new Scanner(s), this.included, this.structs, fileName);
         List<Stmt> included = includeParser.parse();
+        Map<String, Function> extern = includeParser.getExtern();
+        Map<String, Token> defined = includeParser.getDefined();
+        this.extern.putAll(extern);
+        this.defined.putAll(defined);
+
         for(Map.Entry<String, Struct> entry : includeParser.structs.entrySet()){
             String key = entry.getKey();
             Struct value = entry.getValue();

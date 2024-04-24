@@ -56,6 +56,11 @@ public class QuadList extends ArrayList<Quad>{
         return out;
     }
     public void createIMUL(String immediate){this.addQuad(QuadOp.IMUL , Compiler.generateImmediateSymbol(DataType.getInt(), immediate), null,Compiler.generateSymbol(DataType.getInt()));}
+    public Symbol createConvertByteToInt(Symbol toStore){
+        Symbol newToStore = Compiler.generateSymbol(DataType.getByte());
+        this.addQuad(QuadOp.CONVERT_BYTE_TO_INT, toStore, null, newToStore);
+        return newToStore;
+    }
     public Symbol createConvertIntToFloat(Symbol toStore){
         Symbol newToStore = Compiler.generateSymbol(DataType.getFloat());
         this.addQuad(QuadOp.CONVERT_INT_TO_FLOAT, toStore, null, newToStore);

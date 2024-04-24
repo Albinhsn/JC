@@ -11,7 +11,7 @@ import java.util.Map;
 public class Main {
 
     public static void main(String[] args) throws IOException, CompileException {
-        String filePath = "resources/x11.jc";
+        String filePath = "resources/tetris.jc";
         String s = Files.readString(Path.of(filePath));
         System.out.println(s);
 

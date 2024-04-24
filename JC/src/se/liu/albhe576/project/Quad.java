@@ -133,6 +133,9 @@ public class Quad {
             case CONVERT_INT_TO_FLOAT -> {
                 return "cvtsi2sd xmm0, rax";
             }
+            case CONVERT_BYTE_TO_INT-> {
+                return "movzx rax, al";
+            }
             case DIV -> {
                 if(result.type.isFloatingPoint()){
                     return "divsd xmm0, xmm1";
@@ -173,6 +176,9 @@ public class Quad {
             }
             case STORE -> {
                 VariableSymbol variableSymbol = (VariableSymbol)  operand1;
+                if(result.type.isByte()){
+                    return "movzx rax, al\n" + stack.storeVariable(variableSymbol.id);
+                }
                 return stack.storeVariable(variableSymbol.id);
             }
             case STORE_INDEX -> {

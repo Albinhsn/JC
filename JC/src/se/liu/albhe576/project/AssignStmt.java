@@ -17,6 +17,7 @@ public class AssignStmt extends Stmt{
         else if(target.type.isFloatingPoint() && !value.type.isFloatingPoint()){
             value = quads.createConvertIntToFloat(value);
         }else if((target.type.isByte() && value.type.isInteger()) || (target.type.isInteger() && value.type.isByte())){
+            value = quads.createConvertByteToInt(value);
             return Compiler.generateSymbol(target.type);
         }
         return value;
