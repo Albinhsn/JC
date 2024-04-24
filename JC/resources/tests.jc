@@ -619,6 +619,7 @@ void test_assign(){
 
 }
 
+
 void test_byte(){
     string s = "Hello Sailor!";
     s = "Hello World!";
@@ -628,6 +629,22 @@ void test_byte(){
     byte l = s[2];
     byte l1 = s[3];
     printf("%c%c%c%c\n", H,e,l,l1);
+
+    int a = 257;
+    byte b = a;
+    print_testi(b, 1, "b = a, a = 256");
+
+    int arr[2] = [0,1];
+    byte b1 = arr[1];
+    print_testi(b1, 1, "b = arr[1]");
+
+    byte barr[2] = [0,1];
+    int a1 = barr[1];
+    print_testi(a1, 1, "a1 = barr[1]");
+
+    float f1 = barr[1];
+    print_testf(f1, 1.0, "f1 = barr[1]");
+
 }
 
 struct Foof{

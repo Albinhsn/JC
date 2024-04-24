@@ -4,18 +4,8 @@ import java.util.List;
 
 public class WhileStmt extends Stmt{
 
-    @Override
-    public String toString() {
-        StringBuilder s = new StringBuilder();
-        s.append(String.format("while(%s){\n", condition));
-        for(Stmt stmt : body){
-            s.append(String.format("\t%s\n", stmt));
-        }
-        return s.toString();
-    }
-
-    public Expr condition;
-    public List<Stmt> body;
+    private final Expr condition;
+    private final List<Stmt> body;
     public WhileStmt(Expr condition, List<Stmt> body, int line, String file){
         super(line, file);
         this.condition = condition;

@@ -31,19 +31,17 @@ public class BinaryExpr extends Expr{
 
     private void bitwise(SymbolTable symbolTable, QuadList quads) throws  CompileException {
 
-        // ToDo hoist
+        QuadList rQuads = new QuadList();
         left.compile(symbolTable, quads);
+        right.compile(symbolTable, rQuads);
+
         Symbol lResult = quads.getLastResult();
-        quads.createPush(lResult);
+        Symbol rResult = rQuads.getLastResult();
 
-
-        right.compile(symbolTable, quads);
-        Symbol rResult = quads.getLastResult();
-        quads.createMovRegisterAToC(rResult);
-        quads.createPop(Compiler.generateSymbol(lResult.getType()));
+        quads.createSetupBinary(rQuads, lResult, rResult);
 
         if (isInvalidBitwise(lResult.getType(), rResult.getType())) {
-            this.error(String.format("Can't do bitwise with %s and %s", lResult.getType().name, rResult.getType().name));
+            Compiler.error(String.format("Can't do bitwise with %s and %s", lResult.getType().name, rResult.getType().name), line, file);
         }
 
         quads.addQuad(QuadOp.fromToken(op), lResult, rResult, Compiler.generateSymbol(DataType.getInt()));
@@ -57,33 +55,31 @@ public class BinaryExpr extends Expr{
 
         Symbol lResult = quads.getLastResult();
         DataType lType = lResult.getType();
-        DataType resultType = lType;
 
         QuadList r = quadPair.right();
         Symbol rResult = r.getLastResult();
         DataType rType = rResult.getType();
 
         if(isInvalidArithmetic(lType, rType)){
-            this.error(String.format("Can't do arithmetic op '%s' on %s and %s", op.literal(), lType, rType));
+            Compiler.error(String.format("Can't do arithmetic op '%s' on %s and %s", op.literal(), lType, rType), line, file);
         }
 
+        Symbol resultType;
+        if(lType.isPointer() || rType.isPointer()){
+            boolean lIsPointer = lType.isPointer();
+            resultType = lIsPointer ? lResult : rResult;
+            QuadList quadsToIMUL = lIsPointer ? r : quads;
 
-        if(QuadList.isIntegerPointerBinary(lType, rType)){
-            resultType = lType.isPointer() ? lType : rType;
-            QuadList quadsToIMUL = lType.isPointer() ? r : quads;
-
-            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), resultType);
-            quadsToIMUL.createIMUL(String.valueOf(structSize));
-
-        }else if(QuadList.isFloatingPointBinary(lType, rType)){
-            resultType = DataType.getFloat();
-            SymbolPair results = QuadList.convertBinaryToSameType(quads, r, lResult, rResult);
-            lResult = results.left();
-            rResult = results.right();
+            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), resultType.type);
+            quadsToIMUL.createIMUL(structSize);
+        }else{
+            resultType = Compiler.generateSymbol(DataType.getHighestDataTypePrecedence(lType, rType));
+            lResult = AssignStmt.convertValue(lResult, resultType, quads);
+            rResult = AssignStmt.convertValue(rResult, resultType, r);
         }
 
         quads.createSetupBinary(r, lResult, rResult);
-        quads.addQuad(QuadOp.fromToken(op), lResult, rResult, Compiler.generateSymbol(resultType));
+        quads.addQuad(QuadOp.fromToken(op), lResult, rResult, resultType);
     }
 
     @Override
@@ -94,7 +90,7 @@ public class BinaryExpr extends Expr{
         }else if(QuadOp.isArithmeticOp(op)){
             this.arithmetic(symbolTable, quads);
         }else{
-            this.error(String.format("Can't do binary op with '%s'", this.op.literal()));
+            Compiler.error(String.format("Can't do binary op with '%s'", this.op.literal()), line, file);
         }
     }
 }

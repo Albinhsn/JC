@@ -2,11 +2,6 @@ package se.liu.albhe576.project;
 
 public class LogicalExpr extends Expr{
 
-    @Override
-    public String toString() {
-        return String.format("%s %s %s", left, op.literal(), right);
-    }
-
     private final Expr left;
     private final Expr right;
     private final Token op;

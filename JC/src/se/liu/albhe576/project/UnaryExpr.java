@@ -2,13 +2,8 @@ package se.liu.albhe576.project;
 
 
 public class UnaryExpr extends Expr{
-    @Override
-    public String toString() {
-        return String.format("%s(%s)", op.literal(), expr);
-    }
-
-    public Expr expr;
-    public Token op;
+    private final Expr expr;
+    private final Token op;
     public UnaryExpr(Expr expr, Token op, int line, String file){
         super(line, file);
         this.expr = expr;
@@ -33,7 +28,7 @@ public class UnaryExpr extends Expr{
         Symbol result = Compiler.generateSymbol(op1.type);
         QuadOp quadOp = this.getUnaryQuadOp();
 
-        // ToDo Type check that it isn't an immediate
+        // ToDo Type check that it isn't an immediate?
 
         // Take reference (&foo)
         if(quadOp == QuadOp.LOAD_POINTER){
@@ -64,10 +59,7 @@ public class UnaryExpr extends Expr{
         // inc/dec
         else if((quadOp == QuadOp.ADD || quadOp == QuadOp.SUB) && result.type.isPointer()){
             quads.createSetupUnary(symbolTable, result);
-
             Symbol movedImm = Compiler.generateSymbol(DataType.getInt());
-
-            // LOOK AT THIS
             quads.addQuad(quadOp, Compiler.generateSymbol(result.type), movedImm, Compiler.generateSymbol(result.type));
             return;
         }

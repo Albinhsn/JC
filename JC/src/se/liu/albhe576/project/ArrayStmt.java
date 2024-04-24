@@ -21,17 +21,8 @@ public class ArrayStmt extends Stmt {
         DataType itemType = type.itemType;
 
         // Calculate the offset that the variable will be at
-        int offset = -symbolTable.getCurrentScopeSize();
-        int itemSize;
-        if(itemType.isStruct()){
-            Struct struct = symbolTable.getStruct(itemType.name);
-            itemSize = struct.getSize(symbolTable.getStructs());
-            offset -=  itemSize * size;
-
-        }else{
-            itemSize = 8;
-            offset -= itemSize * size;
-        }
+        int itemSize = SymbolTable.getStructSize(symbolTable.getStructs(), itemType);
+        int offset = -(itemSize * this.size + symbolTable.getCurrentScopeSize());
 
 
         // Create the symbol and add it to the symbol table
@@ -47,22 +38,18 @@ public class ArrayStmt extends Stmt {
             item.compile(symbolTable, quads);
             Symbol result = quads.getLastResult();
 
-            if(!itemType.isSameType(result.type)){
-                this.error("Can't have different types in array declaration");
+            if(itemType.canBeCastedTo(result.type)){
+                result = AssignStmt.convertValue(result, Compiler.generateSymbol(itemType), quads);
             }
 
+            if(!itemType.isSameType(result.type)){
+                Compiler.error("Can't have different types in array declaration", line, file);
+            }
+
+
             quads.createPush(result);
-
-            // Add the offset that the item starts at
-            // Loads an immediate corresponding to item index and size of an item
-            // Then adds that to the pointer which points to the top of the array
-
-            Symbol loadedImmediate = quads.createLoadImmediate(DataType.getInt(), String.valueOf(itemSize * i));
-            quads.createMovRegisterAToC(loadedImmediate);
-            Symbol loadedPointer = quads.createLoadPointer(arraySymbol);
-            Symbol addResult = quads.createAdd(loadedPointer, Compiler.generateSymbol(DataType.getInt()));
+            Symbol addResult = quads.createSetupPointerOp(arraySymbol, itemSize * i);
             Symbol movedArraySymbol = quads.createMovRegisterAToC(addResult);
-
             Symbol poppedResult = quads.createPop(result);
             quads.createStoreIndex(poppedResult, movedArraySymbol);
         }

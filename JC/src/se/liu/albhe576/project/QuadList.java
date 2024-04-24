@@ -13,9 +13,6 @@ public class QuadList extends ArrayList<Quad>{
     public QuadOp getLastOp(){return this.getLastQuad().getOp();}
     public Quad getLastQuad(){return this.get(this.size() - 1);}
     public void addQuad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result){this.add(new Quad(op, operand1, operand2, result));}
-    public void addQuad(Quad quad){
-        this.add(quad);
-    }
     public Symbol getLastResult(){return this.getLastQuad().getResult();}
     public void removeLastQuad(){this.remove(this.size() - 1);}
     public Symbol getLastOperand1(){return this.getLastQuad().getOperand1();}
@@ -55,9 +52,9 @@ public class QuadList extends ArrayList<Quad>{
         this.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(type, immediate), null, out);
         return out;
     }
-    public void createIMUL(String immediate){this.addQuad(QuadOp.IMUL , Compiler.generateImmediateSymbol(DataType.getInt(), immediate), null,Compiler.generateSymbol(DataType.getInt()));}
+    public void createIMUL(int immediate){this.addQuad(QuadOp.IMUL , Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(immediate)), null,Compiler.generateSymbol(DataType.getInt()));}
     public Symbol createConvertByteToInt(Symbol toStore){
-        Symbol newToStore = Compiler.generateSymbol(DataType.getByte());
+        Symbol newToStore = Compiler.generateSymbol(DataType.getInt());
         this.addQuad(QuadOp.CONVERT_BYTE_TO_INT, toStore, null, newToStore);
         return newToStore;
     }
@@ -77,8 +74,8 @@ public class QuadList extends ArrayList<Quad>{
         this.addQuad(QuadOp.LOAD_VARIABLE_POINTER, toLoad, null, loaded);
         return loaded;
     }
-    public void createIndex(Symbol index, Symbol value) throws CompileException {
-        this.addQuad(QuadOp.INDEX, index, value, Compiler.generateSymbol(value.type.getTypeFromPointer()));
+    public void createIndex(Symbol value) throws CompileException {
+        this.addQuad(QuadOp.INDEX, null, value, Compiler.generateSymbol(value.type.getTypeFromPointer()));
     }
     public Symbol createAdd(Symbol left, Symbol right){
         Symbol result = Compiler.generateSymbol(left.type);
@@ -106,7 +103,6 @@ public class QuadList extends ArrayList<Quad>{
     public void createCmp(Symbol left, Symbol right){this.addQuad(QuadOp.CMP, left, right, null);}
     public void createJmp(Symbol label){this.addQuad(QuadOp.JMP, label, null, null);}
     public void createJmp(QuadOp condition, Symbol label){this.addQuad(condition, label, null, null);}
-    public void createLoad(Symbol symbol){this.addQuad(QuadOp.LOAD, symbol, null,Compiler.generateSymbol(symbol.type));}
     public void createIncrement(Symbol symbol){this.addQuad(QuadOp.INC, symbol, null, Compiler.generateSymbol(symbol.type));}
     public void createDecrement(Symbol symbol){this.addQuad(QuadOp.DEC, symbol, null, Compiler.generateSymbol(symbol.type));}
     public void createReturn(){this.addQuad(QuadOp.RET, null, null, null);}
@@ -135,30 +131,12 @@ public class QuadList extends ArrayList<Quad>{
         return new QuadListPair(quads, rQuads);
     }
 
-    public static boolean isIntegerPointerBinary(DataType lType, DataType rType){
-        return (lType.isPointer() && rType.isInteger()) || (lType.isInteger() && rType.isPointer());
-    }
+    public Symbol createSetupPointerOp(Symbol pointerSymbol, int immediate){
 
-    public static boolean isFloatingPointBinary(DataType lType, DataType rType){
-        return (lType.isFloatingPoint() && (rType.isInteger() || rType.isByte())) || ((lType.isInteger() || lType.isByte()) && rType.isFloatingPoint());
-    }
-
-    public static Symbol convertResultToCorrectType(QuadList quads, Symbol value, Symbol target){
-        if((value.type.isInteger() || value.type.isByte()) && target.type.isFloatingPoint()){
-            return quads.createConvertIntToFloat(value);
-        }else if((target.type.isInteger() || target.type.isByte()) && value.type.isFloatingPoint()){
-            return quads.createConvertFloatToInt(value);
-        }
-        return value;
-    }
-
-    public static SymbolPair convertBinaryToSameType(QuadList lQuads, QuadList rQuads, Symbol lResult, Symbol rResult){
-        if(lResult.type.isFloatingPoint() && !rResult.type.isFloatingPoint()){
-            rResult = rQuads.createConvertIntToFloat(rResult);
-        }else if(!lResult.type.isFloatingPoint() && rResult.type.isFloatingPoint()){
-            lResult = lQuads.createConvertIntToFloat(lResult);
-        }
-        return new SymbolPair(lResult, rResult);
+        Symbol loadedImmediate = this.createLoadImmediate(DataType.getInt(), String.valueOf(immediate));
+        this.createMovRegisterAToC(loadedImmediate);
+        Symbol loadedPointer = this.createLoadPointer(pointerSymbol);
+        return this.createAdd(loadedPointer, Compiler.generateSymbol(DataType.getInt()));
     }
 
 }

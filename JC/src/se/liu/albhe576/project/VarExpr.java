@@ -17,7 +17,7 @@ public class VarExpr extends Expr {
 
         Symbol symbol = symbolTable.findSymbol(token.literal());
         if(symbol == null){
-            this.error(String.format("Can't find symbol %s", token.literal()));
+            Compiler.error(String.format("Can't find symbol %s", token.literal()), line, file);
         }
 
         assert symbol != null;

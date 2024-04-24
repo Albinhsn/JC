@@ -39,7 +39,7 @@ public class CallExpr extends Expr{
 
        List<StructField> functionArgs = function.getArguments();
        if(functionArgs != null && args.size() > functionArgs.size()){
-           this.error(String.format("Mismatch in argument count when calling %s", this.name.literal()));
+           Compiler.error(String.format("Mismatch in argument count when calling %s", this.name.literal()), line, file);
        }
 
        Symbol floatType = Compiler.generateSymbol(DataType.getFloat());
@@ -50,7 +50,7 @@ public class CallExpr extends Expr{
            Symbol result = argQuads.getLastResult();
 
            if(generalCount >= generalRegistersLength || floatCount >= floatRegistersLength){
-               this.error(String.format("Can't call library function with more then %d ints and %d floats, you called %d, %d", generalCount, floatCount, generalRegistersLength, floatRegistersLength));
+               Compiler.error(String.format("Can't call library function with more then %d ints and %d floats, you called %d, %d", generalCount, floatCount, generalRegistersLength, floatRegistersLength), line, file);
            }
 
            if (result.type.isFloatingPoint()) {
@@ -73,7 +73,7 @@ public class CallExpr extends Expr{
            if(functionArgs != null){
                DataType argType = functionArgs.get(i).type();
                if(!result.type.isSameType(argType)){
-                   this.error(String.format("Type mismatch when calling extern function %s, expected %s got %s", this.name.literal(), argType.name, result.type.name));
+                   Compiler.error(String.format("Type mismatch when calling extern function %s, expected %s got %s", this.name.literal(), argType.name, result.type.name), line, file);
                }
            }
 
@@ -86,19 +86,20 @@ public class CallExpr extends Expr{
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
 
-       if(!symbolTable.functionExists(name.literal())){
-           this.error(String.format("Trying to call undeclared function %s", name.literal()));
+       String functionName = name.literal();
+       if(!symbolTable.functionExists(functionName)){
+           Compiler.error(String.format("Trying to call undeclared function %s", functionName), line, file);
 
        }
-        if(symbolTable.isExternFunction(name.literal())){
+        if(symbolTable.isExternFunction(functionName)){
             this.callExternFunction(symbolTable, quads);
             return;
         }
 
-        Function function = symbolTable.getFunction(this.name.literal());
+        Function function = symbolTable.getFunction(functionName);
         List<StructField> functionArguments = function.getArguments();
         if(args.size() != functionArguments.size()){
-            this.error(String.format("Function parameter mismatch expected %d got %d on line %d when calling %s", functionArguments.size(), args.size(), name.line(), name.literal()));
+            Compiler.error(String.format("Function parameter mismatch expected %d got %d on line %d when calling %s", functionArguments.size(), args.size(), name.line(), name.literal()), line, file);
         }
 
         QuadList argQuads = new QuadList();
@@ -109,18 +110,18 @@ public class CallExpr extends Expr{
             arg.compile(symbolTable, argQuads);
             Quad lastQuad = argQuads.getLastQuad();
             Symbol argSymbol = lastQuad.getResult();
+
             DataType funcArgType = functionArguments.get(i).type();
-            if(!argSymbol.type.isSameType(funcArgType) && funcArgType.canBeCastedTo(argSymbol.type)){
-                argSymbol = AssignStmt.convertValue(argSymbol, Compiler.generateSymbol(funcArgType), argQuads);
-            }
+            argSymbol = AssignStmt.convertValue(argSymbol, Compiler.generateSymbol(funcArgType), argQuads);
 
             if(!argSymbol.type.isSameType(funcArgType)){
-                this.error(String.format("Function parameter type mismatch expected %s got %s", funcArgType.name,argSymbol.type.name));
+                Compiler.error(String.format("Function parameter type mismatch expected %s got %s", funcArgType.name,argSymbol.type.name), line, file);
             }
 
             argQuads.createMoveArgument(argSymbol, argSize);
             argSize += SymbolTable.getStructSize(symbolTable.getStructs(), argSymbol.type);
         }
+
         if(argSize > 0){
             if(argSize % 16 != 0){
                 argSize += 16 - (argSize % 16);
@@ -129,6 +130,6 @@ public class CallExpr extends Expr{
             quads.addAll(argQuads);
         }
 
-        quads.createCall(function.getFunctionSymbol(this.name.literal()), Compiler.generateSymbol(function.getReturnType()));
+        quads.createCall(function.getFunctionSymbol(functionName), Compiler.generateSymbol(function.getReturnType()));
     }
 }

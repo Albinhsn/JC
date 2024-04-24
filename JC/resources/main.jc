@@ -5,29 +5,13 @@
 #extern float sqrt(float x)
 
 
-#include "resources/time.jc"
 #include "resources/foo.jc"
-//#include "resources/tests.jc"
-
-#extern int time(...)
-
-struct x11_data{
-    int id;
-    int id_base;
-    int id_mask;
-}
-
-place_int(int * numb, byte * data){
-
-}
+#include "resources/tests.jc"
 
 int main(){
 
-    int t = time(0);
-    while(1 == 1){
-        t = time(0);
-        printf("%d\n", t);
-    }
+    run_tests();
+
     return 0;
 
 }

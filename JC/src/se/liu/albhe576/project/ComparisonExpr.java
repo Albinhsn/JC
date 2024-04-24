@@ -21,9 +21,9 @@ public class ComparisonExpr extends Expr {
         }
     }
 
-    private void typecheckComparison(DataType left, DataType right) throws CompileException {
+    private void typeCheckComparison(DataType left, DataType right) throws CompileException {
         if(left.isArray() || right.isArray() || left.isStruct() || right.isStruct() || left.isString() || right.isString()){
-            this.error(String.format("Can't do comparison op %s with types %s and %s", this.op.literal(), left, right));
+            Compiler.error(String.format("Can't do comparison op %s with types %s and %s", this.op.literal(), left, right), line, file);
         }
     }
 
@@ -32,22 +32,20 @@ public class ComparisonExpr extends Expr {
 
         QuadListPair quadPair = QuadList.compileBinary(symbolTable, quads, left, right);
         Symbol lResult = quads.getLastResult();
-        DataType lType = lResult.getType();
 
         QuadList rQuads = quadPair.right();
         Symbol rResult = rQuads.getLastResult();
-        DataType rType = rResult.getType();
 
-        this.typecheckComparison(lType, rType);
+        this.typeCheckComparison(lResult.type, rResult.type);
 
         QuadOp op = QuadOp.fromToken(this.op);
-        if(lType.isFloatingPoint() || rType.isFloatingPoint()){
+        if(lResult.type.isFloatingPoint() || rResult.type.isFloatingPoint()){
             op = convertOpToFloat(op);
         }
 
-        SymbolPair result = QuadList.convertBinaryToSameType(quads, rQuads, lResult, rResult);
-        lResult = result.left();
-        rResult = result.right();
+        Symbol resultType = Compiler.generateSymbol(DataType.getHighestDataTypePrecedence(lResult.type, rResult.type));
+        lResult = AssignStmt.convertValue(lResult, resultType, quads);
+        rResult = AssignStmt.convertValue(rResult, resultType, rQuads);
 
 
         quads.createSetupBinary(rQuads, lResult, rResult);

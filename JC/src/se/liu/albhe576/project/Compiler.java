@@ -11,6 +11,11 @@ public class Compiler {
     private static int resultCount;
     private static int labelCount;
 
+    public static void error(String msg, int line, String filename){
+        System.out.printf("%s:%d[%s]", filename,line,msg);
+        System.exit(1);
+    }
+
     public static Symbol generateSymbol(DataType type){
         return new Symbol("T" + resultCount++, type);
     }
@@ -107,7 +112,7 @@ public class Compiler {
         QuadList intermediates = function.getIntermediates();
         boolean shouldOutputRet = intermediates.isEmpty();
         for (Quad intermediate : intermediates) {
-            // fileWriter.write("; " + intermediate + "\n");
+            fileWriter.write("; " + intermediate + "\n");
             fileWriter.write(intermediate.emit(stack, functions, constants) + "\n");
         }
 

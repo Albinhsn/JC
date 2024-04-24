@@ -75,9 +75,7 @@ public class DataType {
     public static DataType getInt(){
         return new DataType("int", DataTypes.INT, 0);
     }
-    public static DataType getArray(DataType itemType){
-        return new ArrayDataType("array", DataTypes.ARRAY, itemType, 0);
-    }
+    public static DataType getArray(DataType itemType){return new ArrayDataType("array", DataTypes.ARRAY, itemType, 0);}
     public static DataType getString(){
         return new DataType("string", DataTypes.STRING, 1);
     }
@@ -104,6 +102,17 @@ public class DataType {
             case TOKEN_BYTE -> {return getByte();}
         }
         throw new CompileException(String.format("Can't parse value type from %s", token));
+    }
+
+    public static DataType getHighestDataTypePrecedence(DataType l, DataType r){
+        // float > (int / pointer) > byte
+        if(l.isFloatingPoint() || r.isFloatingPoint()){
+            return getFloat();
+        }
+        if(l.isByte() && r.isByte()){
+            return getByte();
+        }
+        return getInt();
     }
 
     public DataType(String name, DataTypes type, int depth){
