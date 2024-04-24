@@ -23,7 +23,7 @@ public class QuadList extends ArrayList<Quad>{
         this.add(new Quad(QuadOp.POP, toBePopped, null, popped));
         return popped;
     }
-    public void createPush(Symbol operandSymbol){this.add(new Quad(QuadOp.PUSH, operandSymbol, null, null));}
+    public void createPush(Symbol operandSymbol){this.add(new Quad(QuadOp.PUSH, operandSymbol, null, Compiler.generateSymbol(operandSymbol.type)));}
 
     public void createSetupBinary(QuadList right, Symbol lSymbol, Symbol rSymbol) {
         this.createPush(lSymbol);
@@ -96,8 +96,8 @@ public class QuadList extends ArrayList<Quad>{
         this.insertBooleanComparison(jumpIfTrue ? "1" : "0");
         this.addQuad(QuadOp.JE, jmpLocation, null, null);
     }
-    public void createStoreIndex(Symbol value, Symbol arr){this.addQuad(QuadOp.STORE_INDEX, value, arr, null);}
-    public void createSetField(Symbol member, Symbol struct){this.addQuad(QuadOp.SET_FIELD, member, struct, null);}
+    public void createStoreIndex(Symbol value, Symbol arr){this.addQuad(QuadOp.STORE_INDEX, value, arr, value);}
+    public void createSetField(Symbol member, Symbol struct){this.addQuad(QuadOp.SET_FIELD, member, struct, member);}
     public void createGetField(Symbol member, Symbol structSymbol){this.addQuad(QuadOp.GET_FIELD, structSymbol, member,Compiler.generateSymbol(member.type));}
     public void createCall(Symbol functionSymbol, Symbol returnType){this.addQuad(QuadOp.CALL, functionSymbol, null, returnType);}
     public void createCmp(Symbol left, Symbol right){this.addQuad(QuadOp.CMP, left, right, null);}

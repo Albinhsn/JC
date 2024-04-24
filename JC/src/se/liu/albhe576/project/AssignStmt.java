@@ -27,7 +27,7 @@ public class AssignStmt extends Stmt{
 
         return value;
     }
-    public static void compileStoreField(QuadList quads, QuadList variableQuads) throws CompileException {
+    public static void compileStoreField(QuadList quads, QuadList variableQuads) {
         // Last op will be a GET_FIELD, which means it will not have the pointer to the struct in rax
         // So we have to remove the op
         Quad lastQuad =  variableQuads.pop();

@@ -21,8 +21,9 @@ public class IndexExpr extends Expr{
         if(isInvalidValueToIndex(valResult.type)){
             Compiler.error(String.format("Can't index type %s", valResult.type), line, file);
         }
+        idxResult = AssignStmt.convertValue(idxResult, Compiler.generateSymbol(DataType.getInt()), quadPair.right());
         if(isInvalidIndexType(idxResult.type)){
-            Compiler.error(String.format("Can't use type %s as index", valResult.type), line, file);
+            Compiler.error(String.format("Can't use type %s as index", idxResult.type), line, file);
         }
 
         quads.createPush(valResult);

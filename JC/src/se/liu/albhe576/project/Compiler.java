@@ -104,7 +104,7 @@ public class Compiler {
     }
 
     private void outputFunctionBody(FileWriter fileWriter, String functionName, Function function) throws IOException, CompileException {
-        final Map<String, Function> functions = this.symbolTable.getFunctions();
+        final Map<String, Function> functions = this.symbolTable.getAllFunctions();
         final Map<String, Constant> constants = this.symbolTable.getConstants();
 
         Stack stack = new Stack(this.symbolTable.getAllScopedVariables(functionName), this.symbolTable.getStructs());

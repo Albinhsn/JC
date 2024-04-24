@@ -16,19 +16,11 @@ public class SymbolTable {
         this.currentFunctionName = name;
     }
     public Map<String, Struct> getStructs(){return this.structs;}
-    public Struct getStruct(String name){return this.structs.get(name);}
-    public Map<Integer, VariableSymbol> getAllScopedVariables(String functionName){
-        return this.scopes.get(functionName).getAllScopedVariables();
-    }
+    public Map<Integer, VariableSymbol> getAllScopedVariables(String functionName){return this.scopes.get(functionName).getAllScopedVariables();}
+    private static final String[] internalStructs = new String[]{"int", "float", "byte", "string"};
 
     public boolean isDeclaredStruct(String name){
-        final String[] internal = new String[]{
-                "int",
-                "float",
-                "byte",
-                "string",
-        };
-        if(Arrays.asList(internal).contains(name)){
+        if(Arrays.asList(SymbolTable.internalStructs).contains(name)){
             return true;
         }
         return this.structs.containsKey(name);
@@ -58,24 +50,18 @@ public class SymbolTable {
             curr = children.get(children.size() - 1);
         }
     }
-    public Map<String, Function> getInternalFunctions(){
+
+    private Map<String, Function> getFunctions(boolean externals){
         Map<String, Function> out = new HashMap<>();
         for(Map.Entry<String, Function> entry : this.functions.entrySet()){
-            if(!entry.getValue().external){
+            if(entry.getValue().external == externals){
                 out.put(entry.getKey(), entry.getValue());
             }
         }
         return out;
     }
-    public Map<String, Function> getExternalFunctions(){
-        Map<String, Function> out = new HashMap<>();
-        for(Map.Entry<String, Function> entry : this.functions.entrySet()){
-            if(entry.getValue().external){
-                out.put(entry.getKey(), entry.getValue());
-            }
-        }
-        return out;
-    }
+    public Map<String, Function> getInternalFunctions(){return this.getFunctions(false);}
+    public Map<String, Function> getExternalFunctions(){return this.getFunctions(true);}
     public Map<String, Constant> getConstants(){
         return this.constants;
     }
@@ -133,7 +119,7 @@ public class SymbolTable {
         }
         return this.functions.get(name);
     }
-    public Map<String, Function> getFunctions() {
+    public Map<String, Function> getAllFunctions() {
         return this.functions;
     }
 

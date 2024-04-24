@@ -3,9 +3,7 @@ package se.liu.albhe576.project;
 public class DataType {
 
     @Override
-    public String toString() {
-        return String.format("%s %s %d", name, type.name(), depth);
-    }
+    public String toString() {return String.format("%s %s", name, depth > 0 ? "*" : "");}
 
     protected final String name;
     protected final DataTypes type;
