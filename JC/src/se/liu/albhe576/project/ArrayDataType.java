@@ -12,6 +12,9 @@ public class ArrayDataType extends DataType{
     }
 
     @Override public DataType getTypeFromPointer() {
-        return itemType;
+        if(depth == 0){
+            return itemType;
+        }
+        return new ArrayDataType(name, DataTypes.ARRAY, itemType, depth - 1);
     }
 }

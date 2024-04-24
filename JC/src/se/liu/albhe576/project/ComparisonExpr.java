@@ -20,8 +20,7 @@ public class ComparisonExpr extends Expr {
             default -> {return op;}
         }
     }
-
-    private void typeCheckComparison(DataType left, DataType right) throws CompileException {
+    private void typeCheckComparison(DataType left, DataType right) {
         if(left.isArray() || right.isArray() || left.isStruct() || right.isStruct() || left.isString() || right.isString()){
             Compiler.error(String.format("Can't do comparison op %s with types %s and %s", this.op.literal(), left, right), line, file);
         }
@@ -46,7 +45,6 @@ public class ComparisonExpr extends Expr {
         Symbol resultType = Compiler.generateSymbol(DataType.getHighestDataTypePrecedence(lResult.type, rResult.type));
         lResult = AssignStmt.convertValue(lResult, resultType, quads);
         rResult = AssignStmt.convertValue(rResult, resultType, rQuads);
-
 
         quads.createSetupBinary(rQuads, lResult, rResult);
         quads.createCmp(lResult, rResult);

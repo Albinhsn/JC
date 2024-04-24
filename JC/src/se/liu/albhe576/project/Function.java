@@ -11,24 +11,12 @@ public class Function {
     private final DataType returnType;
     private final QuadList intermediates;
 
-    public List<StructField> getArguments(){
-        return this.arguments;
-    }
-    public int getLine(){
-        return this.line;
-    }
-    public String getFile(){
-        return this.file;
-    }
-    public DataType getReturnType(){
-        return this.returnType;
-    }
-    public QuadList getIntermediates(){
-        return this.intermediates;
-    }
-    public Symbol getFunctionSymbol(String name){
-        return new Symbol(name, returnType);
-    }
+    public List<StructField> getArguments(){return this.arguments;}
+    public int getLine(){return this.line;}
+    public String getFile(){return this.file;}
+    public DataType getReturnType(){return this.returnType;}
+    public QuadList getIntermediates(){return this.intermediates;}
+    public Symbol getFunctionSymbol(String name){return new Symbol(name, returnType);}
     public Function(List<StructField> arguments, DataType returnType, QuadList intermediates, String file, int line, boolean external){
         this.arguments = arguments;
         this.returnType = returnType;

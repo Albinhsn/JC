@@ -26,11 +26,10 @@ public class LogicalExpr extends Expr{
         quads.createJumpOnComparison(shortCircuitLabel, jumpIfTrue);
         right.compile(symbolTable, quads);
         quads.createJumpOnComparison(shortCircuitLabel, jumpIfTrue);
-        quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), fstImm), null,Compiler.generateSymbol(DataType.getInt()));
+        quads.createLoadImmediate(DataType.getInt(), fstImm);
         quads.addQuad(QuadOp.JMP, mergeLabel, null, null);
         quads.insertLabel(shortCircuitLabel);
-        quads.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(DataType.getInt(), sndImm), null,Compiler.generateSymbol(DataType.getInt()));
+        quads.createLoadImmediate(DataType.getInt(), sndImm);
         quads.insertLabel(mergeLabel);
-
     }
 }

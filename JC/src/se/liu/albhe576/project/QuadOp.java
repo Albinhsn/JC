@@ -3,7 +3,7 @@ package se.liu.albhe576.project;
 import java.util.Map;
 
 public enum QuadOp {
-    ALLOCATE,
+    ALLOCATE,CMP,JMP, MOV_REG_CA,
     MOV_XMM0, MOV_XMM1, MOV_XMM2, MOV_XMM3, MOV_XMM4, MOV_XMM5,
     MOV_R8, MOV_R9, MOV_RDX, MOV_RSI, MOV_RDI, MOV_RCX,
     STORE_INDEX, PUSH_STRUCT, INDEX, DEREFERENCE,LOAD_VARIABLE_POINTER, LOAD_POINTER,LOAD_FIELD_POINTER, GET_FIELD, SET_FIELD, MOVE_STRUCT, MOVE_ARG,
@@ -12,77 +12,36 @@ public enum QuadOp {
     NEGATE, LOGICAL_NOT,AND, OR, XOR,
     SETNE, SETB, SETBE, SETA, SETAE, SETE, SETLE, SETGE, SETG, SETL,
     JL, JLE, JG, JGE, JNZ, JE, JA, JAE, JB, JBE,JNE,
-    CMP,JMP,
     LABEL, POP,PUSH,CALL, RET,
-    LOAD_IMM, LOAD, STORE,
-    MOV_REG_CA;
+    LOAD_IMM, LOAD, STORE;
 
-    public static QuadOp fromToken(Token token) throws CompileException {
-        switch(token.type()){
-            case TOKEN_PLUS, TOKEN_AUGMENTED_PLUS -> {
-                return ADD;
-            }
-            case TOKEN_MINUS, TOKEN_AUGMENTED_MINUS -> {
-                return SUB;
-            }
-            case TOKEN_STAR, TOKEN_AUGMENTED_STAR -> {
-                return MUL;
-            }
-            case TOKEN_SLASH, TOKEN_AUGMENTED_SLASH -> {
-                return DIV;
-            }
-            case TOKEN_SHIFT_LEFT-> {
-                return SHL;
-            }
-            case TOKEN_SHIFT_RIGHT-> {
-                return SHR;
-            }
-            case TOKEN_INCREMENT-> {
-                return INC;
-            }
-            case TOKEN_DECREMENT-> {
-                return DEC;
-            }
-            case TOKEN_BANG-> {
-                return LOGICAL_NOT;
-            }
-            case TOKEN_BANG_EQUAL-> {
-                return SETNE;
-            }
-            case TOKEN_LESS-> {
-                return SETL;
-            }
-            case TOKEN_LESS_EQUAL-> {
-                return SETLE;
-            }
-            case TOKEN_GREATER-> {
-                return SETG;
-            }
-            case TOKEN_EQUAL_EQUAL-> {
-                return SETE;
-            }
-            case TOKEN_GREATER_EQUAL-> {
-                return SETGE;
-            }
-            case TOKEN_AUGMENTED_AND, TOKEN_AND_BIT -> {
-                return AND;
-            }
-            case TOKEN_AUGMENTED_OR, TOKEN_OR_BIT-> {
-                return OR;
-            }
-            case TOKEN_AUGMENTED_XOR, TOKEN_XOR-> {
-                return XOR;
-            }
-            case TOKEN_MOD-> {
-                return MOD;
-            }
-        }
-        throw new CompileException(String.format("Unknown token to quad op? %s", token.literal()));
-    }
-
-    public boolean isSet(){
-        return this == SETNE || this == SETB || this == SETBE || this== SETA || this == SETAE || this == SETE || this == SETLE || this ==  SETGE || this == SETG || this== SETL;
-    }
+    private static final Map<TokenType, QuadOp> QUAD_OP_FROM_TOKEN_MAP = Map.ofEntries(
+            Map.entry(TokenType.TOKEN_PLUS, ADD),
+            Map.entry(TokenType.TOKEN_AUGMENTED_PLUS, ADD),
+            Map.entry(TokenType.TOKEN_MINUS, SUB),
+            Map.entry(TokenType.TOKEN_AUGMENTED_MINUS, SUB),
+            Map.entry(TokenType.TOKEN_STAR, MUL),
+            Map.entry(TokenType.TOKEN_AUGMENTED_STAR, MUL),
+            Map.entry(TokenType.TOKEN_SLASH, DIV),
+            Map.entry(TokenType.TOKEN_AUGMENTED_SLASH,DIV),
+            Map.entry(TokenType.TOKEN_AUGMENTED_XOR, XOR),
+            Map.entry(TokenType.TOKEN_XOR, XOR),
+            Map.entry(TokenType.TOKEN_AUGMENTED_OR, OR),
+            Map.entry(TokenType.TOKEN_OR_BIT, OR),
+            Map.entry(TokenType.TOKEN_AUGMENTED_AND, AND),
+            Map.entry(TokenType.TOKEN_AND_BIT, AND),
+            Map.entry(TokenType.TOKEN_SHIFT_LEFT, SHL),
+            Map.entry(TokenType.TOKEN_SHIFT_RIGHT, SHR),
+            Map.entry(TokenType.TOKEN_INCREMENT, INC),
+            Map.entry(TokenType.TOKEN_DECREMENT, DEC),
+            Map.entry(TokenType.TOKEN_BANG, LOGICAL_NOT),
+            Map.entry(TokenType.TOKEN_BANG_EQUAL, SETNE),
+            Map.entry(TokenType.TOKEN_LESS, SETL),
+            Map.entry(TokenType.TOKEN_LESS_EQUAL, SETLE),
+            Map.entry(TokenType.TOKEN_GREATER, SETG),
+            Map.entry(TokenType.TOKEN_EQUAL_EQUAL, SETE),
+            Map.entry(TokenType.TOKEN_GREATER_EQUAL, SETGE)
+    );
     private static final Map<QuadOp, QuadOp> SET_TO_JMP_MAP = Map.of(
             SETNE, JNE,
             SETB, JB,
@@ -95,6 +54,26 @@ public enum QuadOp {
             SETG, JG,
             SETL, JL
     );
+    private static final Map<QuadOp, QuadOp> INVERT_JMP_MAP = Map.of(
+            JNE, JE,
+            JB, JAE,
+            JBE, JA,
+            JA, JBE,
+            JAE, JB,
+            JE, JNE,
+            JLE, JG,
+            JGE, JL,
+            JG, JLE,
+            JL, JGE
+    );
+
+    public static QuadOp fromToken(Token token) throws CompileException {
+        if(!QUAD_OP_FROM_TOKEN_MAP.containsKey(token.type())){
+            throw new CompileException(String.format("Can't get quad op from this token %s", token.literal()));
+        }
+        return QUAD_OP_FROM_TOKEN_MAP.get(token.type());
+    }
+
     public QuadOp getJmpFromSet() throws CompileException{
         if(!SET_TO_JMP_MAP.containsKey(this)){
             throw new CompileException(String.format("Can't transform set op %s to jump op?", this.name()));
@@ -102,18 +81,6 @@ public enum QuadOp {
         return SET_TO_JMP_MAP.get(this);
     }
 
-    private static final Map<QuadOp, QuadOp> INVERT_JMP_MAP = Map.of(
-             JNE, JE,
-             JB, JAE,
-             JBE, JA,
-             JA, JBE,
-             JAE, JB,
-             JE, JNE,
-             JLE, JG,
-             JGE, JL,
-             JG, JLE,
-             JL, JGE
-    );
     public QuadOp invertJmpCondition() throws CompileException{
         if(!INVERT_JMP_MAP.containsKey(this)){
             throw new CompileException(String.format("Can't transform set op %s to jump op?", this.name()));
@@ -121,33 +88,7 @@ public enum QuadOp {
         return INVERT_JMP_MAP.get(this);
     }
 
-    public static boolean isBitwiseOp(QuadOp op){
-        switch(op){
-            case AND:{}
-            case OR: {}
-            case XOR: {}
-            case SHL: {}
-            case SHR: {
-                return true;
-            }
-            default:{
-                return false;
-            }
-        }
-    }
-
-    public static boolean isArithmeticOp(QuadOp op){
-        switch(op){
-            case ADD: {}
-            case SUB: {}
-            case DIV: {}
-            case MOD: {}
-            case MUL: {
-                return true;
-            }
-            default:{
-                return false;
-            }
-        }
-    }
+    public boolean isSet(){return this == SETNE || this == SETB || this == SETBE || this== SETA || this == SETAE || this == SETE || this == SETLE || this ==  SETGE || this == SETG || this== SETL;}
+    public static boolean isBitwiseOp(QuadOp op){return op == AND || op == OR || op == XOR || op == SHL || op == SHR;}
+    public static boolean isArithmeticOp(QuadOp op){return op == ADD || op == SUB || op == DIV || op == MOD || op == MUL;}
 }

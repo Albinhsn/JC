@@ -1,63 +1,28 @@
 package se.liu.albhe576.project;
 
 public class DataType {
-
     @Override
     public String toString() {return String.format("%s %s", name, depth > 0 ? "*" : "");}
-
     protected final String name;
     protected final DataTypes type;
     protected final int depth;
-
-    public boolean isFloatingPoint(){
-        return this.type == DataTypes.FLOAT && depth == 0;
-    }
-    public boolean isInteger(){
-        return this.type == DataTypes.INT && depth == 0;
-    }
-    public boolean isStruct(){
-        return this.type == DataTypes.STRUCT && depth == 0;
-    }
-    public boolean isArray(){
-        return this.type == DataTypes.ARRAY && depth == 0;
-    }
+    public boolean isFloatingPoint(){return this.type == DataTypes.FLOAT && depth == 0;}
+    public boolean isInteger(){return this.type == DataTypes.INT && depth == 0;}
+    public boolean isStruct(){return this.type == DataTypes.STRUCT && depth == 0;}
+    public boolean isArray(){return this.type == DataTypes.ARRAY && depth == 0;}
     public boolean isString(){return this.type == DataTypes.STRING && depth == 0;}
     public boolean isByte(){return this.type == DataTypes.BYTE && depth == 0;}
-
-    public boolean isPointer(){
-        return this.depth > 0;
-    }
-
+    public boolean isPointer(){return this.depth > 0;}
     public boolean isSameType(DataType other){
         if(other.isStruct() && this.isStruct()){
             return other.name.equals(name);
         }
-
         return ((type == other.type && depth == 0 && other.depth == 0)) || (depth > 0 && other.depth > 0);
     }
-    public boolean canBeCastedTo(DataType other){
-        boolean same = this.isSameType(other);
+    private boolean isDecimal(){return this.isByte() || this.isInteger() || this.isFloatingPoint();}
+    public boolean canBeCastedTo(DataType other){return this.isDecimal() && other.isDecimal() || this.isSameType(other);}
 
-        if((this.isFloatingPoint() && other.isInteger()) || (other.isFloatingPoint() && this.isInteger())){
-            return true;
-        }
-        if((this.isFloatingPoint() && other.isByte()) || (other.isFloatingPoint() && this.isByte())){
-            return true;
-        }
-        if((this.isByte() && other.isInteger()) || (other.isByte() && this.isInteger())){
-            return true;
-        }
-
-        if((this.isArray() && (other.isPointer() && other.depth == 1)) || (other.isArray() && (this.isPointer() && this.depth == 1))){
-            return true;
-        }
-        return same;
-    }
-
-    public DataType getTypeFromPointer() throws CompileException {
-        if(depth <= 0){
-            throw new CompileException("depth < 0?");
-        }
+    public DataType getTypeFromPointer() {
         if(this.type == DataTypes.STRING && this.depth == 1){
             return getByte();
         }
@@ -70,25 +35,13 @@ public class DataType {
         }
         return new DataType(type.name, type.type, type.depth + 1);
     }
-    public static DataType getInt(){
-        return new DataType("int", DataTypes.INT, 0);
-    }
+    public static DataType getInt(){return new DataType("int", DataTypes.INT, 0);}
     public static DataType getArray(DataType itemType){return new ArrayDataType("array", DataTypes.ARRAY, itemType, 0);}
-    public static DataType getString(){
-        return new DataType("string", DataTypes.STRING, 1);
-    }
-    public static DataType getFloat(){
-        return new DataType("float", DataTypes.FLOAT, 0);
-    }
-    public static DataType getStruct(String name){
-        return new DataType(name, DataTypes.STRUCT, 0);
-    }
-    public static DataType getVoid(){
-        return new DataType("void", DataTypes.VOID, 0);
-    }
-    public static DataType getByte(){
-        return new DataType("byte", DataTypes.BYTE, 0);
-    }
+    public static DataType getString(){return new DataType("string", DataTypes.STRING, 1);}
+    public static DataType getFloat(){return new DataType("float", DataTypes.FLOAT, 0);}
+    public static DataType getStruct(String name){return new DataType(name, DataTypes.STRUCT, 0);}
+    public static DataType getVoid(){return new DataType("void", DataTypes.VOID, 0);}
+    public static DataType getByte(){return new DataType("byte", DataTypes.BYTE, 0);}
 
     public static DataType getDataTypeFromToken(Token token) throws CompileException {
         switch(token.type()){
@@ -103,7 +56,6 @@ public class DataType {
     }
 
     public static DataType getHighestDataTypePrecedence(DataType l, DataType r){
-        // float > (int / pointer) > byte
         if(l.isFloatingPoint() || r.isFloatingPoint()){
             return getFloat();
         }

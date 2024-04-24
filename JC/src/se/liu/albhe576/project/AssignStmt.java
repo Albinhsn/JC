@@ -28,42 +28,29 @@ public class AssignStmt extends Stmt{
         return value;
     }
     public static void compileStoreField(QuadList quads, QuadList variableQuads) {
-        // Last op will be a GET_FIELD, which means it will not have the pointer to the struct in rax
-        // So we have to remove the op
-        Quad lastQuad =  variableQuads.pop();
-
-        Symbol struct = lastQuad.operand1();
+        Quad   lastQuad     = variableQuads.pop();
         Symbol memberSymbol = lastQuad.operand2();
-        Symbol value = quads.getLastResult();
+        Symbol value        = quads.getLastResult();
 
         value = convertValue(value, memberSymbol, quads);
-
-        quads.createPush(value);
-        quads.addAll(variableQuads);
-        Symbol varResult = quads.getLastResult();
-
-        quads.createMovRegisterAToC(varResult);
-
-        quads.createPop(value);
-        quads.createSetField(memberSymbol, struct);
+        quads.createSetupBinary(variableQuads, value, variableQuads.getLastResult());
+        quads.createSetField(memberSymbol, lastQuad.operand1());
     }
 
     public static void compileStoreDereferenced(QuadList valueQuads, QuadList variableQuads) {
-        Symbol dereferenced = variableQuads.getLastOperand1();
-        Symbol variableType = variableQuads.getLastResult();
-        variableQuads.removeLastQuad();
+        Quad lastVariableQuad = variableQuads.pop();
+        Symbol dereferenced = lastVariableQuad.operand1();
 
-        Symbol valueResult = convertValue(valueQuads.getLastResult(), variableType, valueQuads);
+        Symbol valueResult = convertValue(valueQuads.getLastResult(), lastVariableQuad.result(), valueQuads);
 
         valueQuads.createSetupBinary(variableQuads, valueResult, dereferenced);
         valueQuads.createStoreIndex(valueResult, dereferenced);
     }
 
     public static void compileStoreIndex(QuadList quads, QuadList variableQuads) throws CompileException{
-        Symbol res = variableQuads.getLastOperand2();
-        Symbol toStore = quads.getLastResult();
-
-        variableQuads.removeLastQuad();
+        Quad lastVariableQuad   = variableQuads.pop();
+        Symbol res              = lastVariableQuad.operand2();
+        Symbol toStore          = quads.getLastResult();
 
         Symbol result = Compiler.generateSymbol(res.type.getTypeFromPointer());
 
@@ -80,36 +67,30 @@ public class AssignStmt extends Stmt{
         variable.compile(symbolTable, variableQuads);
 
         Symbol valueResult = quads.getLastResult();
-        QuadOp lastOp = variableQuads.getLastOp();
         Symbol variableType = variableQuads.getLastResult();
 
-
-        // Type check the assignment
-        boolean same = variableType.type.isSameType(valueResult.type);
+        boolean same        = variableType.type.isSameType(valueResult.type);
         boolean canBeCasted = variableType.type.canBeCastedTo(valueResult.type);
-        boolean isNull = quads.getLastOperand1().isNull();
+        boolean isNull      = quads.getLastOperand1().isNull();
         if(!(same || canBeCasted || isNull)){
             Compiler.error(String.format("Trying to assign type %s to %s", valueResult.type.name, variableType.type.name), line, file);
         }
 
 
-        if(lastOp == QuadOp.GET_FIELD){
-            compileStoreField(quads, variableQuads);
-        }else if(lastOp == QuadOp.DEREFERENCE){
-            compileStoreDereferenced(quads, variableQuads);
+        switch (variableQuads.getLastOp()){
+            case GET_FIELD   -> compileStoreField(quads, variableQuads);
+            case DEREFERENCE -> compileStoreDereferenced(quads, variableQuads);
+            case INDEX       -> compileStoreIndex(quads, variableQuads);
+            default          -> {
+                if(valueResult.type.isStruct()){
+                    quads.createSetupBinary(variableQuads, valueResult, variableType);
+                    quads.addQuad(QuadOp.MOVE_STRUCT, valueResult, variableType, null);
+                }else{
+                    quads.createSetupBinary(variableQuads, valueResult, variableType);
+                    convertValue(valueResult, variableType, quads);
+                    quads.createStore(variableQuads.getLastOperand1());
+                }
+            }
         }
-        else if(lastOp == QuadOp.INDEX){
-            compileStoreIndex(quads, variableQuads);
-        }
-        else if (valueResult.type.isStruct()){
-            quads.createSetupBinary(variableQuads, valueResult, variableType);
-            quads.addQuad(QuadOp.MOVE_STRUCT, valueResult, variableType, null);
-        }else{
-            quads.createSetupBinary(variableQuads, valueResult, variableType);
-            convertValue(valueResult, variableType, quads);
-            quads.createStore(variableQuads.getLastOperand1());
-        }
-
-
     }
 }

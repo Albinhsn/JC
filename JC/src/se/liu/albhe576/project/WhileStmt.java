@@ -3,7 +3,6 @@ package se.liu.albhe576.project;
 import java.util.List;
 
 public class WhileStmt extends Stmt{
-
     private final Expr condition;
     private final List<Stmt> body;
     public WhileStmt(Expr condition, List<Stmt> body, int line, String file){

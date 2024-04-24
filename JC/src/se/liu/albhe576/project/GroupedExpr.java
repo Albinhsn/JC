@@ -6,7 +6,6 @@ public class GroupedExpr extends Expr{
         super(line, file);
         this.expr = expr;
     }
-
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         expr.compile(symbolTable, quads);

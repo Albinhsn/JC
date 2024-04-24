@@ -46,7 +46,6 @@ public class ArrayStmt extends Stmt {
                 Compiler.error("Can't have different types in array declaration", line, file);
             }
 
-
             quads.createPush(result);
             Symbol addResult = quads.createSetupPointerOp(arraySymbol, itemSize * i);
             Symbol movedArraySymbol = quads.createMovRegisterAToC(addResult);

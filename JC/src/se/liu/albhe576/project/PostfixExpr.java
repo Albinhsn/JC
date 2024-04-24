@@ -10,9 +10,7 @@ public class PostfixExpr extends Expr{
         this.op   = op;
     }
 
-    private static boolean isInvalidPostfixTarget(DataType type){
-        return type.isArray() || type.isString() || type.isStruct();
-    }
+    private static boolean isInvalidPostfixTarget(DataType type){return type.isArray() || type.isString() || type.isStruct();}
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
@@ -27,14 +25,11 @@ public class PostfixExpr extends Expr{
         Symbol loadedSymbol = Compiler.generateSymbol(target.type);
         quads.createPush(loadedSymbol);
 
-
-
         if(loadedSymbol.type.isPointer()){
             // Add by the size of the underlying type rather than 1 to maintain correct alignment
             int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), loadedSymbol.type);
             quads.createMovRegisterAToC(loadedSymbol);
             Symbol loadedImmediate = quads.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
-
             quads.createAdd(loadedSymbol, loadedImmediate);
 
         }else if(op.type() == TokenType.TOKEN_INCREMENT){
@@ -47,16 +42,10 @@ public class PostfixExpr extends Expr{
         this.target.compile(symbolTable, varQuads);
 
         switch(lastQuad.op()){
-            case DEREFERENCE -> {
-                AssignStmt.compileStoreDereferenced(quads, varQuads);
-            }
-            case GET_FIELD-> {
-                AssignStmt.compileStoreField(quads, varQuads);
-            }
-            case INDEX -> {
-                AssignStmt.compileStoreIndex(quads, varQuads);
-            }
-            default -> {quads.createStore(lastQuad.operand1());}
+            case DEREFERENCE -> AssignStmt.compileStoreDereferenced(quads, varQuads);
+            case GET_FIELD-> AssignStmt.compileStoreField(quads, varQuads);
+            case INDEX -> AssignStmt.compileStoreIndex(quads, varQuads);
+            default -> quads.createStore(lastQuad.operand1());
         }
         quads.createPop(loadedSymbol);
     }

@@ -2,14 +2,8 @@ package se.liu.albhe576.project;
 
 
 public class DotExpr extends Expr{
-    @Override
-    public String toString() {
-        return String.format("%s.%s", variable,member.literal());
-    }
-
     private final Expr variable;
     private final Token member;
-
     public DotExpr(Expr variable, Token member, int line, String file){
         super(line, file);
         this.variable = variable;

@@ -40,7 +40,7 @@ public class UnaryExpr extends Expr{
             quads.addQuad(QuadOp.LOAD_VARIABLE_POINTER, op1, null, lastResult);
         }
     }
-    private void unaryDereference(QuadList quads, Symbol lastResult) throws CompileException {
+    private void unaryDereference(QuadList quads, Symbol lastResult){
         if(!lastResult.type.isPointer()){
             Compiler.error("Can't dereference none pointer", this.line, this.file);
         }
@@ -64,33 +64,24 @@ public class UnaryExpr extends Expr{
         Symbol res = Compiler.generateSymbol(lastResult.type);
 
         quads.addQuad(op, Compiler.generateSymbol(lastResult.type), movedImm, res);
-
-        switch(lastQuad.op()){
-            case LOAD -> {
-                quads.createPush(res);
-                quads.createStore(lastQuad.operand1());
-                quads.createPop(res);
-            }
-            case INDEX -> {
-                QuadList index = new QuadList();
-                this.expr.compile(symbolTable, index);
+        if(lastQuad.op() == QuadOp.LOAD){
+            quads.createPush(res);
+            quads.createStore(lastQuad.operand1());
+            quads.createPop(res);
+        }else{
+            QuadList index = new QuadList();
+            this.expr.compile(symbolTable, index);
+            QuadOp lastOp = lastQuad.op();
+            if(lastOp == QuadOp.INDEX){
                 AssignStmt.compileStoreIndex(quads, index);
-            }
-            case GET_FIELD -> {
-                QuadList index = new QuadList();
-                this.expr.compile(symbolTable, index);
+            }else if(lastOp == QuadOp.GET_FIELD){
                 AssignStmt.compileStoreField(quads, index);
-            }
-            case DEREFERENCE -> {
-                QuadList index = new QuadList();
-                this.expr.compile(symbolTable, index);
+            }else if(lastOp == QuadOp.DEREFERENCE){
                 AssignStmt.compileStoreDereferenced(quads, index);
+            }else{
+                throw new CompileException(String.format("Don't know how to do unary with this? %s", lastOp.name()));
             }
-
         }
-
-
-
     }
 
     @Override

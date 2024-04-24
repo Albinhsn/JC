@@ -3,7 +3,6 @@ package se.liu.albhe576.project;
 import java.util.Map;
 
 public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
-
     @Override
     public String toString() {
         return op.name() + "\t\t" +
@@ -12,61 +11,57 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 result;
     }
 
-
     private static int getStackAlignment(String name, Map<String, Function> functions, Stack stack) {
-        int argSize = 0;
         Function function = functions.get(name);
         if (function.external) {
             return 0;
         }
+
+        int argSize = 0;
         if (function.getArguments() != null) {
             Map<String, Struct> structs = stack.getStructs();
             for (StructField field : function.getArguments()) {
                 argSize += SymbolTable.getStructSize(structs, field.type());
             }
         }
-
         return argSize;
-
     }
 
+    private static final String[] FLOAT_REGISTERS = new String[]{"xmm0", "xmm1"};
+    private static final String[] GENERAL_REGISTERS = new String[]{"rax", "rcx"};
+    private static final String[] BYTE_REGISTER = new String[]{"al", "cl"};
+
     public static String getRegisterFromType(DataType type, int registerIndex) {
-        final String[] floatRegisters = new String[]{"xmm0", "xmm1"};
-        final String[] generalRegisters = new String[]{"rax", "rcx"};
-        final String[] byteRegisters = new String[]{"al", "cl"};
         if (type.isFloatingPoint()) {
-            return floatRegisters[registerIndex];
+            return FLOAT_REGISTERS[registerIndex];
         } else if (type.isByte()) {
-            return byteRegisters[registerIndex];
+            return BYTE_REGISTER[registerIndex];
         }
-        return generalRegisters[registerIndex];
+        return GENERAL_REGISTERS[registerIndex];
     }
 
     public static String getMovOpFromType(DataType type) {return type.isFloatingPoint() ? "movsd" : "mov";}
+    private String loadImmediate(Map<String, Constant> constants) throws CompileException {
+        ImmediateSymbol imm = (ImmediateSymbol) this.operand1;
+        String register = getRegisterFromType(operand1.type, 0);
+        String immValue = imm.getValue();
+
+        switch (imm.type.type) {
+            case INT -> {return String.format("mov %s, %s", register, immValue);}
+            case STRING -> {return String.format("mov %s, %s", register, constants.get(immValue).label());}
+            case FLOAT -> {
+                if (constants.containsKey(immValue)) {
+                    return String.format("movsd %s,[%s]", register, constants.get(immValue).label());
+                }
+                throw new CompileException(String.format("Couldn't find constant '%s'", immValue));
+            }
+        }
+        throw new CompileException(String.format("Can't load this type? %s", imm.type.type));
+    }
 
     public String emit(Stack stack, Map<String, Function> functions, Map<String, Constant> constants) throws CompileException {
         switch (this.op) {
-            case LOAD_IMM -> {
-                ImmediateSymbol imm = (ImmediateSymbol) this.operand1;
-                String register = getRegisterFromType(operand1.type, 0);
-                String immValue = imm.getValue();
-
-
-
-                switch (imm.type.type) {
-                    case INT -> {return String.format("mov %s, %s", register, immValue);}
-                    case STRING -> {
-                        return String.format("mov %s, %s", register, constants.get(immValue).label());
-                    }
-                    case FLOAT -> {
-                        if (constants.containsKey(immValue)) {
-                            return String.format("movsd %s,[%s]", register, constants.get(immValue).label());
-                        }
-                        throw new CompileException(String.format("Couldn't find constant '%s'", immValue));
-                    }
-                }
-                throw new CompileException(String.format("Can't load this type? %s", imm.type.type));
-            }
+            case LOAD_IMM -> {return this.loadImmediate(constants);}
             case INC -> {
                 if (operand1.type.isFloatingPoint()) {
                     return "mov rcx, 1\ncvtsi2sd xmm1, rcx\naddsd xmm0, xmm1";
@@ -79,28 +74,13 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 }
                 return "dec rax";
             }
-            case ADD -> {
-                if (result.type.isFloatingPoint()) {
-                    return "addsd xmm0, xmm1";
-                }
-                return "add rax, rcx";
-            }
-            case SUB -> {
-                if (result.type.isFloatingPoint()) {
-                    return "subsd xmm0, xmm1";
-                }
-                return "sub rax, rcx";
-            }
-            case MUL -> {
-                if (result.type.isFloatingPoint()) {
-                    return "mulsd xmm0, xmm1";
-                }
-                return "mul rcx";
-            }
             case IMUL -> {
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) this.operand1;
                 return String.format("imul rax, %s", immediateSymbol.getValue());
             }
+            case ADD -> {return result.type.isFloatingPoint() ? "addsd xmm0, xmm1" : "add rax, rcx";}
+            case SUB -> {return result.type.isFloatingPoint() ? "subsd xmm0, xmm1" : "sub rax, rcx";}
+            case MUL -> {return result.type.isFloatingPoint() ? "mulsd xmm0, xmm1" : "mul rcx";}
             case CONVERT_FLOAT_TO_INT -> {return "cvttsd2si rax, xmm0";}
             case CONVERT_INT_TO_FLOAT -> {return "cvtsi2sd xmm0, rax";}
             case CONVERT_BYTE_TO_INT -> {return "movzx rax, al";}
@@ -121,7 +101,6 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 return stack.loadFieldPointer(variable.id, operand2.name);
             }
             case DEREFERENCE, INDEX -> {
-                // nop
                 if (result.type.isStruct() && operand2.type.isPointer()) {
                     return "lea rax, [rax]";
                 }
@@ -181,12 +160,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             case OR -> {return "or rax, rcx";}
             case XOR -> {return "xor rax, rcx";}
             case SHR -> {return "shr rax, cl";}
-            case PUSH -> {
-                if (operand1.type.isFloatingPoint()) {
-                    return "sub rsp, 8\nmovsd [rsp], xmm0";
-                }
-                return "push rax";
-            }
+            case PUSH -> {return operand1.type.isFloatingPoint() ? "sub rsp, 8\nmovsd [rsp], xmm0" : "push rax";}
             case POP -> {
                 if (this.result.type.isFloatingPoint()) {
                     return "movsd xmm0, [rsp]\nadd rsp, 8";
@@ -195,12 +169,6 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                     return "pop rax\nmovzx rax, al";
                 }
                 return "pop rax";
-            }
-            case MOV_RCX -> {
-                if (operand1.type.isByte()) {
-                    return "movzx rax, al\nmov rcx, rax";
-                }
-                return "mov rcx, rax";
             }
             case MOV_REG_CA -> {
                 String movOp = getMovOpFromType(operand1.type);
@@ -214,49 +182,22 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             }
             case PUSH_STRUCT -> {return stack.pushStruct(operand1);}
             case MOVE_STRUCT -> {return stack.moveStruct(operand1);}
-            case MOV_RDI -> {
-                if (operand1.type.isByte()) {
-                    return "movzx rax, al\nmov rdi, rax";
-                }
-                return "mov rdi, rax";
-            }
             case MOV_XMM0 -> {return "nop ; mov_xmm0";}
             case MOV_XMM1 -> {return "movsd xmm1, xmm0";}
             case MOV_XMM2 -> {return "movsd xmm2, xmm0";}
             case MOV_XMM3 -> {return "movsd xmm3, xmm0";}
             case MOV_XMM4 -> {return "movsd xmm4, xmm0";}
             case MOV_XMM5 -> {return "movsd xmm5, xmm0";}
-            case MOV_RSI -> {
-                if (operand1.type.isByte()) {
-                    return "movzx rax, al\nmov rsi, rax";
-                }
-                return "mov rsi, rax";
-            }
-            case MOV_RDX -> {
-                if (operand1.type.isByte()) {
-                    return "movzx rax, al\nmov rdx, rax";
-                }
-                return "mov rdx, rax";
-            }
-            case MOV_R8 -> {
-                if (operand1.type.isByte()) {
-                    return "movzx rax, al\nmov r8, rax";
-                }
-                return "mov r8, rax";
-            }
-            case MOV_R9 -> {
-                if (operand1.type.isByte()) {
-                    return "movzx rax, al\nmov r9, rax";
-                }
-                return "mov r9, rax";
-            }
+            case MOV_RDI -> {return operand1.type.isByte() ? "movzx rax, al\nmov rdi, rax" : "mov rdi, rax";}
+            case MOV_RSI -> {return operand1.type.isByte() ? "movzx rax, al\nmov rsi, rax" : "mov rsi, rax";}
+            case MOV_RCX -> {return operand1.type.isByte() ? "movzx rax, al\nmov rcx, rax" : "mov rcx, rax";}
+            case MOV_RDX -> {return operand1.type.isByte() ? "movzx rax, al\nmov rdx, rax" : "mov rdx, rax";}
+            case MOV_R8 -> {return operand1.type.isByte() ? "movzx rax, al\nmov r8, rax" : "mov r8, rax";}
+            case MOV_R9 -> {return operand1.type.isByte() ? "movzx rax, al\\nmov r9, rax" : "mov r9, rax";}
             case CALL -> {
                 int stackAligment = getStackAlignment(operand1.name, functions, stack);
-
                 if (stackAligment != 0) {
-                    if (stackAligment % 16 != 0) {
-                        stackAligment += 16 - (stackAligment % 16);
-                    }
+                    stackAligment += Compiler.getStackPadding(stackAligment);
                     return String.format("call %s\nadd rsp, %d", operand1.name, stackAligment);
                 }
                 return String.format("call %s", operand1.name);

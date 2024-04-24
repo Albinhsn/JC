@@ -6,8 +6,6 @@ public class ForStmt extends Stmt{
     private final Stmt condition;
     private final Stmt update;
     private final List<Stmt> body;
-
-
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
 

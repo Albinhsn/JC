@@ -5,9 +5,7 @@ import java.util.Map;
 public class Stack {
     private final Map<Integer, VariableSymbol> stackSymbols;
     private final Map<String, Struct> structs;
-
     public Map<String, Struct> getStructs(){return this.structs;}
-
     public String loadFieldPointer(int variableId, String field) throws CompileException {
         VariableSymbol variable = this.stackSymbols.get(variableId);
         Struct struct = this.getStructs().get(variable.type.name);
@@ -60,7 +58,6 @@ public class Stack {
 
     public String moveStruct(Symbol value){
         Struct valueStruct  = this.structs.get(value.type.name);
-
         StringBuilder s = new StringBuilder();
 
         int offset = 0;
@@ -68,7 +65,6 @@ public class Stack {
             offset = this.moveStructField(s, field, offset);
         }
         return s.toString();
-
     }
 
     public String pushStruct(Symbol structSymbol){
@@ -164,7 +160,6 @@ public class Stack {
     }
 
     private String storeLocal(VariableSymbol symbol){
-
         if(symbol.type.isStruct()){
             return this.moveStruct(symbol);
         }
@@ -178,9 +173,7 @@ public class Stack {
         return String.format("%s [rbp %d], %s", move, offset, register);
     }
 
-    private int getStackPointerOffset(VariableSymbol symbol){
-        return symbol.offset;
-    }
+    private int getStackPointerOffset(VariableSymbol symbol){return symbol.offset;}
 
     public Stack(Map<Integer, VariableSymbol> symbols, Map<String, Struct> structs) {
         this.stackSymbols = symbols;

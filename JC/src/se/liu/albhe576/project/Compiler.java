@@ -10,7 +10,6 @@ public class Compiler {
     private final SymbolTable symbolTable;
     private static int resultCount;
     private static int labelCount;
-
     public static void error(String msg, int line, String filename){
         System.out.printf("%s:%d[%s]", filename,line,msg);
         System.exit(1);
@@ -19,11 +18,11 @@ public class Compiler {
     public static Symbol generateSymbol(DataType type){
         return new Symbol("T" + resultCount++, type);
     }
-    public static ImmediateSymbol generateImmediateSymbol(DataType type, String literal){
-        return new ImmediateSymbol("T" + resultCount++, type, literal);
-    }
-    public static Symbol generateLabel(){
-        return new Symbol( String.format("label%d", labelCount++), new DataType("label", DataTypes.VOID, 0));
+    public static ImmediateSymbol generateImmediateSymbol(DataType type, String literal){return new ImmediateSymbol("T" + resultCount++, type, literal);}
+    public static Symbol generateLabel(){return new Symbol( String.format("label%d", labelCount++), new DataType("label", DataTypes.VOID, 0));}
+    public static int getStackPadding(int stackSize){
+        // This is the same as saying (scopeSize == 16 ? 0 : (16 - (scopeSize % 16))
+        return (16 - (stackSize % 16)) & 0xF;
     }
 
     public void Compile(String name) throws CompileException, IOException {
@@ -34,25 +33,14 @@ public class Compiler {
             stmt.compile(symbolTable, quads);
         }
 
-        final Map<String, Function> functions = this.symbolTable.getInternalFunctions();
-        for(Map.Entry<String, Function> function : functions.entrySet()){
-            String k = function.getKey();
-            Function f = function.getValue();
-            System.out.println("\n\n" + k + ":");
-            for(Quad quad : f.getIntermediates()){
-                System.out.println(quad);
-            }
-        }
-
         // Output intel assembly
         this.generateAssembly(name);
     }
 
-    private static FileWriter initOutput(String name, Map<String, Constant> constants, Map<String, Function> extern) throws IOException {
+    private static StringBuilder initOutput(Map<String, Constant> constants, Map<String, Function> extern) {
         StringBuilder header = new StringBuilder();
         header.append("global _start\n");
 
-        header.append("extern printf\n");
         for(String functionName : extern.keySet()){
             header.append(String.format("extern %s\n", functionName));
         }
@@ -60,21 +48,14 @@ public class Compiler {
         header.append("\n\nsection .data\n");
         for(Map.Entry<String, Constant> entry : constants.entrySet()){
             Constant value = entry.getValue();
-            String key = entry.getKey();
             if(value.type() == DataTypes.STRING){
                 header.append(String.format("%s db ", value.label()));
-                if(key.isEmpty()){
-                    header.append(" 0");
-                }else{
-                    String formatted = key.replace("\\n", "\n");
-                    header.append(String.format("%d",(byte)formatted.charAt(0)));
-                    byte[] keyAsBytes = formatted.getBytes();
-                    for(int i = 1; i < keyAsBytes.length; i++){
-                        byte b = keyAsBytes[i];
-                        header.append(String.format(", %d",b));
-                    }
-                    header.append(", 0\n");
+
+                String formatted = entry.getKey().replace("\\n", "\n");
+                for (byte b : formatted.getBytes()) {
+                    header.append(String.format("%d, ", b));
                 }
+                header.append("0\n");
 
             }else{
                 header.append(String.format("%s dq %s\n", value.label(), entry.getKey()));
@@ -87,63 +68,50 @@ public class Compiler {
         header.append("mov rax, 1\n");
         header.append("int 0x80\n");
 
-        FileWriter writer = new FileWriter(name);
-        writer.write(header.toString());
-        return writer;
+        return header;
     }
 
-    private void handleStackAlignment(FileWriter fileWriter, String functionName) throws IOException{
+    private void handleStackAlignment(StringBuilder stringBuilder,  String functionName) {
         int scopeSize = this.symbolTable.getLocalVariableStackSize(functionName);
-        scopeSize += (scopeSize % 16) == 0 ? 0 : (16 - (scopeSize % 16));
+        scopeSize += getStackPadding(scopeSize);
         if(scopeSize != 0){
-            fileWriter.write(String.format("sub rsp, %d\n", scopeSize));
+            stringBuilder.append(String.format("sub rsp, %d\n", scopeSize));
         }
     }
-    private void outputFunctionHeader(FileWriter fileWriter, String functionName) throws IOException {
-        fileWriter.write("\n\n" + functionName + ":\npush rbp\nmov rbp, rsp\n");
-    }
-
-    private void outputFunctionBody(FileWriter fileWriter, String functionName, Function function) throws IOException, CompileException {
+    private void outputFunctionBody(StringBuilder stringBuilder, String functionName, Function function) throws CompileException {
         final Map<String, Function> functions = this.symbolTable.getAllFunctions();
         final Map<String, Constant> constants = this.symbolTable.getConstants();
 
         Stack stack = new Stack(this.symbolTable.getAllScopedVariables(functionName), this.symbolTable.getStructs());
 
         QuadList intermediates = function.getIntermediates();
-        boolean shouldOutputRet = intermediates.isEmpty();
         for (Quad intermediate : intermediates) {
-            fileWriter.write("; " + intermediate + "\n");
-            fileWriter.write(intermediate.emit(stack, functions, constants) + "\n");
+            // stringBuilder.append(String.format("; %s\n", intermediate));
+            stringBuilder.append(intermediate.emit(stack, functions, constants)).append("\n");
         }
 
-        if(!shouldOutputRet){
-            Quad lastQuad = intermediates.getLastQuad();
-            shouldOutputRet = lastQuad.op() != QuadOp.RET;
-        }
-
-        if(shouldOutputRet){
+        if(intermediates.isEmpty() || intermediates.getLastOp() != QuadOp.RET){
             Quad retQuad = new Quad(QuadOp.RET, null, null, null);
-            fileWriter.write(retQuad.emit(stack, functions, constants) + "\n");
+            stringBuilder.append(retQuad.emit(stack, functions, constants)).append("\n");
         }
 
     }
 
     public void generateAssembly(String name) throws IOException, CompileException {
         final Map<String, Function> functions = this.symbolTable.getInternalFunctions();
-        final Map<String, Function> extern    = this.symbolTable.getExternalFunctions();
-        final Map<String, Constant> constants = this.symbolTable.getConstants();
-        FileWriter fileWriter = initOutput(name, constants, extern);
+        StringBuilder stringBuilder = initOutput(this.symbolTable.getConstants(), this.symbolTable.getExternalFunctions());
 
         for (Map.Entry<String, Function> function : functions.entrySet()) {
             String key = function.getKey();
-            this.outputFunctionHeader(fileWriter, key);
-            this.handleStackAlignment(fileWriter, key);
-            this.outputFunctionBody(fileWriter, key, function.getValue());
+            stringBuilder.append(String.format("\n\n%s:\npush rbp\nmov rbp, rsp\n", key));
+            this.handleStackAlignment(stringBuilder, key);
+            this.outputFunctionBody(stringBuilder, key, function.getValue());
         }
 
+        FileWriter fileWriter = new FileWriter(name);
+        fileWriter.write(stringBuilder.toString());
         fileWriter.flush();
         fileWriter.close();
-
     }
 
     public Compiler(Map<String, Struct> structs, List<Stmt> stmts, Map<String, Function> extern){

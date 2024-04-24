@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 
 public class FunctionStmt extends Stmt{
-
     private final DataType returnType;
     private final String name;
     private final List<StructField> arguments;
@@ -28,8 +27,7 @@ public class FunctionStmt extends Stmt{
         }
 
         symbolTable.addFunction(name, new Function(arguments, returnType, quads, file, line, false));
-
-        Map<String, VariableSymbol> localSymbols =new HashMap<>();
+        Map<String, VariableSymbol> localSymbols = new HashMap<>();
 
         // is for ip and bp that will be pushed after call
         int offset = 16;
