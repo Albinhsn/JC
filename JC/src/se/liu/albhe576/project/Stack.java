@@ -110,7 +110,7 @@ public class Stack {
         }
         return String.format("%s [rcx], %s", movePair.move(), movePair.register());
     }
-    public String getVariableLocation(int offset){return offset > 0 ? String.format("[rbp + %d]", offset) : String.format("[rbp %d]", offset);}
+    public String getVariableLocation(int offset){return offset >= 0 ? String.format("[rbp + %d]", offset) : String.format("[rbp %d]", offset);}
     public String loadVariable(int id) {
         VariableSymbol symbol = this.stackSymbols.get(id);
         StringPair movePair = Quad.getMovOpAndRegisterFromType(symbol.type, 0);

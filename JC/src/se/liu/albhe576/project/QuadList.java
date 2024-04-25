@@ -23,14 +23,12 @@ public class QuadList extends ArrayList<Quad>{
         return popped;
     }
     public void createPush(Symbol operandSymbol){this.add(new Quad(QuadOp.PUSH, operandSymbol, null, Compiler.generateSymbol(operandSymbol.type)));}
-    public Symbol createSetupBinary(QuadList right, Symbol lSymbol, Symbol rSymbol, Symbol target) {
+    public Symbol createSetupBinary(QuadList right, Symbol lSymbol, Symbol rSymbol) {
         this.createPush(lSymbol);
         this.addAll(right);
         this.createMovRegisterAToC(rSymbol);
-        lSymbol = this.createPop(lSymbol);
-        return AssignStmt.convertValue(lSymbol, target, this);
+        return this.createPop(lSymbol);
     }
-    public void createSetupBinary(QuadList right, Symbol lSymbol, Symbol rSymbol) {createSetupBinary(right, lSymbol, rSymbol, rSymbol);}
     public void createStoreVariable(Symbol symbol){this.addQuad(QuadOp.STORE, symbol, null, Compiler.generateSymbol(symbol.type));}
     public void createMovRegisterAToC(Symbol firstOperand){this.addQuad(QuadOp.MOV_REG_CA, firstOperand, null, Compiler.generateSymbol(firstOperand.type));}
     public Symbol createLoadImmediate(DataType type, String immediate){
@@ -39,20 +37,163 @@ public class QuadList extends ArrayList<Quad>{
         return out;
     }
     public void createIMUL(int immediate){this.addQuad(QuadOp.IMUL , Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(immediate)), null,Compiler.generateSymbol(DataType.getInt()));}
-    public Symbol createConvertByteToInt(Symbol toStore){
-        Symbol newToStore = Compiler.generateSymbol(DataType.getInt());
-        this.addQuad(QuadOp.CONVERT_BYTE_TO_INT, toStore, null, newToStore);
-        return newToStore;
+    public Symbol createConvertByte(Symbol value, Symbol target){
+        this.addQuad(QuadOp.ZX_BYTE, value, null, Compiler.generateSymbol(target.type));
+        if(target.type.isFloat() || target.type.isDouble()){
+            Symbol doubleResult = Compiler.generateSymbol(DataType.getDouble());
+            this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, this.getLastResult(), null, doubleResult);
+            if(target.type.isFloat()){
+                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_FLOAT, doubleResult, null, Compiler.generateSymbol(DataType.getFloat()));
+            }
+        }
+        return this.getLastResult();
     }
-    public Symbol createConvertIntToFloat(Symbol toStore){
-        Symbol newToStore = Compiler.generateSymbol(DataType.getFloat());
-        this.addQuad(QuadOp.CONVERT_INT_TO_FLOAT, toStore, null, newToStore);
-        return newToStore;
+    public Symbol createConvertInt(Symbol value, Symbol target) throws CompileException {
+        switch(target.type.type){
+            case DOUBLE -> {
+                this.addQuad(QuadOp.ZX_INT, value, null, value);
+                this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, value, null, Compiler.generateSymbol(DataType.getDouble()));
+                return this.getLastResult();
+            }
+            case BYTE -> {
+                this.addQuad(QuadOp.ZX_BYTE, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case SHORT -> {
+                this.addQuad(QuadOp.ZX_SHORT, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case FLOAT -> {
+                this.addQuad(QuadOp.ZX_INT, value, null, Compiler.generateSymbol(target.type));
+                Symbol doubleSymbol = Compiler.generateSymbol(DataType.getDouble());
+                this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, value, null, doubleSymbol);
+                this.addQuad(QuadOp.ZX_FLOAT, doubleSymbol, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case LONG -> {
+                this.addQuad(QuadOp.ZX_FLOAT, value, null, value);
+                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, Compiler.generateSymbol(DataType.getLong()));
+                return this.getLastResult();
+            }
+        }
+        throw new CompileException(String.format("Can't convert int to %s", target.type.name));
     }
-    public Symbol createConvertFloatToInt(Symbol toStore){
-        Symbol newToStore = Compiler.generateSymbol(DataType.getInt());
-        this.addQuad(QuadOp.CONVERT_FLOAT_TO_INT, toStore, null, newToStore);
-        return newToStore;
+    public Symbol createConvertFloat(Symbol value, Symbol target) throws CompileException {
+        switch(target.type.type){
+            case DOUBLE -> {
+                this.addQuad(QuadOp.ZX_FLOAT, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case BYTE -> {
+                Symbol longSymbol = Compiler.generateSymbol(DataType.getLong());
+                this.addQuad(QuadOp.ZX_FLOAT, value, null, value);
+                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, longSymbol);
+                this.addQuad(QuadOp.ZX_BYTE, longSymbol, null, Compiler.generateSymbol(DataType.getByte()));
+                return this.getLastResult();
+            }
+            case SHORT -> {
+                Symbol longSymbol = Compiler.generateSymbol(DataType.getLong());
+                this.addQuad(QuadOp.ZX_FLOAT, value, null, value);
+                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, longSymbol);
+                this.addQuad(QuadOp.ZX_SHORT, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case INT -> {
+                Symbol longSymbol = Compiler.generateSymbol(DataType.getLong());
+                this.addQuad(QuadOp.ZX_FLOAT, value, null, value);
+                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, longSymbol);
+                this.addQuad(QuadOp.ZX_INT, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case LONG -> {
+                this.addQuad(QuadOp.ZX_FLOAT, value, null, value);
+                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, Compiler.generateSymbol(DataType.getLong()));
+                return this.getLastResult();
+            }
+        }
+        throw new CompileException(String.format("Can't convert float to %s", target.type.name));
+    }
+    public Symbol createConvertLong(Symbol value, Symbol target) throws CompileException {
+        switch(target.type.type){
+            case BYTE -> {
+                this.addQuad(QuadOp.ZX_BYTE, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case SHORT -> {
+                this.addQuad(QuadOp.ZX_SHORT, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case INT -> {
+                this.addQuad(QuadOp.ZX_INT, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case FLOAT -> {
+                this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, value, null, Compiler.generateSymbol(DataType.getDouble()));
+                this.addQuad(QuadOp.ZX_FLOAT, this.getLastResult(), null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case DOUBLE -> {
+                this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, value, null, Compiler.generateSymbol(DataType.getDouble()));
+                return this.getLastResult();
+            }
+        }
+        throw new CompileException(String.format("Can't convert long to %s", target.type.name));
+    }
+    public Symbol createConvertShort(Symbol value, Symbol target) throws CompileException {
+        switch(target.type.type){
+            case BYTE -> {
+                this.addQuad(QuadOp.ZX_BYTE, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case INT, LONG -> {
+                this.addQuad(QuadOp.ZX_SHORT, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case FLOAT -> {
+                Symbol floatSymbol = Compiler.generateSymbol(target.type);
+                this.addQuad(QuadOp.ZX_SHORT, value, null, floatSymbol);
+                this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, floatSymbol, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case DOUBLE -> {
+                Symbol longSymbol = Compiler.generateSymbol(DataType.getLong());
+                this.addQuad(QuadOp.ZX_SHORT, value, null, longSymbol);
+                this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, longSymbol, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+        }
+        throw new CompileException(String.format("Can't convert short to %s", target.type.name));
+    }
+    public Symbol createConvertDouble(Symbol value, Symbol target) throws CompileException {
+        switch(target.type.type){
+            case BYTE -> {
+                Symbol longSymbol = Compiler.generateSymbol(DataType.getLong());
+                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, longSymbol);
+                this.addQuad(QuadOp.ZX_BYTE, longSymbol, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case SHORT -> {
+                Symbol longSymbol = Compiler.generateSymbol(DataType.getLong());
+                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, longSymbol);
+                this.addQuad(QuadOp.ZX_SHORT, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case INT -> {
+                Symbol longSymbol = Compiler.generateSymbol(DataType.getLong());
+                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, longSymbol);
+                this.addQuad(QuadOp.ZX_INT, value, null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case FLOAT -> {
+                this.addQuad(QuadOp.ZX_FLOAT, this.getLastResult(), null, Compiler.generateSymbol(target.type));
+                return this.getLastResult();
+            }
+            case LONG -> {
+                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, Compiler.generateSymbol(DataType.getLong()));
+                return this.getLastResult();
+            }
+        }
+        throw new CompileException(String.format("Can't convert short to %s", target.type.name));
     }
 
     public Symbol createLoadPointer(Symbol toLoad){
@@ -118,5 +259,4 @@ public class QuadList extends ArrayList<Quad>{
         Symbol loadedPointer = this.createLoadPointer(pointerSymbol);
         return this.createAdd(loadedPointer, Compiler.generateSymbol(DataType.getInt()));
     }
-
 }

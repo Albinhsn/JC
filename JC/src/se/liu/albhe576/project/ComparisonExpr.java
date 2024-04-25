@@ -36,13 +36,15 @@ public class ComparisonExpr extends Expr {
 
         this.typeCheckComparison(lResult.type, rResult.type);
         QuadOp op = QuadOp.fromToken(this.op);
-        if(lResult.type.isFloatingPoint() || rResult.type.isFloatingPoint()){
+        if(lResult.type.isFloat() || rResult.type.isFloat()){
             op = convertOpToFloat(op);
         }
 
         Symbol resultType = Compiler.generateSymbol(DataType.getHighestDataTypePrecedence(lResult.type, rResult.type));
         rResult = AssignStmt.convertValue(rResult, resultType, rQuads);
-        lResult = quads.createSetupBinary(rQuads, lResult, rResult, resultType);
+
+        lResult = quads.createSetupBinary(rQuads, lResult, rResult);
+        lResult = AssignStmt.convertValue(lResult, resultType, quads);
 
         quads.createCmp(lResult, rResult);
         quads.addQuad(op, null, null, Compiler.generateSymbol(DataType.getInt()));

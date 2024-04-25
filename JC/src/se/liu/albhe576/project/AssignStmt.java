@@ -10,46 +10,63 @@ public class AssignStmt extends Stmt{
         this.value = value;
     }
 
-    public static Symbol convertValue(Symbol value, Symbol target, QuadList quads) {
-        if(value.type.isByte() && !target.type.isByte()){
-            value = quads.createConvertByteToInt(value);
+    public static Symbol convertValue(Symbol value, Symbol target, QuadList quads) throws CompileException {
+
+        if(value.type.isSameType(target.type)){
+            return value;
+        }
+        if(value.type.isPointer()){
+            Quad lastQuad = quads.pop();
+            quads.addQuad(lastQuad.op(), lastQuad.operand1(), lastQuad.operand2(), target);
+            return quads.getLastResult();
         }
 
-        if (value.type.isFloatingPoint() && !target.type.isFloatingPoint()) {
-            value = quads.createConvertFloatToInt(value);
-        } else if (target.type.isFloatingPoint() && !value.type.isFloatingPoint()) {
-            value = quads.createConvertIntToFloat(value);
+        switch(value.type.type){
+            case DOUBLE -> {
+                return  quads.createConvertDouble(value, target);
+            }
+            case FLOAT-> {
+                return  quads.createConvertFloat(value,target);
+            }
+            case LONG -> {
+                return  quads.createConvertLong(value,target);
+            }
+            case INT-> {
+                return  quads.createConvertInt(value,target);
+            }
+            case SHORT-> {
+                return  quads.createConvertShort(value,target);
+            }
+            case BYTE-> {
+                return  quads.createConvertByte(value, target);
+            }
         }
-
-        if(target.type.isByte() && value.type.isInteger()){
-            value = Compiler.generateSymbol(DataType.getByte());
-        }
-
-        return value;
+        throw new CompileException(String.format("Can't convert %s to %s", value.type.name, target.type.name));
     }
-    public static void compileStoreField(QuadList quads, QuadList variableQuads) {
+    public static void compileStoreField(QuadList quads, QuadList variableQuads) throws CompileException {
         Quad   lastQuad     = variableQuads.pop();
         Symbol memberSymbol = lastQuad.operand2();
 
-        quads.createSetupBinary(variableQuads, quads.getLastResult(), variableQuads.getLastResult(),  variableQuads.getLastResult());
+        quads.createSetupBinary(variableQuads, quads.getLastResult(), variableQuads.getLastResult());
         quads.createSetField(memberSymbol, lastQuad.operand1());
     }
 
-    public static void compileStoreDereferenced(QuadList valueQuads, QuadList variableQuads) {
+    public static void compileStoreDereferenced(QuadList valueQuads, QuadList variableQuads) throws CompileException {
         variableQuads.removeLastQuad();
         Symbol target = Compiler.generateSymbol(variableQuads.getLastResult().type.getTypeFromPointer());
         storeIndex(valueQuads, variableQuads, valueQuads.getLastResult(), variableQuads.getLastResult(), target);
     }
 
 
-    public static void compileStoreIndex(QuadList quads, QuadList variableQuads) {
+    public static void compileStoreIndex(QuadList quads, QuadList variableQuads) throws CompileException {
         Quad lastVariableQuad   = variableQuads.pop();
         Symbol res              = lastVariableQuad.operand2();
 
         storeIndex(quads, variableQuads, quads.getLastResult(), res,Compiler.generateSymbol(res.type.getTypeFromPointer()));
     }
-    private static void storeIndex(QuadList quads, QuadList variableQuads, Symbol toStore, Symbol result, Symbol target){
-        toStore = quads.createSetupBinary(variableQuads, toStore, variableQuads.getLastResult(), target);
+    private static void storeIndex(QuadList quads, QuadList variableQuads, Symbol toStore, Symbol result, Symbol target) throws CompileException {
+        Symbol lSymbol = quads.createSetupBinary(variableQuads, toStore, variableQuads.getLastResult());
+        toStore = AssignStmt.convertValue(lSymbol, target, quads);
         quads.createStoreIndex(toStore, result);
     }
 

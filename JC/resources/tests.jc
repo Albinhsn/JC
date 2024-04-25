@@ -134,6 +134,17 @@ void test_arrays(){
 
 }
 
+void test_cast(){
+    int a = (byte)257.0;
+    print_testi(a, 1, "int a = (byte)257.0");
+
+    float f = 5.0;
+    int b = *(int*)&f;
+    b ^= 0x80000000;
+    f = *(float*)&b;
+    print_testf(f, -1 * 5.0, "*(int*)&f");
+}
+
 void test_augmented(){
 
     byte b = 5;
@@ -855,6 +866,7 @@ int run_tests(){
     foo.a = 3;
     foo.b = 2;
     test_assign_arg(foo);
+    test_cast();
 
     printf("Finished tests!\n");
     return 0;

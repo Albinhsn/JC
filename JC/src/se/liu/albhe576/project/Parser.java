@@ -106,6 +106,9 @@ public class Parser {
                 currentType == TokenType.TOKEN_FLOAT ||
                 currentType == TokenType.TOKEN_STRING ||
                 currentType == TokenType.TOKEN_BYTE ||
+                currentType == TokenType.TOKEN_LONG ||
+                currentType == TokenType.TOKEN_SHORT ||
+                currentType == TokenType.TOKEN_DOUBLE ||
                 currentType == TokenType.TOKEN_VOID
         );
     }
@@ -444,6 +447,12 @@ public class Parser {
         return this.stmts;
     }
     private Expr grouping(Expr expr, boolean canAssign, int line) throws CompileException{
+        if(isVariableType()){
+            DataType type = parseType();
+            consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ')' after cast expression");
+            return new CastExpr(type, parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT), line, fileName);
+        }
+
         Expr groupedExpr = parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT);
         consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ')' after grouped expression");
         return new GroupedExpr(groupedExpr, line, this.fileName);

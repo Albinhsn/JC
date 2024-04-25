@@ -17,7 +17,7 @@ public class SymbolTable {
     }
     public Map<String, Struct> getStructs(){return this.structs;}
     public Map<Integer, VariableSymbol> getAllScopedVariables(String functionName){return this.scopes.get(functionName).getAllScopedVariables();}
-    private static final String[] internalStructs = new String[]{"int", "float", "byte", "string"};
+    private static final String[] internalStructs = new String[]{"int", "float", "byte", "string", "short", "double", "long"};
 
     public boolean isDeclaredStruct(String name){
         if(Arrays.asList(SymbolTable.internalStructs).contains(name)){
@@ -29,10 +29,8 @@ public class SymbolTable {
     public static int getStructSize(Map<String, Struct> structs, DataType type){
         if(structs.containsKey(type.name) && type.isStruct()){
             return structs.get(type.name).getSize(structs);
-        }else if(type.isByte()){
-            return 1;
         }
-        return 8;
+        return type.getSize();
     }
     public DataType getCurrentFunctionReturnType(){return this.functions.get(this.currentFunctionName).getReturnType();}
     public String getCurrentFunctionName(){

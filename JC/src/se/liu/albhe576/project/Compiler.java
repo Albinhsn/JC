@@ -58,7 +58,7 @@ public class Compiler {
                 header.append("0\n");
 
             }else{
-                header.append(String.format("%s dq %s\n", value.label(), entry.getKey()));
+                header.append(String.format("%s dd %s\n", value.label(), entry.getKey()));
             }
         }
         header.append("\n\nsection .text\n");

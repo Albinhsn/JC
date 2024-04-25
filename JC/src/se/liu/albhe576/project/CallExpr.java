@@ -50,17 +50,18 @@ public class CallExpr extends Expr{
                Compiler.error(String.format("Can't call library function with more then %d ints and %d floats, you called %d, %d", generalCount, floatCount, generalRegistersLength, floatRegistersLength), line, file);
            }
 
-           quads.addAll(argQuads);
-           if (result.type.isFloatingPoint()) {
+           if (result.type.isFloat()) {
                if(floatCount >= 1){
                    quads.createPush(Compiler.generateSymbol(DataType.getFloat()));
                }
+               quads.addAll(argQuads);
                quads.addQuad(LINUX_FLOATING_POINT_ARGUMENT_LOCATIONS[floatCount], result, null, null);
                if(floatCount >= 1){
                    quads.createPop(Compiler.generateSymbol(DataType.getFloat()));
                }
                floatCount++;
            } else {
+               quads.addAll(argQuads);
                quads.addQuad(LINUX_GENERAL_ARGUMENT_LOCATIONS[generalCount], result, null, null);
                generalCount++;
            }

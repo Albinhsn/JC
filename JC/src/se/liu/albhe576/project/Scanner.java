@@ -95,7 +95,10 @@ public class Scanner {
                 Map.entry("for", TokenType.TOKEN_FOR),
                 Map.entry("while", TokenType.TOKEN_WHILE),
                 Map.entry("return", TokenType.TOKEN_RETURN),
+                Map.entry("short", TokenType.TOKEN_SHORT),
                 Map.entry("int", TokenType.TOKEN_INT),
+                Map.entry("long", TokenType.TOKEN_LONG),
+                Map.entry("double", TokenType.TOKEN_DOUBLE),
                 Map.entry("byte", TokenType.TOKEN_BYTE),
                 Map.entry("float", TokenType.TOKEN_FLOAT),
                 Map.entry("void", TokenType.TOKEN_VOID)
