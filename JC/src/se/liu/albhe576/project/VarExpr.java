@@ -9,7 +9,6 @@ public class VarExpr extends Expr {
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
-
         Symbol symbol = symbolTable.findSymbol(token.literal());
         if(symbol == null){
             Compiler.error(String.format("Can't find symbol %s", token.literal()), line, file);

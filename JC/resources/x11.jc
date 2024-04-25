@@ -352,18 +352,29 @@ int set_fd_non_blocking(int fd){
 
 }
 
-byte read_reply(int fd){
-    byte response[32];
-    int res = read(fd, response, 32);
+struct Reply{
+    byte * response;
+    int code;
+}
+
+void read_reply(Reply * reply, int fd){
+
+    reply.response = malloc(32);
+    int res = read(fd, reply.response, 32);
     if(res <= 1){
         printf("Failed to read more then 1 in reply?\n");
-        return -1;
+        reply.code = -1;
+        return;
     }
-    return response[0];
+    reply.code = 1;
 }
 
 
-byte poll_messages(int fd, int window_id, int gc_id){
+Reply poll_messages(int fd, int window_id, int gc_id){
+
+    Reply reply;
+    reply.response = 0;
+    reply.code = 0;
     byte * req = malloc(32);
     
     write_i32_to_bytes(fd, &req[0]);
@@ -373,23 +384,23 @@ byte poll_messages(int fd, int window_id, int gc_id){
 
     int res = poll(req, 1, 0);
     if(res == 0){
-      return 0;
+      return reply;
     }
     
-    int * pollerr;
-    if(POLLERR == pollerr){
+    if(POLLERR == res){
       printf("Poll error!\n");
-      return -1;
+      reply.code = -1;
+      return reply;
     }
-    int * pollhup;
-    if(POLLHUP == pollhup){
+    if(POLLHUP == res){
       printf("Poll hup!\n");
-      return -1;
+      reply.code = -1;
+      return reply;
     }
 
     free(req);
-    return read_reply(fd);
-
+    read_reply(&reply, fd);
+    return reply;
 }
      // 1     56                              opcode
      // 1                                     unused
@@ -466,8 +477,7 @@ int allocate_named_color(int color_map, string name, short name_length){
 
 #define X11_OP_REQ_POLY_RECTANGLE 70
 
-int x11_draw_rect(x11_window * window, int x, int y, int w, int h, int color){
-  x11_change_color(window.fd, window.gc_id, window.window_root_id, window.font_id, color);
+int x11_draw_rect(x11_window * window, int x, int y, int w, int h){
   byte * req = malloc(1024);
 
   // drawable and gc

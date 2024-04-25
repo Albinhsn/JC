@@ -10,7 +10,7 @@ public class Compiler {
     private final SymbolTable symbolTable;
     private static int resultCount;
     private static int labelCount;
-    public static void error(String msg, int line, String filename){
+    public static void error(String msg, int line, String filename) throws CompileException{
         System.out.printf("%s:%d[%s]", filename,line,msg);
         System.exit(1);
     }
@@ -25,7 +25,7 @@ public class Compiler {
         return (16 - (stackSize % 16)) & 0xF;
     }
 
-    public void Compile(String name) throws CompileException, IOException {
+    public void compile(String name) throws CompileException, IOException{
 
         // Intermediate code generation
         for(Stmt stmt : stmts){
@@ -86,7 +86,7 @@ public class Compiler {
 
         QuadList intermediates = function.getIntermediates();
         for (Quad intermediate : intermediates) {
-            // stringBuilder.append(String.format("; %s\n", intermediate));
+            stringBuilder.append(String.format("; %s\n", intermediate));
             stringBuilder.append(intermediate.emit(stack, functions, constants)).append("\n");
         }
 

@@ -3,15 +3,7 @@ package se.liu.albhe576.project;
 import java.util.Map;
 
 public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
-    @Override
-    public String toString() {
-        return op.name() + "\t\t" +
-                operand1 + "\t\t" +
-                operand2 + "\t\t" +
-                result;
-    }
-
-    private static int getStackAlignment(String name, Map<String, Function> functions, Stack stack) {
+    private static int getFunctionArgumentsStackSize(String name, Map<String, Function> functions, Stack stack) {
         Function function = functions.get(name);
         if (function.external) {
             return 0;
@@ -27,9 +19,9 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
         return argSize;
     }
 
-    private static final String[] FLOAT_REGISTERS = new String[]{"xmm0", "xmm1"};
-    private static final String[] GENERAL_REGISTERS = new String[]{"rax", "rcx"};
-    private static final String[] BYTE_REGISTER = new String[]{"al", "cl"};
+    private static final String[] FLOAT_REGISTERS = new String[]{"xmm0", "xmm1", "xmm2"};
+    private static final String[] GENERAL_REGISTERS = new String[]{"rax", "rcx", "rbx"};
+    private static final String[] BYTE_REGISTER = new String[]{"al", "cl", "bl"};
 
     public static String getRegisterFromType(DataType type, int registerIndex) {
         if (type.isFloatingPoint()) {
@@ -41,22 +33,23 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
     }
 
     public static String getMovOpFromType(DataType type) {return type.isFloatingPoint() ? "movsd" : "mov";}
-    private String loadImmediate(Map<String, Constant> constants) throws CompileException {
-        ImmediateSymbol imm = (ImmediateSymbol) this.operand1;
-        String register = getRegisterFromType(operand1.type, 0);
-        String immValue = imm.getValue();
-
-        switch (imm.type.type) {
-            case INT -> {return String.format("mov %s, %s", register, immValue);}
-            case STRING -> {return String.format("mov %s, %s", register, constants.get(immValue).label());}
-            case FLOAT -> {
-                if (constants.containsKey(immValue)) {
-                    return String.format("movsd %s,[%s]", register, constants.get(immValue).label());
-                }
-                throw new CompileException(String.format("Couldn't find constant '%s'", immValue));
-            }
+    public static StringPair getMovOpAndRegisterFromType(DataType type, int idx){
+        return new StringPair(getMovOpFromType(type), getRegisterFromType(type, idx));
+    }
+    public static String getConstantStringLocation(Map<String, Constant> constants, DataType type, String label){
+        if(type.isFloatingPoint()){
+            return String.format("[%s]", constants.get(label).label());
+        }else if(type.type == DataTypes.STRING){
+            return String.format("%s", constants.get(label).label());
         }
-        throw new CompileException(String.format("Can't load this type? %s", imm.type.type));
+        return label;
+    }
+    private String loadImmediate(Map<String, Constant> constants){
+        ImmediateSymbol imm = (ImmediateSymbol) this.operand1;
+        String immValue = getConstantStringLocation(constants, imm.type, imm.getValue());
+        StringPair movePair = getMovOpAndRegisterFromType(imm.type, 0);
+
+        return String.format("%s %s, %s", movePair.move(), movePair.register(), immValue);
     }
 
     public String emit(Stack stack, Map<String, Function> functions, Map<String, Constant> constants) throws CompileException {
@@ -81,9 +74,6 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             case ADD -> {return result.type.isFloatingPoint() ? "addsd xmm0, xmm1" : "add rax, rcx";}
             case SUB -> {return result.type.isFloatingPoint() ? "subsd xmm0, xmm1" : "sub rax, rcx";}
             case MUL -> {return result.type.isFloatingPoint() ? "mulsd xmm0, xmm1" : "mul rcx";}
-            case CONVERT_FLOAT_TO_INT -> {return "cvttsd2si rax, xmm0";}
-            case CONVERT_INT_TO_FLOAT -> {return "cvtsi2sd xmm0, rax";}
-            case CONVERT_BYTE_TO_INT -> {return "movzx rax, al";}
             case DIV -> {
                 if (result.type.isFloatingPoint()) {
                     return "divsd xmm0, xmm1";
@@ -104,9 +94,8 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 if (result.type.isStruct() && operand2.type.isPointer()) {
                     return "lea rax, [rax]";
                 }
-                String movOp = getMovOpFromType(result.type);
-                String register = getRegisterFromType(result.type, 0);
-                return String.format("%s %s, [rax]", movOp, register);
+                StringPair movePair = getMovOpAndRegisterFromType(result.type, 0);
+                return String.format("%s %s, [rax]", movePair.move(), movePair.register());
             }
             case LOAD -> {
                 VariableSymbol variableSymbol = (VariableSymbol) operand1;
@@ -122,9 +111,8 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 return stack.storeVariable(variableSymbol.id);
             }
             case STORE_INDEX -> {
-                String movOp = getMovOpFromType(operand1.type);
-                String register = getRegisterFromType(operand1.type, 0);
-                return String.format("%s [rcx], %s", movOp, register);
+                StringPair movePair = getMovOpAndRegisterFromType(operand1.type, 0);
+                return String.format("%s [rcx], %s", movePair.move(), movePair.register());
             }
             case CMP -> {
                 if (operand1 != null && operand1.type.isFloatingPoint()) {
@@ -155,6 +143,9 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             case SETAE -> {return "setae al\nmovzx rax, al";}
             case SETB -> {return "setb al\nmovzx rax, al";}
             case SETBE -> {return "setbe al\nmovzx rax, al";}
+            case CONVERT_FLOAT_TO_INT -> {return "cvttsd2si rax, xmm0";}
+            case CONVERT_INT_TO_FLOAT -> {return "cvtsi2sd xmm0, rax";}
+            case CONVERT_BYTE_TO_INT -> {return "movzx rax, al";}
             case SHL -> {return "shl rax, cl";}
             case AND -> {return "and rax, rcx";}
             case OR -> {return "or rax, rcx";}
@@ -171,10 +162,9 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 return "pop rax";
             }
             case MOV_REG_CA -> {
-                String movOp = getMovOpFromType(operand1.type);
-                String register1 = getRegisterFromType(operand1.type, 0);
+                StringPair movePair = getMovOpAndRegisterFromType(operand1.type, 0);
                 String register2 = getRegisterFromType(operand1.type, 1);
-                String out = String.format("%s %s, %s", movOp, register2, register1);
+                String out = String.format("%s %s, %s", movePair.move(), register2, movePair.register());
                 if (operand1.type.isByte()) {
                     out += "\nmovzx rcx, cl";
                 }
@@ -195,7 +185,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             case MOV_R8 -> {return operand1.type.isByte() ? "movzx rax, al\nmov r8, rax" : "mov r8, rax";}
             case MOV_R9 -> {return operand1.type.isByte() ? "movzx rax, al\\nmov r9, rax" : "mov r9, rax";}
             case CALL -> {
-                int stackAligment = getStackAlignment(operand1.name, functions, stack);
+                int stackAligment = getFunctionArgumentsStackSize(operand1.name, functions, stack);
                 if (stackAligment != 0) {
                     stackAligment += Compiler.getStackPadding(stackAligment);
                     return String.format("call %s\nadd rsp, %d", operand1.name, stackAligment);

@@ -19,7 +19,7 @@ public class UnaryExpr extends Expr{
        }
        throw new CompileException(String.format("Can't get quad op from unary op %s", this.op.literal()));
     }
-    private void unaryReference(QuadList quads, Symbol lastResult){
+    private void unaryReference(QuadList quads, Symbol lastResult) throws CompileException {
         Quad lastQuad = quads.pop();
 
         switch (lastQuad.op()){
@@ -37,13 +37,13 @@ public class UnaryExpr extends Expr{
             }
         }
     }
-    private void compileDereference(QuadList quads, Symbol lastResult){
+    private void compileDereference(QuadList quads, Symbol lastResult) throws CompileException {
         if(!lastResult.type.isPointer()){
             Compiler.error("Can't dereference none pointer", this.line, this.file);
         }
         quads.addQuad(QuadOp.DEREFERENCE, quads.getLastOperand1(), null, Compiler.generateSymbol(lastResult.type.getTypeFromPointer()));
     }
-    private void compileNegate(QuadList quads, Symbol lastResult){
+    private void compileNegate(QuadList quads, Symbol lastResult) throws CompileException {
         if(!(lastResult.type.isInteger() || lastResult.type.isByte())){
             Compiler.error("Can't negate non int/byte", this.line, this.file);
         }

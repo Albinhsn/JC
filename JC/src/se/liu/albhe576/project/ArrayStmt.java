@@ -20,19 +20,12 @@ public class ArrayStmt extends Stmt {
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         DataType itemType = type.itemType;
 
-        // Calculate the offset that the variable will be at
         int itemSize = SymbolTable.getStructSize(symbolTable.getStructs(), itemType);
         int offset = -(itemSize * this.size + symbolTable.getCurrentScopeSize());
 
-
-        // Create the symbol and add it to the symbol table
-        // This will essentially allocate the space needed for the array on the stack
         VariableSymbol arraySymbol = new VariableSymbol(name, DataType.getArray(itemType), offset, symbolTable.generateVariableId());
         symbolTable.addVariable(arraySymbol);
 
-
-        // Get a pointer to the top of the stack and iterate over each item
-        // Compile it and push it to it's location
         for(int i = this.items.size() - 1; i >= 0; i--){
             Expr item = this.items.get(i);
             item.compile(symbolTable, quads);
@@ -46,11 +39,10 @@ public class ArrayStmt extends Stmt {
                 Compiler.error("Can't have different types in array declaration", line, file);
             }
 
-            quads.createPush(result);
-            Symbol addResult = quads.createSetupPointerOp(arraySymbol, itemSize * i);
-            Symbol movedArraySymbol = quads.createMovRegisterAToC(addResult);
-            Symbol poppedResult = quads.createPop(result);
-            quads.createStoreIndex(poppedResult, movedArraySymbol);
+            QuadList setupPointerQuads = new QuadList();
+            Symbol addResult = setupPointerQuads.createSetupPointerOp(arraySymbol, itemSize * i);
+            quads.createSetupBinary(setupPointerQuads, result, addResult);
+            quads.createStoreIndex(result, addResult);
         }
     }
 }

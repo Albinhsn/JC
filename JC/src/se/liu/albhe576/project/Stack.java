@@ -31,29 +31,23 @@ public class Stack {
                     this.moveStruct(argSymbol);
         }
 
-        String move = Quad.getMovOpFromType(argSymbol.type);
-        String register = Quad.getRegisterFromType(argSymbol.type, 0);
-
-        return String.format("%s [rsp + %d], %s",move, offset, register);
+        StringPair movePair = Quad.getMovOpAndRegisterFromType(argSymbol.type, 0);
+        return String.format("%s [rsp + %d], %s",movePair.move(), offset, movePair.register());
     }
 
     int moveStructField(StringBuilder s, StructField field, int offset){
-
         if(field.type().isStruct()){
             Struct struct = this.structs.get(field.type().name);
             for(StructField f : struct.getFields()){
                 offset = this.moveStructField(s, f, offset);
             }
-        }else if(field.type().isByte()){
-            s.append(String.format("mov bl, [rax + %d]\n", offset));
-            s.append(String.format("mov [rcx + %d], bl\n", offset));
-            offset += 1;
-        }else{
-            s.append(String.format("mov rbx, [rax + %d]\n", offset));
-            s.append(String.format("mov [rcx + %d], rbx\n", offset));
-            offset += 8;
+            return offset;
         }
-        return offset;
+
+        String register = Quad.getRegisterFromType(field.type(), 2);
+        s.append(String.format("mov %s, [rax + %d]\n", register, offset));
+        s.append(String.format("mov [rcx + %d], %s\n", offset, register));
+        return offset + SymbolTable.getStructSize(this.structs, field.type());
     }
 
     public String moveStruct(Symbol value){
@@ -91,14 +85,12 @@ public class Stack {
         Struct struct = this.structs.get(type.name);
         for(StructField field : struct.getFields()){
             if(field.name().equals(memberName)){
-                String move = Quad.getMovOpFromType(field.type());
-                String register = Quad.getRegisterFromType(field.type(), 0);
+                StringPair movePair = Quad.getMovOpAndRegisterFromType(field.type(), 0);
+                String move  = field.type().isStruct() ? "lea" : movePair.move();
 
-                move = field.type().isStruct() ? "lea" : move;
-
-                String out = String.format("%s %s, [rax + %d]",move, register, this.getFieldOffset(struct, memberName));
+                String out = String.format("%s %s, [rax + %d]",move, movePair.register(), this.getFieldOffset(struct, memberName));
                 if(field.type().isByte()){
-                    out += String.format("\nmovzx %s, %s", Quad.getRegisterFromType(DataType.getInt(), 0), register);
+                    out += String.format("\nmovzx %s, %s", Quad.getRegisterFromType(DataType.getInt(), 0), movePair.register());
                 }
                 return out;
             }
@@ -106,74 +98,32 @@ public class Stack {
         throw new CompileException(String.format("Couldn't find struct %s with member %s", type.name, memberName));
     }
     public String storeField(DataType type, Symbol memberSymbol) throws CompileException{
-        String move = Quad.getMovOpFromType(memberSymbol.type);
-        String register = Quad.getRegisterFromType(memberSymbol.type, 0);
-
-        Struct struct  = this.structs.get(type.name);
-        int offset = this.getFieldOffset(struct, memberSymbol.name);
+        StringPair movePair = Quad.getMovOpAndRegisterFromType(memberSymbol.type, 0);
+        Struct struct       = this.structs.get(type.name);
+        int offset          = this.getFieldOffset(struct, memberSymbol.name);
 
         if(memberSymbol.type.isStruct()){
             return String.format("lea rcx, [rcx + %d]\n", offset) + this.moveStruct(memberSymbol);
-        }else{
-            if(offset != 0){
-                return String.format("%s [rcx + %d], %s", move, offset, register);
-            }
-            return String.format("%s [rcx], %s", move, register);
         }
+        if(offset != 0){
+            return String.format("%s [rcx + %d], %s", movePair.move(), offset, movePair.register());
+        }
+        return String.format("%s [rcx], %s", movePair.move(), movePair.register());
     }
+    public String getVariableLocation(int offset){return offset > 0 ? String.format("[rbp + %d]", offset) : String.format("[rbp %d]", offset);}
     public String loadVariable(int id) {
-        VariableSymbol stackSymbol = this.stackSymbols.get(id);
-        if(stackSymbol.offset < 0){
-            return this.loadLocal(stackSymbol);
-        }
-        return this.loadArgument(stackSymbol);
+        VariableSymbol symbol = this.stackSymbols.get(id);
+        StringPair movePair = Quad.getMovOpAndRegisterFromType(symbol.type, 0);
+        return String.format("%s %s, %s", movePair.move(), movePair.register(), getVariableLocation(symbol.offset));
     }
     public String storeVariable(int id) {
         VariableSymbol symbol = this.stackSymbols.get(id);
-        if(symbol.offset < 0){
-            return this.storeLocal(symbol);
-        }
-        return this.storeArgument(symbol);
-    }
-
-    private String loadArgument(VariableSymbol symbol){
-        int offset = this.getStackPointerOffset(symbol);
-        String move = Quad.getMovOpFromType(symbol.type);
-        String register = Quad.getRegisterFromType(symbol.type, 0);
-
-        return String.format("%s %s, [rbp + %d]", move, register, offset);
-    }
-    private String storeArgument(VariableSymbol symbol){
-        int offset = this.getStackPointerOffset(symbol);
-        String move = Quad.getMovOpFromType(symbol.type);
-        String register = Quad.getRegisterFromType(symbol.type, 0);
-        return String.format("%s [rbp + %d], %s", move, offset, register);
-    }
-
-    private String loadLocal(VariableSymbol symbol){
-        String move = Quad.getMovOpFromType(symbol.type);
-        String register = Quad.getRegisterFromType(symbol.type, 0);
-        if(symbol.offset == 0){
-            return String.format("%s %s, [rbp]", move, register);
-        }
-        return String.format("%s %s, [rbp %d]", move, register, symbol.offset);
-    }
-
-    private String storeLocal(VariableSymbol symbol){
         if(symbol.type.isStruct()){
             return this.moveStruct(symbol);
         }
-
-        int offset = this.getStackPointerOffset(symbol);
-        String move = Quad.getMovOpFromType(symbol.type);
-        String register = Quad.getRegisterFromType(symbol.type, 0);
-        if(offset == 0){
-            return String.format("%s [rsp], %s", move, register);
-        }
-        return String.format("%s [rbp %d], %s", move, offset, register);
+        StringPair movePair = Quad.getMovOpAndRegisterFromType(symbol.type, 0);
+        return String.format("%s %s, %s", movePair.move(), getVariableLocation(symbol.offset), movePair.register());
     }
-
-    private int getStackPointerOffset(VariableSymbol symbol){return symbol.offset;}
 
     public Stack(Map<Integer, VariableSymbol> symbols, Map<String, Struct> structs) {
         this.stackSymbols = symbols;

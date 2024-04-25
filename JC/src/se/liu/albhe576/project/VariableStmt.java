@@ -28,16 +28,16 @@ public class VariableStmt extends Stmt{
             Symbol lastOperand = quads.getLastOperand1();
             Symbol lastSymbol = quads.getLastResult();
 
-            lastSymbol = AssignStmt.convertValue(lastSymbol, Compiler.generateSymbol(type), quads);
-            if(!lastSymbol.type.isSameType(type) && !lastOperand.isNull()){
-                Compiler.error(String.format("Trying to access type %s to type %s", lastSymbol.type, type), line, file);
+            Symbol variableType = Compiler.generateSymbol(type);
+            lastSymbol = AssignStmt.convertValue(lastSymbol, variableType, quads);
+            if(AssignStmt.isInvalidAssignment(variableType, lastSymbol, lastOperand)){
+                Compiler.error(String.format("Trying to assign type %s to type %s", lastSymbol.type, type), line, file);
             }
 
             if(type.isStruct()){
-                quads.createPush(lastSymbol);
-                Symbol loadedPointer = quads.createLoadPointer(variable);
-                quads.createMovRegisterAToC(loadedPointer);
-                quads.createPop(lastSymbol);
+                QuadList rQuads = new QuadList();
+                Symbol loadedPointer = rQuads.createLoadPointer(variable);
+                quads.createSetupBinary(rQuads, lastSymbol, loadedPointer);
             }
             quads.createStoreVariable(variable);
         }

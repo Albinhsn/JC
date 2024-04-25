@@ -2,4 +2,6 @@
 
 ## Features remaining
 
-* return byte with casts?
+* can declare long as field?
+* index struct assignment failed
+* return 0 from pointer

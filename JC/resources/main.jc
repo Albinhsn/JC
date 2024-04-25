@@ -8,12 +8,9 @@
 #include "resources/foo.jc"
 #include "resources/tests.jc"
 
-#define five 2 + 3
 
 int main(){
-
     run_tests();
-    // Test all unary inc/dec
     return 0;
 
 }

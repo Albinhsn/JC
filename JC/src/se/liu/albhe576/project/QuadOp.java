@@ -37,6 +37,7 @@ public enum QuadOp {
             Map.entry(TokenType.TOKEN_BANG, LOGICAL_NOT),
             Map.entry(TokenType.TOKEN_BANG_EQUAL, SETNE),
             Map.entry(TokenType.TOKEN_LESS, SETL),
+            Map.entry(TokenType.TOKEN_MOD, MOD),
             Map.entry(TokenType.TOKEN_LESS_EQUAL, SETLE),
             Map.entry(TokenType.TOKEN_GREATER, SETG),
             Map.entry(TokenType.TOKEN_EQUAL_EQUAL, SETE),

@@ -54,7 +54,8 @@ public class Parser {
         Map.entry(TokenType.TOKEN_INCREMENT, new ParseFunction(this::unary, this::postfix, Precedence.TERM)),
         Map.entry(TokenType.TOKEN_DECREMENT, new ParseFunction(this::unary,this::postfix, Precedence.TERM)),
         Map.entry(TokenType.TOKEN_MOD, new ParseFunction(null, this::binary, Precedence.TERM)),
-        Map.entry(TokenType.TOKEN_ELLIPSIS, new ParseFunction(null, null, Precedence.NONE))
+        Map.entry(TokenType.TOKEN_ELLIPSIS, new ParseFunction(null, null, Precedence.NONE)),
+        Map.entry(TokenType.TOKEN_EOF, new ParseFunction(null, null, Precedence.NONE))
     ));
     private final Map<String, Deque<Token>> defined;
     private final List<String> included;
@@ -74,8 +75,8 @@ public class Parser {
     private void updateCurrent(){
         if(this.current.type() == TokenType.TOKEN_IDENTIFIER && this.defined.containsKey(this.current.literal())){
             Deque<Token> macro = this.defined.get(this.current.literal());
-            while(!macro.isEmpty()){
-                this.definedQueue.addFirst(macro.pop());
+            for(Token token : macro){
+                this.definedQueue.addFirst(token);
             }
             this.current = this.definedQueue.pop();
         }
@@ -170,17 +171,18 @@ public class Parser {
         if(prefix == null || prefix.prefixRule == null){
             Compiler.error(String.format("Expected expression but got %s %s", this.previous.literal(), precedence), this.current.line(), this.fileName);
         }
-        assert prefix != null;
 
         final int precedenceOrdinal = precedence.ordinal();
         final boolean canAssign =  precedenceOrdinal <= Precedence.ASSIGNMENT.ordinal();
-        if(prefix.prefixRule == null){
-            Compiler.error(String.format("Can't parse prefix of %s", this.previous.literal()), this.previous.line(), this.fileName);
-        }
-        assert prefix.prefixRule != null;
+
         expr = prefix.prefixRule.apply(expr, canAssign, this.previous.line());
 
         ParseFunction currentRule = this.parseFunctions.get(this.current.type());
+
+        if(currentRule == null){
+            Compiler.error(String.format("Expected expression but got %s %s", this.previous.literal(), precedence), this.current.line(), this.fileName);
+        }
+
         while(precedenceOrdinal <= currentRule.precedence.ordinal()){
             advance();
             expr = currentRule.infixRule.apply(expr, canAssign, this.previous.line());
@@ -262,9 +264,7 @@ public class Parser {
     private List<Stmt> parseBody() throws CompileException {
         List<Stmt> body = new ArrayList<>();
         while(!matchType(TokenType.TOKEN_RIGHT_BRACE)) {
-            if(matchType(TokenType.TOKEN_SEMICOLON)){
-                System.out.printf("Extra semicolon in file %s at line %d?", fileName, this.scanner.getLine());
-            }else{
+            if(!matchType(TokenType.TOKEN_SEMICOLON)){
                 body.add(parseStmt());
             }
         }
@@ -294,7 +294,6 @@ public class Parser {
         ArrayDataType arrayType = ArrayDataType.fromItemType(type);
         consume(TokenType.TOKEN_INT_LITERAL, String.format("Expected array size in form of int literal in array declaration, got %s", this.current.literal()));
 
-        // Probably no reason that you should allow a[0xF] but why not
         int size = Integer.decode(this.previous.literal());
         consume(TokenType.TOKEN_RIGHT_BRACKET, String.format("Expected ']' after array size in array declaration, got %s", this.current.literal()));
 
@@ -376,7 +375,6 @@ public class Parser {
         String fileName = this.previous.literal();
 
         if(this.included.stream().anyMatch(i -> i.equals(fileName))){
-            System.out.printf("already included %s\n%n", fileName);
             return;
         }
 
@@ -388,7 +386,7 @@ public class Parser {
             Compiler.error(String.format("Failed to read from include %s", fileName), this.current.line(), this.fileName);
         }
 
-        Parser includeParser = new Parser(new Scanner(s), this.included, this.structs, fileName);
+        Parser includeParser = new Parser(new Scanner(s, fileName), this.included, this.structs, fileName);
         List<Stmt> included = includeParser.parse();
 
         this.extern.putAll(includeParser.getExtern());
@@ -402,7 +400,7 @@ public class Parser {
         consume(TokenType.TOKEN_IDENTIFIER, "Expected name of macro!");
         String name = this.previous.literal();
         Deque<Token> macro = new ArrayDeque<>();
-        while(this.scanner.getLine() == line){
+        while(this.current.type() != TokenType.TOKEN_EOF  && this.scanner.getLine() == line){
             macro.addLast(this.current);
             advance();
         }
@@ -426,7 +424,6 @@ public class Parser {
             this.extern.put(funcName, new Function(this.parseArguments(), type, null, this.fileName, this.previous.line(), true));
         }
         consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ) after function args in extern");
-
     }
 
     public List<Stmt> parse() throws CompileException {
@@ -440,11 +437,7 @@ public class Parser {
                 this.parseDefine();
             }else if(matchType(TokenType.TOKEN_EXTERN)){
                 this.parseExtern();
-            }
-            else if(matchType(TokenType.TOKEN_SEMICOLON)){
-                // ToDo loggin
-                System.out.printf("Extra semicolon in file %s at line %d?", fileName, this.scanner.getLine());
-            }else{
+            } else if(!matchType(TokenType.TOKEN_SEMICOLON)){
                 this.stmts.add(parseStmt());
             }
         }
@@ -457,9 +450,7 @@ public class Parser {
     }
     private Expr dot(Expr expr, boolean canAssign, int line) throws CompileException{
         consume(TokenType.TOKEN_IDENTIFIER, "Expected identifier after dot");
-        Token var = this.previous;
-
-        return new DotExpr(expr, var, line, this.fileName);
+        return new DotExpr(expr, this.previous, line, this.fileName);
     }
 
     private Expr parseRightSideOfBinary(Token op, int line) throws CompileException{
@@ -468,7 +459,7 @@ public class Parser {
     }
     private Expr comparison(Expr left, boolean canAssign, int line) throws CompileException{
         Token op = this.previous;
-        return new ComparisonExpr(left, parseRightSideOfBinary(op, line), op, line, this.fileName);
+        return new ComparisonExpr(left, parseRightSideOfBinary(this.previous, line), op, line, this.fileName);
     }
 
     private Expr binary(Expr expr, boolean canAssign, int line) throws CompileException{

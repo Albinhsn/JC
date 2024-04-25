@@ -64,6 +64,9 @@ public class AssignStmt extends Stmt{
             default -> valueQuads.createStoreVariable(lastQuad.operand1());
         }
     }
+    public static boolean isInvalidAssignment(Symbol variableType, Symbol valueResult, Symbol lastOperand){
+        return !(variableType.type.canBeCastedTo(valueResult.type)  || lastOperand.isNull());
+    }
 
 
     @Override
@@ -76,10 +79,7 @@ public class AssignStmt extends Stmt{
         Symbol valueResult = quads.getLastResult();
         Symbol variableType = variableQuads.getLastResult();
 
-        boolean same        = variableType.type.isSameType(valueResult.type);
-        boolean canBeCasted = variableType.type.canBeCastedTo(valueResult.type);
-        boolean isNull      = quads.getLastOperand1().isNull();
-        if(!(same || canBeCasted || isNull)){
+        if(isInvalidAssignment(variableType, valueResult, quads.getLastOperand1())){
             Compiler.error(String.format("Trying to assign type %s to %s", valueResult.type.name, variableType.type.name), line, file);
         }
 

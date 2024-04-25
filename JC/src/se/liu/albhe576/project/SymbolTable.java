@@ -34,9 +34,7 @@ public class SymbolTable {
         }
         return 8;
     }
-    public Function getCurrentFunction(){
-        return this.functions.get(this.currentFunctionName);
-    }
+    public DataType getCurrentFunctionReturnType(){return this.functions.get(this.currentFunctionName).getReturnType();}
     public String getCurrentFunctionName(){
         return this.currentFunctionName;
     }
@@ -152,17 +150,18 @@ public class SymbolTable {
     }
     public Symbol findSymbol(String name){
         Scope scope = this.scopes.get(this.currentFunctionName);
-        java.util.Stack<Scope> scopes = new Stack<>();
-        scopes.add(scope);
-
-        while(!scopes.empty()){
+        while(true){
             if(scope.variableExists(name)){
                 return scope.getVariable(name);
             }
-            scopes.addAll(scope.getChildren());
-            scope = scopes.pop();
+            if(scope.getChildren().isEmpty()){
+                return null;
+            }
+            scope = scope.getLastChild();
+            if(scope.isClosed()){
+                return null;
+            }
         }
-        return null;
     }
     public boolean isMemberOfStruct(DataType type, String member) throws CompileException {
         Struct struct = this.structs.get(type.name);

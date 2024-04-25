@@ -6,6 +6,7 @@ public class Scanner {
     private final String input;
     private int index;
     private int line;
+    private final String filename;
 
     public int getLine(){
         return this.line;
@@ -79,7 +80,7 @@ public class Scanner {
         }
 
         if(isOutOfBounds()){
-            throw new CompileException(String.format("Unterminated string at starting at line %d", line));
+            Compiler.error("Unterminated string at starting", line, filename);
         }
 
         String literal = this.input.substring(startIndex, this.index - 1);
@@ -211,6 +212,14 @@ public class Scanner {
         return switch (currentChar) {
             case '{' -> this.createToken(TokenType.TOKEN_LEFT_BRACE, "{");
             case '}' -> this.createToken(TokenType.TOKEN_RIGHT_BRACE, "}");
+            case '[' -> this.createToken(TokenType.TOKEN_LEFT_BRACKET, "[");
+            case ']' -> this.createToken(TokenType.TOKEN_RIGHT_BRACKET, "]");
+            case ';' -> this.createToken(TokenType.TOKEN_SEMICOLON, ";");
+            case '%' -> this.createToken(TokenType.TOKEN_MOD, "%");
+            case ',' -> this.createToken(TokenType.TOKEN_COMMA, ",");
+            case '(' -> this.createToken(TokenType.TOKEN_LEFT_PAREN, "(");
+            case ')' -> this.createToken(TokenType.TOKEN_RIGHT_PAREN, ")");
+            case '\"' -> parseString();
             case '/' ->{
                 if(matchNext('=')){
                     yield this.createToken(TokenType.TOKEN_AUGMENTED_SLASH, "/=");
@@ -223,11 +232,6 @@ public class Scanner {
                 }
                 yield this.createToken(TokenType.TOKEN_STAR, "*");
             }
-            case '[' -> this.createToken(TokenType.TOKEN_LEFT_BRACKET, "[");
-            case ']' -> this.createToken(TokenType.TOKEN_RIGHT_BRACKET, "]");
-            case ';' -> this.createToken(TokenType.TOKEN_SEMICOLON, ";");
-            case '%' -> this.createToken(TokenType.TOKEN_MOD, "%");
-            case ',' -> this.createToken(TokenType.TOKEN_COMMA, ",");
             case '#' ->
             {
                 if(this.input.startsWith("include", this.index)){
@@ -242,7 +246,9 @@ public class Scanner {
                     this.index += "define".length();
                     yield this.createToken(TokenType.TOKEN_DEFINE, "#define");
                 }
-                throw new CompileException(String.format("tried to parse #smth but failed at line %d\n", line));
+                Compiler.error("tried to parse #smth but failed\n", line, filename);
+                // unreachable
+                yield null;
             }
             case '.' ->{
                 if(this.input.startsWith("..", this.index)){
@@ -251,8 +257,6 @@ public class Scanner {
                 }
                 yield this.createToken(TokenType.TOKEN_DOT, ".");
             }
-            case '(' -> this.createToken(TokenType.TOKEN_LEFT_PAREN, "(");
-            case ')' -> this.createToken(TokenType.TOKEN_RIGHT_PAREN, ")");
             case '^' -> {
                 if (matchNext('=')) {
                     yield this.createToken(TokenType.TOKEN_AUGMENTED_XOR, "^=");
@@ -323,14 +327,16 @@ public class Scanner {
                 }
                 yield this.createToken(TokenType.TOKEN_EQUAL, "=");
             }
-            case '\"' -> parseString();
-            default ->
-                    throw new CompileException(String.format("Illegal character '%c' at line %d\n", currentChar, line));
+            default ->{
+                Compiler.error(String.format("Illegal character '%c'", currentChar), line, filename);
+                yield null;
+            }
         };
     }
 
 
-    public Scanner(String input){
+    public Scanner(String input, String filename){
+        this.filename = filename;
         this.input = input;
         this.index = 0;
         this.line = 1;
