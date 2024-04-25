@@ -19,20 +19,16 @@ public class BinaryExpr extends Expr{
     }
 
     private void bitwise(SymbolTable symbolTable, QuadList quads) throws  CompileException {
-
-        QuadList rQuads = new QuadList();
-        left.compile(symbolTable, quads);
-        right.compile(symbolTable, rQuads);
+        QuadListPair quadPair = QuadList.compileBinary(symbolTable, quads, left, right);
 
         Symbol lResult = quads.getLastResult();
-        Symbol rResult = rQuads.getLastResult();
-
-        quads.createSetupBinary(rQuads, lResult, rResult);
+        Symbol rResult = quadPair.right().getLastResult();
 
         if (isInvalidBitwise(lResult.getType(), rResult.getType())) {
             Compiler.error(String.format("Can't do bitwise with %s and %s", lResult.getType().name, rResult.getType().name), line, file);
         }
 
+        quads.createSetupBinary(quadPair.right(), lResult, rResult);
         quads.addQuad(QuadOp.fromToken(op), lResult, rResult, Compiler.generateSymbol(DataType.getInt()));
     }
 
@@ -55,14 +51,13 @@ public class BinaryExpr extends Expr{
         Symbol resultType;
         if(lType.isPointer() || rType.isPointer()){
             boolean lIsPointer = lType.isPointer();
-            resultType = lIsPointer ? lResult : rResult;
+            resultType           = lIsPointer ? lResult : rResult;
             QuadList quadsToIMUL = lIsPointer ? rQuads : lQuads;
 
             int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), resultType.type);
             quadsToIMUL.createIMUL(structSize);
         }else{
             resultType = Compiler.generateSymbol(DataType.getHighestDataTypePrecedence(lType, rType));
-            lResult = AssignStmt.convertValue(lResult, resultType, lQuads);
             rResult = AssignStmt.convertValue(rResult, resultType, rQuads);
         }
 

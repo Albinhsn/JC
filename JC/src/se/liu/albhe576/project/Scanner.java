@@ -89,7 +89,6 @@ public class Scanner {
     final Map<String, TokenType> reservedWords = Map.ofEntries(
                 Map.entry("struct", TokenType.TOKEN_STRUCT),
                 Map.entry("string", TokenType.TOKEN_STRING),
-                Map.entry("fun", TokenType.TOKEN_FUN),
                 Map.entry("if", TokenType.TOKEN_IF),
                 Map.entry("else", TokenType.TOKEN_ELSE),
                 Map.entry("for", TokenType.TOKEN_FOR),

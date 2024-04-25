@@ -28,7 +28,6 @@ public class ComparisonExpr extends Expr {
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads)  throws CompileException{
-
         QuadListPair quadPair = QuadList.compileBinary(symbolTable, quads, left, right);
         Symbol lResult = quads.getLastResult();
 
@@ -36,17 +35,15 @@ public class ComparisonExpr extends Expr {
         Symbol rResult = rQuads.getLastResult();
 
         this.typeCheckComparison(lResult.type, rResult.type);
-
         QuadOp op = QuadOp.fromToken(this.op);
         if(lResult.type.isFloatingPoint() || rResult.type.isFloatingPoint()){
             op = convertOpToFloat(op);
         }
 
         Symbol resultType = Compiler.generateSymbol(DataType.getHighestDataTypePrecedence(lResult.type, rResult.type));
-        lResult = AssignStmt.convertValue(lResult, resultType, quads);
         rResult = AssignStmt.convertValue(rResult, resultType, rQuads);
+        lResult = quads.createSetupBinary(rQuads, lResult, rResult, resultType);
 
-        quads.createSetupBinary(rQuads, lResult, rResult);
         quads.createCmp(lResult, rResult);
         quads.addQuad(op, null, null, Compiler.generateSymbol(DataType.getInt()));
     }

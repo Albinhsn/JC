@@ -30,34 +30,29 @@ public class AssignStmt extends Stmt{
     public static void compileStoreField(QuadList quads, QuadList variableQuads) {
         Quad   lastQuad     = variableQuads.pop();
         Symbol memberSymbol = lastQuad.operand2();
-        Symbol value        = quads.getLastResult();
 
-        value = convertValue(value, memberSymbol, quads);
-        quads.createSetupBinary(variableQuads, value, variableQuads.getLastResult());
+        quads.createSetupBinary(variableQuads, quads.getLastResult(), variableQuads.getLastResult(),  variableQuads.getLastResult());
         quads.createSetField(memberSymbol, lastQuad.operand1());
     }
 
     public static void compileStoreDereferenced(QuadList valueQuads, QuadList variableQuads) {
-        Quad lastVariableQuad = variableQuads.pop();
-        Symbol dereferenced = lastVariableQuad.operand1();
-
-        Symbol valueResult = convertValue(valueQuads.getLastResult(), lastVariableQuad.result(), valueQuads);
-
-        valueQuads.createSetupBinary(variableQuads, valueResult, dereferenced);
-        valueQuads.createStoreIndex(valueResult, dereferenced);
+        variableQuads.removeLastQuad();
+        Symbol target = Compiler.generateSymbol(variableQuads.getLastResult().type.getTypeFromPointer());
+        storeIndex(valueQuads, variableQuads, valueQuads.getLastResult(), variableQuads.getLastResult(), target);
     }
 
-    public static void compileStoreIndex(QuadList quads, QuadList variableQuads) throws CompileException{
+
+    public static void compileStoreIndex(QuadList quads, QuadList variableQuads) {
         Quad lastVariableQuad   = variableQuads.pop();
         Symbol res              = lastVariableQuad.operand2();
-        Symbol toStore          = quads.getLastResult();
 
-        Symbol result = Compiler.generateSymbol(res.type.getTypeFromPointer());
-
-        quads.createSetupBinary(variableQuads, toStore, variableQuads.getLastResult());
-        toStore = convertValue(toStore, result, quads);
-        quads.createStoreIndex(result, toStore);
+        storeIndex(quads, variableQuads, quads.getLastResult(), res,Compiler.generateSymbol(res.type.getTypeFromPointer()));
     }
+    private static void storeIndex(QuadList quads, QuadList variableQuads, Symbol toStore, Symbol result, Symbol target){
+        toStore = quads.createSetupBinary(variableQuads, toStore, variableQuads.getLastResult(), target);
+        quads.createStoreIndex(toStore, result);
+    }
+
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
@@ -87,7 +82,6 @@ public class AssignStmt extends Stmt{
                     quads.addQuad(QuadOp.MOVE_STRUCT, valueResult, variableType, null);
                 }else{
                     quads.createSetupBinary(variableQuads, valueResult, variableType);
-                    convertValue(valueResult, variableType, quads);
                     quads.createStore(variableQuads.getLastOperand1());
                 }
             }

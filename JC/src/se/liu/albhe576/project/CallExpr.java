@@ -25,7 +25,8 @@ public class CallExpr extends Expr{
 
            if(!varArgs){
                DataType argType = functionArgs.get(i).type();
-               if(!result.type.isSameType(argType) && !result.type.canBeCastedTo(argType)){
+               result = AssignStmt.convertValue(result, Compiler.generateSymbol(argType), quads[i]);
+               if(!result.type.isSameType(argType)){
                    Compiler.error(String.format("Type mismatch when calling extern function %s, expected %s got %s", this.name.literal(), argType.name, result.type.name), line, file);
                }
            }
@@ -37,7 +38,7 @@ public class CallExpr extends Expr{
    private void compileExternFunctionArguments(SymbolTable symbolTable, QuadList quads, List<StructField> functionArgs) throws CompileException {
 
        int generalRegistersLength = LINUX_GENERAL_ARGUMENT_LOCATIONS.length;
-       int floatRegistersLength = LINUX_FLOATING_POINT_ARGUMENT_LOCATIONS.length;
+       int floatRegistersLength   = LINUX_FLOATING_POINT_ARGUMENT_LOCATIONS.length;
        int generalCount = 0, floatCount = 0;
 
        QuadList[] args = this.compileAndTypeCheckArgument(symbolTable, functionArgs);
@@ -49,18 +50,14 @@ public class CallExpr extends Expr{
                Compiler.error(String.format("Can't call library function with more then %d ints and %d floats, you called %d, %d", generalCount, floatCount, generalRegistersLength, floatRegistersLength), line, file);
            }
 
+           quads.addAll(argQuads);
            if (result.type.isFloatingPoint()) {
-               if(floatCount >= 1){
-                   quads.createPush(Compiler.generateSymbol(DataType.getFloat()));
-               }
-               quads.addAll(argQuads);
+               quads.createPush(Compiler.generateSymbol(DataType.getFloat()));
                quads.addQuad(LINUX_FLOATING_POINT_ARGUMENT_LOCATIONS[floatCount], result, null, null);
-               if(floatCount >= 1){
-                   quads.createPop(Compiler.generateSymbol(DataType.getFloat()));
-               }
+               quads.createPop(Compiler.generateSymbol(DataType.getFloat()));
+
                floatCount++;
            } else {
-               quads.addAll(argQuads);
                quads.addQuad(LINUX_GENERAL_ARGUMENT_LOCATIONS[generalCount], result, null, null);
                generalCount++;
            }

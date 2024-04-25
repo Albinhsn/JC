@@ -23,12 +23,21 @@ public class QuadList extends ArrayList<Quad>{
         return popped;
     }
     public void createPush(Symbol operandSymbol){this.add(new Quad(QuadOp.PUSH, operandSymbol, null, Compiler.generateSymbol(operandSymbol.type)));}
+    public Symbol createSetupBinary(QuadList right, Symbol lSymbol, Symbol rSymbol, Symbol target) {
+        this.createPush(lSymbol);
+        this.addAll(right);
+        this.createMovRegisterAToC(rSymbol);
+        lSymbol = this.createPop(lSymbol);
+        return AssignStmt.convertValue(lSymbol, target, this);
+    }
     public void createSetupBinary(QuadList right, Symbol lSymbol, Symbol rSymbol) {
         this.createPush(lSymbol);
         this.addAll(right);
         this.createMovRegisterAToC(rSymbol);
-        this.createPop(lSymbol);
+        lSymbol = this.createPop(lSymbol);
+        AssignStmt.convertValue(lSymbol, rSymbol, this);
     }
+    // WHy?
     public void createSetupUnary(SymbolTable symbolTable, Symbol result){
         int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), result.type);
         this.createPush(result);
