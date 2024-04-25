@@ -31,7 +31,7 @@ public class QuadList extends ArrayList<Quad>{
         return AssignStmt.convertValue(lSymbol, target, this);
     }
     public void createSetupBinary(QuadList right, Symbol lSymbol, Symbol rSymbol) {createSetupBinary(right, lSymbol, rSymbol, rSymbol);}
-    public void createStore(Symbol symbol){this.addQuad(QuadOp.STORE, symbol, null, Compiler.generateSymbol(symbol.type));}
+    public void createStoreVariable(Symbol symbol){this.addQuad(QuadOp.STORE, symbol, null, Compiler.generateSymbol(symbol.type));}
     public Symbol createMovRegisterAToC(Symbol firstOperand){
         Symbol out = Compiler.generateSymbol(firstOperand.type);
         this.addQuad(QuadOp.MOV_REG_CA, firstOperand, null, out);

@@ -762,6 +762,68 @@ void test_index(){
     print_testi(farr2[farr[0]], 1, "farr2[farr[0]]");
 }
 
+void test_unary_postfix(){
+    int a = 5;
+    print_testi(++a, 6, "a++");
+
+    int * b = &a;
+    print_testi(++(*b), 7, "++(*b)");
+
+    Foo foo;
+    foo.a = 5;
+    print_testi(++foo.a, 6, "++foo.a");
+
+    Foo *foo1 = malloc(16);
+    print_testi(++foo1[0].a, 1, "++foo1[0].a");
+
+    float c = 5;
+    print_testf(++c, 6.0, "++c (f)");
+
+    float * d = &c;
+    print_testf(++(*d), 7.0, "++(*d)");
+
+    Foof foo2;
+    foo2.a = 5.0;
+    print_testf(++foo2.a, 6.0, "++foo2.a");
+
+    Foof *foo3 = malloc(16);
+    foo3[0].a = 0.0;
+    print_testf(++foo3[0].a, 1.0, "++foo3[0].a");
+
+    byte ba = 5;
+    print_testb(++ba, 6, "++ba");
+
+    byte * bb = &ba;
+    print_testb(++(*bb), 7, "++(*bb)");
+
+    Foob foob;
+    foob.a = 5;
+    print_testb(++foob.a, 6, "++foob.a");
+
+    Foob *foob1 = malloc(16);
+    print_testb(++foob1[0].a, 1, "++foob1[0].a");
+
+    int arr[2] = [1,2];
+    print_testi(++arr[1], 3, "++arr[1]");
+
+    byte barr[2] = [1,2];
+    print_testi(++barr[1], 3, "++barr[1]");
+
+    float farr[2] = [1,2];
+    print_testf(++farr[1], 3.0, "++farr[1]");
+
+    int k = ++foo.a;
+    print_testi(k, 7, "k = ++foo.a (k)");
+    print_testi(foo.a, 7, "k = ++foo.a (foo.a)");
+
+    int *l = &k;
+    int x = ++(*l);
+    print_testi(x, 8, "++(*l)");
+    int y = ++l[0];
+    print_testi(y, 9, "++l[0]");
+
+}
+
 int run_tests(){
 
     test_assign();
@@ -780,6 +842,7 @@ int run_tests(){
     test_byte();
     test_postfix();
     test_index();
+    test_unary_postfix();
 
     printf("Finished tests!\n");
     return 0;

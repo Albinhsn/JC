@@ -11,9 +11,10 @@
 #define five 2 + 3
 
 int main(){
-    run_tests();
 
-    return five;
+    run_tests();
+    // Test all unary inc/dec
+    return 0;
 
 }
 

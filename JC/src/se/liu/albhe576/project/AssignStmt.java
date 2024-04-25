@@ -53,6 +53,18 @@ public class AssignStmt extends Stmt{
         quads.createStoreIndex(toStore, result);
     }
 
+    public static void createStore(SymbolTable symbolTable, Expr variableExpr, QuadList valueQuads, Quad lastQuad) throws CompileException {
+        QuadList variableQuads = new QuadList();
+        variableExpr.compile(symbolTable, variableQuads);
+
+        switch(lastQuad.op()){
+            case DEREFERENCE -> AssignStmt.compileStoreDereferenced(valueQuads, variableQuads);
+            case GET_FIELD-> AssignStmt.compileStoreField(valueQuads, variableQuads);
+            case INDEX -> AssignStmt.compileStoreIndex(valueQuads, variableQuads);
+            default -> valueQuads.createStoreVariable(lastQuad.operand1());
+        }
+    }
+
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
@@ -82,7 +94,7 @@ public class AssignStmt extends Stmt{
                     quads.addQuad(QuadOp.MOVE_STRUCT, valueResult, variableType, null);
                 }else{
                     quads.createSetupBinary(variableQuads, valueResult, variableType);
-                    quads.createStore(variableQuads.getLastOperand1());
+                    quads.createStoreVariable(variableQuads.getLastOperand1());
                 }
             }
         }

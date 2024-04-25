@@ -38,15 +38,7 @@ public class PostfixExpr extends Expr{
                 quads.createDecrement(loadedSymbol);
         }
 
-        QuadList varQuads = new QuadList();
-        this.target.compile(symbolTable, varQuads);
-
-        switch(lastQuad.op()){
-            case DEREFERENCE -> AssignStmt.compileStoreDereferenced(quads, varQuads);
-            case GET_FIELD-> AssignStmt.compileStoreField(quads, varQuads);
-            case INDEX -> AssignStmt.compileStoreIndex(quads, varQuads);
-            default -> quads.createStore(lastQuad.operand1());
-        }
+        AssignStmt.createStore(symbolTable, this.target, quads, lastQuad);
         quads.createPop(loadedSymbol);
     }
 }

@@ -39,7 +39,7 @@ public class VariableStmt extends Stmt{
                 quads.createMovRegisterAToC(loadedPointer);
                 quads.createPop(lastSymbol);
             }
-            quads.createStore(variable);
+            quads.createStoreVariable(variable);
         }
     }
 }
