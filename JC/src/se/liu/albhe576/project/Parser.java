@@ -56,7 +56,7 @@ public class Parser {
         Map.entry(TokenType.TOKEN_MOD, new ParseFunction(null, this::binary, Precedence.TERM)),
         Map.entry(TokenType.TOKEN_ELLIPSIS, new ParseFunction(null, null, Precedence.NONE))
     ));
-    private final Map<String, Token> defined;
+    private final Map<String, Deque<Token>> defined;
     private final List<String> included;
     private final String fileName;
     private final Map<String, Function> extern;
@@ -65,21 +65,29 @@ public class Parser {
     private Token current;
     private Token previous;
     private final List<Stmt> stmts;
+    private final Deque<Token> definedQueue;
 
     public Map<String, Function> getExtern(){return this.extern;}
-    public Map<String, Token> getDefined(){return this.defined;}
+    public Map<String, Deque<Token>> getDefined(){return this.defined;}
     public Map<String, Struct> getStructs(){return this.structs;}
 
     private void updateCurrent(){
         if(this.current.type() == TokenType.TOKEN_IDENTIFIER && this.defined.containsKey(this.current.literal())){
-            Token value = this.defined.get(this.current.literal());
-            this.current = new Token(value.type(), this.scanner.getLine(), value.literal());
+            Deque<Token> macro = this.defined.get(this.current.literal());
+            while(!macro.isEmpty()){
+                this.definedQueue.addFirst(macro.pop());
+            }
+            this.current = this.definedQueue.pop();
         }
     }
 
     private void advance() throws CompileException{
         previous = current;
-        current = scanner.parseToken();
+        if(!this.definedQueue.isEmpty()){
+            current = this.definedQueue.pop();
+        }else{
+            current = scanner.parseToken();
+        }
         this.updateCurrent();
     }
 
@@ -390,9 +398,18 @@ public class Parser {
     }
 
     private void parseDefine() throws CompileException {
-        consume(TokenType.TOKEN_IDENTIFIER, "expected identifier after define");
-        this.defined.put(this.previous.literal(), this.current);
-        advance();
+        int line = this.previous.line();
+        consume(TokenType.TOKEN_IDENTIFIER, "Expected name of macro!");
+        String name = this.previous.literal();
+        Deque<Token> macro = new ArrayDeque<>();
+        while(this.scanner.getLine() == line){
+            macro.addLast(this.current);
+            advance();
+        }
+        if(macro.isEmpty()){
+            Compiler.error("Can't declare an empty macro!", line, this.fileName);
+        }
+        this.defined.put(name, macro);
     }
     private void parseExtern() throws CompileException {
         if(!(isVariableType() || this.structs.containsKey(this.current.literal()))) {
@@ -516,6 +533,7 @@ public class Parser {
 
     public Parser(Scanner scanner, List<String> included, Map<String, Struct> structs, String fileName){
         this.included = included;
+        this.definedQueue = new ArrayDeque<>();
         this.stmts = new ArrayList<>();
         this.defined = new HashMap<>();
         this.extern = new HashMap<>();

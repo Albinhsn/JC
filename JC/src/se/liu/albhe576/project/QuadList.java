@@ -30,21 +30,7 @@ public class QuadList extends ArrayList<Quad>{
         lSymbol = this.createPop(lSymbol);
         return AssignStmt.convertValue(lSymbol, target, this);
     }
-    public void createSetupBinary(QuadList right, Symbol lSymbol, Symbol rSymbol) {
-        this.createPush(lSymbol);
-        this.addAll(right);
-        this.createMovRegisterAToC(rSymbol);
-        lSymbol = this.createPop(lSymbol);
-        AssignStmt.convertValue(lSymbol, rSymbol, this);
-    }
-    // WHy?
-    public void createSetupUnary(SymbolTable symbolTable, Symbol result){
-        int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), result.type);
-        this.createPush(result);
-        Symbol immSymbol = this.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
-        this.createMovRegisterAToC(immSymbol);
-        this.createPop(result);
-    }
+    public void createSetupBinary(QuadList right, Symbol lSymbol, Symbol rSymbol) {createSetupBinary(right, lSymbol, rSymbol, rSymbol);}
     public void createStore(Symbol symbol){this.addQuad(QuadOp.STORE, symbol, null, Compiler.generateSymbol(symbol.type));}
     public Symbol createMovRegisterAToC(Symbol firstOperand){
         Symbol out = Compiler.generateSymbol(firstOperand.type);

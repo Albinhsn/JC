@@ -57,7 +57,10 @@ public class UnaryExpr extends Expr{
 
         Symbol movedImm = null;
         if(lastResult.type.isPointer()){
-            quads.createSetupUnary(symbolTable, lastResult);
+            quads.createPush(lastResult);
+            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), lastResult.type);
+            Symbol immSymbol = quads.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
+            quads.createMovRegisterAToC(immSymbol);
             movedImm = Compiler.generateSymbol(DataType.getInt());
             op = op == QuadOp.INC ? QuadOp.ADD : QuadOp.SUB;
         }
