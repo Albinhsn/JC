@@ -86,7 +86,7 @@ public class Compiler {
 
         QuadList intermediates = function.getIntermediates();
         for (Quad intermediate : intermediates) {
-            stringBuilder.append(String.format("; %s\n", intermediate));
+            // stringBuilder.append(String.format("; %s\n", intermediate));
             stringBuilder.append(intermediate.emit(stack, functions, constants)).append("\n");
         }
 

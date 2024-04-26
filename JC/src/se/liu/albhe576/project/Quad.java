@@ -231,6 +231,12 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             case OR -> {return "or rax, rcx";}
             case XOR -> {return "xor rax, rcx";}
             case SHR -> {return "shr rax, cl";}
+            case PUSH_RCX -> {
+                return "push rcx";
+            }
+            case POP_RCX -> {
+                return "pop rcx";
+            }
             case PUSH -> {
                 if (this.result.type.isFloat()) {
                     return "sub rsp, 4\nmovss [rsp], xmm0";

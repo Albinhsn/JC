@@ -32,8 +32,8 @@ public class QuadList extends ArrayList<Quad>{
     public void createStoreVariable(Symbol symbol){this.addQuad(QuadOp.STORE, symbol, null, Compiler.generateSymbol(symbol.type));}
     public void createMovRegisterAToC(Symbol firstOperand){this.addQuad(QuadOp.MOV_REG_CA, firstOperand, null, Compiler.generateSymbol(firstOperand.type));}
     public Symbol createLoadImmediate(DataType type, String immediate){
-        Symbol out = Compiler.generateSymbol(type);
-        this.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(type, immediate), null, out);
+        Symbol out = Compiler.generateImmediateSymbol(type, immediate);
+        this.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(type, immediate), null,out);
         return out;
     }
     public void createIMUL(int immediate){this.addQuad(QuadOp.IMUL , Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(immediate)), null,Compiler.generateSymbol(DataType.getInt()));}
@@ -69,9 +69,13 @@ public class QuadList extends ArrayList<Quad>{
                 return this.getLastResult();
             }
             case LONG -> {
-                Quad lastQuad = this.pop();
-                this.addQuad(lastQuad.op(), lastQuad.operand1(), lastQuad.operand2(), Compiler.generateSymbol(DataType.getLong()));
+                this.addQuad(QuadOp.ZX_INT, null, null, Compiler.generateSymbol(DataType.getLong()));
                 return this.getLastResult();
+            }
+            case STRUCT -> {
+                if(value.isNull()){
+                    return this.getLastResult();
+                }
             }
         }
         throw new CompileException(String.format("Can't convert int to %s", target.type.name));

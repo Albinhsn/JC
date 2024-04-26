@@ -68,7 +68,11 @@ public class AssignStmt extends Stmt{
     private static void storeIndex(QuadList quads, QuadList variableQuads, Symbol toStore, Symbol result, Symbol target) throws CompileException {
         Symbol lSymbol = quads.createSetupBinary(variableQuads, toStore, variableQuads.getLastResult());
         toStore = AssignStmt.convertValue(lSymbol, target, quads);
-        quads.createStoreIndex(toStore, result);
+        if(toStore.type.isStruct()){
+            quads.addQuad(QuadOp.MOVE_STRUCT, toStore, result, null);
+        }else{
+            quads.createStoreIndex(toStore, result);
+        }
     }
 
     public static void createStore(SymbolTable symbolTable, Expr variableExpr, QuadList valueQuads, Quad lastQuad) throws CompileException {

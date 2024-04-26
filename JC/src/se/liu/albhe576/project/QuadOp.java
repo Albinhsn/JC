@@ -13,7 +13,7 @@ public enum QuadOp {
     NEGATE, LOGICAL_NOT,AND, OR, XOR,
     SETNE, SETB, SETBE, SETA, SETAE, SETE, SETLE, SETGE, SETG, SETL,
     JL, JLE, JG, JGE, JNZ, JE, JA, JAE, JB, JBE,JNE,
-    LABEL, POP,PUSH,CALL, RET,
+    LABEL, POP,PUSH,PUSH_RCX, POP_RCX, CALL, RET,
     LOAD_IMM, LOAD, STORE;
 
     private static final Map<TokenType, QuadOp> QUAD_OP_FROM_TOKEN_MAP = Map.ofEntries(

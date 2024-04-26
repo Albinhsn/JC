@@ -432,6 +432,22 @@ void test_structs(){
     foo = bar.foo;
     print_testi(foo.a + foo.b, 7, "foo = bar.foo");
 
+    Foo * foo2 = malloc(16);
+    foo2.a = 1;
+    foo2.b = 2;
+
+    foo2[1].a = 1;
+    foo2[1].b = 2;
+
+    foo2[0] = foo;
+    print_testi(foo2[0].a + foo2[0].b, 7, "foo2[0] = foo");
+
+    foo.a = 3;
+    foo.b = 3;
+    *(++foo2) = foo;
+    print_testi(foo2.a + foo2.b, 6, "*(++foo2)");
+
+
 }
 
 void test_pointer(){

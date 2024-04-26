@@ -90,6 +90,7 @@ public class Stack {
 
                 String out = String.format("%s %s, [rax + %d]",move, movePair.register(), this.getFieldOffset(struct, memberName));
                 if(field.type().isByte()){
+                    // ToDO hoist
                     out += String.format("\nmovzx %s, %s", Quad.getRegisterFromType(DataType.getInt(), 0), movePair.register());
                 }
                 return out;

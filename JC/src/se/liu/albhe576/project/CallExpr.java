@@ -61,8 +61,14 @@ public class CallExpr extends Expr{
                }
                floatCount++;
            } else {
+               if(generalCount >= 4){
+                   quads.addQuad(QuadOp.PUSH_RCX, null,null, Compiler.generateSymbol(DataType.getLong()));
+               }
                quads.addAll(argQuads);
                quads.addQuad(LINUX_GENERAL_ARGUMENT_LOCATIONS[generalCount], result, null, null);
+               if(generalCount >= 4){
+                   quads.addQuad(QuadOp.POP_RCX, null,null, Compiler.generateSymbol(DataType.getLong()));
+               }
                generalCount++;
            }
        }

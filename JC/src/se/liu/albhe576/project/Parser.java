@@ -122,6 +122,9 @@ public class Parser {
 
     private DataType parseType() throws CompileException{
         DataType dataType = DataType.getDataTypeFromToken(this.current);
+        if(dataType.isStruct() && !this.structs.containsKey(dataType.name)){
+            Compiler.error(String.format("Can't declare struct field of non existing type '%s'", dataType.name), this.scanner.getLine(), this.fileName);
+        }
         advance();
         return this.parsePointerType(dataType);
     }

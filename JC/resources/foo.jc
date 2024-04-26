@@ -30,7 +30,7 @@ void print_testl(long got, long expected, string name){
         printf("FAILED: got %ld expected %ld with %s\n", got, expected, name);
     }
 }
-void print_testb(byte got, int expected, string name){
+void print_testb(byte got, byte expected, string name){
     if(got != expected){
         printf("FAILED: got %d expected %d with %s\n", got, expected, name);
     }

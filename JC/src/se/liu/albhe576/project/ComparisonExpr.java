@@ -40,7 +40,8 @@ public class ComparisonExpr extends Expr {
             op = convertOpToFloat(op);
         }
 
-        Symbol resultType = Compiler.generateSymbol(DataType.getHighestDataTypePrecedence(lResult.type, rResult.type));
+        DataType highestPrecedenceType = DataType.getHighestDataTypePrecedence(lResult.type, rResult.type);
+        Symbol resultType = Compiler.generateSymbol(highestPrecedenceType);
         rResult = AssignStmt.convertValue(rResult, resultType, rQuads);
 
         lResult = quads.createSetupBinary(rQuads, lResult, rResult);

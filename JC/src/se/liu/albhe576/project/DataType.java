@@ -77,10 +77,13 @@ public class DataType {
             return l.isPointer() ? l : r;
         }
         if(l.isDouble() || r.isDouble()){
-            return getFloat();
+            return getDouble();
         }
         if(l.isFloat() || r.isFloat()){
             return getFloat();
+        }
+        if(l.isLong() || r.isLong()){
+            return getLong();
         }
         if(l.isInteger() || r.isInteger()){
             return getInt();

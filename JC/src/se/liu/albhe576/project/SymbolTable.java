@@ -175,6 +175,7 @@ public class SymbolTable {
     }
     public Symbol getMemberSymbol(Symbol structSymbol, String member) throws CompileException {
         Struct struct = this.structs.get(structSymbol.getType().name);
+        // This calculates the actual offset form the struct we had
         for(StructField field : struct.getFields()){
             if(field.name().equals(member)){
                return new Symbol(member, field.type());
