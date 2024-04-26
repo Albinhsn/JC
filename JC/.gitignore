@@ -31,3 +31,5 @@ bin/
 test.*
 main
 out.*
+test
+
