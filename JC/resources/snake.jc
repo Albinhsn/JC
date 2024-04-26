@@ -186,7 +186,6 @@ void handle_input(byte * response, Grid * grid){
 
 int main(){
 
-
   int tick_timer = 200;
   int grid_width = 20;
   int grid_height= 20;
@@ -200,6 +199,7 @@ int main(){
 
   Grid grid;
   init_grid(&grid, current_timestamp, grid_width, grid_height);
+  debug_grid(&grid);
 
   x11_window window;
   int result = create_x11_window(&window, 200, 200, 400, 400);
@@ -229,6 +229,7 @@ int main(){
         printf("Failed to draw\n");
         return 1;
     }
+
 
     gettimeofday(&tv, 0);
     timestamp = get_millis(tv);

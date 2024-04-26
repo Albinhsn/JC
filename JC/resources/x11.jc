@@ -78,20 +78,11 @@ void write_i16_to_bytes(short x, byte * b){
     b[1] = (x >> 8) & 0xFF;
 }
 
-void place_long(int * numb, byte * b){
-    *numb = 0;
-    for(int i = 0; i < 8; i++){
-        *numb |= b[i] << (i * 8);
-    }
-}
-void place_int(int * numb, byte * b){
-    *numb = 0;
-    for(int i = 0; i < 4; i++){
-        *numb |= b[i] << (i * 8);
-    }
+void place_int(long * numb, byte * b){
+    *numb = *(int*)b;
 }
 void place_short(short * numb, byte * b){
-    *numb = (b[0] | ((short)b[1] << 8 ));
+    *numb = *(short*)b;
 }
 
 struct sockaddr_un{
@@ -127,16 +118,14 @@ struct x11_connection_req_t{
 
 
 struct x11_data{
-    int id; // 32 bit
-    int id_base; // 32 bit
-    int id_mask;
-    int root_visual_id;
+    long id; // 32 bit
+    long id_base; // 32 bit
+    long id_mask;
+    long root_visual_id;
 }
 
 
 void init_data(x11_data * data, byte * res, int server_read){
-
-
     // eax global id 0
     // edi id_base 0x1c00000, 29360128
     // edx id_mask 0x1fffff, 2097151
@@ -144,6 +133,8 @@ void init_data(x11_data * data, byte * res, int server_read){
     // id_base is offset 4, int
     data.id_base = 0;
     place_int(&data.id_base, &res[4]);
+
+    printf("cast: %ld\n", *(int*)&res[8]);
 
     // id_mask is offset 8, int
     data.id_mask = 0;
@@ -174,16 +165,9 @@ int x11_next_id(x11_data * data){
     return out;
 }
 
-
-void write_i64_to_bytes(int a, byte * b){
-    for(int i = 0; i < 8; i++){
-        b[i] = (a >> (i * 8)) & 0xFF;
-    }
-}
-
 void write_i32_to_bytes(int a, byte * b){
     for(int i = 0; i < 4; i++){
-        b[i] = (a >> (i * 8)) & 0xFF;
+        b[i] = (a >> (i * 8));
     }
 }
 
@@ -387,14 +371,6 @@ Reply poll_messages(int fd, int window_id, int gc_id){
     printf("%d\n", reply.response[0]);
     return reply;
 }
-     // 1     56                              opcode
-     // 1                                     unused
-     // 2     3+n                             request length
-     // 4     GCONTEXT                        gc
-     // 4     BITMASK                         value-mask (has n bits set to 1)
-          // encodings are the same as for CreateGC
-     // 4n     LISTofVALUE                    value-list
-       //    encodings are the same as for CreateGC
 
 #define X11_OP_REQ_CHANGE_GC 56
 void x11_change_color(int fd, int gc_id, int window_root_id, int font_id, int color){
@@ -419,26 +395,6 @@ void x11_change_color(int fd, int gc_id, int window_root_id, int font_id, int co
         printf("Failed to write everything in change color!\n");
         return;
     }
-}
-
-// 1     85                              opcode
-// 1                                     unused
-// 2     3+(n+p)/4                       request length
-// 4     COLORMAP                        cmap
-// 2     n                               length of name
-// 2                                     unused
-// n     STRING8                         name
-// p                                     unused, p=pad(n)
-
-struct AllocNamedColorReply{
-  short seq_number;
-  int pixel; // 32 bit
-  short exact_red;
-  short exact_green;
-  short exact_blue;
-  short visual_red;
-  short visual_green;
-  short visual_blue;
 }
 
 #define X11_OP_REQ_POLY_RECTANGLE 70
@@ -554,12 +510,18 @@ int create_x11_window(x11_window * window, int x, int y, int w, int h){
   byte * server_res = malloc(server_res_size);
 
   int server_read = read(window.fd, server_res, server_res_size);
+    for(int i = 4; i < 8; i++){
+        printf("(%x,%d)",0xFF & server_res[i], server_res[i]);
+    }
+    printf("\n");
+
   if(server_read <= 0){
     printf("Failed to do the big read, read %d\n", server_read);
   }
 
   x11_data data;
   init_data(&data, server_res, server_read);
+  printf("id: %ld, base: %ld, mask: %ld, root_visual_id: %d\n", data.id, data.id_base, data.id_mask, data.root_visual_id);
   free(server_res);
 
   window.window_root_id = data.id;
