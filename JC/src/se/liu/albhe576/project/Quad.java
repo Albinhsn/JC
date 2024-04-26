@@ -158,10 +158,10 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 VariableSymbol variableSymbol = (VariableSymbol) operand1;
                 String out = stack.loadVariable(variableSymbol.id);
                 if(operand1.type.isByte()){
-                    return out + "\nmovzx rax, al";
+                    return out + "\nmovsx rax, al";
                 }
                 if(operand1.type.isShort()){
-                    return out + "\nand rax, 0xFFFF";
+                    return out + "\nmovsx rax, ax";
                 }
                 return out;
             }
@@ -169,9 +169,6 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             case GET_FIELD -> {return stack.loadField(operand1.type, operand2.name);}
             case STORE -> {
                 VariableSymbol variableSymbol = (VariableSymbol) operand1;
-                if (result.type.isByte()) {
-                    return "movzx rax, al\n" + stack.storeVariable(variableSymbol.id);
-                }
                 return stack.storeVariable(variableSymbol.id);
             }
             case STORE_INDEX -> {
@@ -187,6 +184,12 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 }
                 if (operand1 != null && operand1.type.isInteger()) {
                     return "cmp eax, ecx";
+                }
+                if (operand1 != null && operand1.type.isShort()) {
+                    return "cmp ax, cx";
+                }
+                if (operand1 != null && operand1.type.isByte()) {
+                    return "cmp al, cl";
                 }
 
                 return "cmp rax, rcx";
@@ -204,25 +207,25 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             case JBE -> {return String.format("jbe %s", operand1.name);}
             case JNE -> {return String.format("jne %s", operand1.name);}
             case LABEL -> {return operand1.name + ":";}
-            case SETLE -> {return "setle al\nmovzx rax, al";}
-            case SETG -> {return "setg al\nmovzx rax, al";}
-            case SETGE -> {return "setge al\nmovzx rax, al";}
-            case SETL -> {return "setl al\nmovzx rax, al";}
-            case SETE -> {return "sete al\nmovzx rax, al";}
-            case SETA -> {return "seta al\nmovzx rax, al";}
-            case SETNE -> {return "setne al\nmovzx rax, al";}
-            case SETAE -> {return "setae al\nmovzx rax, al";}
-            case SETB -> {return "setb al\nmovzx rax, al";}
-            case SETBE -> {return "setbe al\nmovzx rax, al";}
+            case SETLE -> {return "setle al\nmovsx rax, al";}
+            case SETG -> {return "setg al\nmovsx rax, al";}
+            case SETGE -> {return "setge al\nmovsx rax, al";}
+            case SETL -> {return "setl al\nmovsx rax, al";}
+            case SETE -> {return "sete al\nmovsx rax, al";}
+            case SETA -> {return "seta al\nmovsx rax, al";}
+            case SETNE -> {return "setne al\nmovsx rax, al";}
+            case SETAE -> {return "setae al\nmovsx rax, al";}
+            case SETB -> {return "setb al\nmovsx rax, al";}
+            case SETBE -> {return "setbe al\nmovsx rax, al";}
             case CONVERT_DOUBLE_TO_FLOAT-> {return "cvtsd2ss xmm0, xmm0";}
             case CONVERT_DOUBLE_TO_LONG-> {return "cvttsd2si rax, xmm0";}
             case CONVERT_FLOAT_TO_DOUBLE -> {return "cvtss2sd xmm0, xmm0";}
             case CONVERT_FLOAT_TO_INT-> {return "cvtss2si eax, xmm0";}
             case CONVERT_INT_TO_FLOAT -> {return "cvtsi2ss xmm0, eax";}
             case CONVERT_LONG_TO_DOUBLE -> {return "cvtsi2sd xmm0, rax";}
-            case ZX_SHORT -> {return "and rax, 0xFFFF";}
-            case ZX_INT-> {return "mov eax, eax";}
-            case ZX_BYTE -> {return "movzx rax, al";}
+            case ZX_SHORT -> {return "movsx rax, ax";}
+            case ZX_INT-> {return "movsx rax, eax";}
+            case ZX_BYTE -> {return "movsx rax, al";}
             case SHL -> {return "shl rax, cl";}
             case AND -> {return "and rax, rcx";}
             case OR -> {return "or rax, rcx";}
@@ -245,10 +248,10 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                     return "movsd xmm0, [rsp]\nadd rsp, 8";
                 }
                 if (this.result.type.isByte()) {
-                    return "pop rax\nmovzx rax, al";
+                    return "pop rax\nmovsx rax, al";
                 }
                 if (this.result.type.isShort()) {
-                    return "pop rax\nand rax, 0xFF";
+                    return "pop rax\nmovsx rax, ax";
                 }
                 return "pop rax";
             }
@@ -257,7 +260,10 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 String register2 = getRegisterFromType(operand1.type, 1);
                 String out = String.format("%s %s, %s", movePair.move(), register2, movePair.register());
                 if (operand1.type.isByte()) {
-                    out += "\nmovzx rcx, cl";
+                    return "movsx rcx, al";
+                }
+                if (operand1.type.isShort()) {
+                    return "movsx rcx, ax";
                 }
                 return out;
             }
@@ -304,12 +310,79 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                     return "cvtss2sd xmm5, xmm0";
                 }
             }
-            case MOV_RDI -> {return operand1.type.isByte() ? "movzx rax, al\nmov rdi, rax" : "mov rdi, rax";}
-            case MOV_RSI -> {return operand1.type.isByte() ? "movzx rax, al\nmov rsi, rax" : "mov rsi, rax";}
-            case MOV_RCX -> {return operand1.type.isByte() ? "movzx rax, al\nmov rcx, rax" : "mov rcx, rax";}
-            case MOV_RDX -> {return operand1.type.isByte() ? "movzx rax, al\nmov rdx, rax" : "mov rdx, rax";}
-            case MOV_R8 -> {return operand1.type.isByte() ? "movzx rax, al\nmov r8, rax" : "mov r8, rax";}
-            case MOV_R9 -> {return operand1.type.isByte() ? "movzx rax, al\\nmov r9, rax" : "mov r9, rax";}
+            case MOV_RDI -> {
+                if(operand1.type.isByte()){
+                    return "movsx rdi, al";
+                }
+                if(operand1.type.isShort()){
+                    return "movsx rdi, ax";
+                }
+                if(operand1.type.isInteger()){
+                    return "movsx rdi, eax";
+                }
+                return "mov rdi, rax";
+            }
+            case MOV_RSI -> {
+                if(operand1.type.isByte()){
+                    return "movsx rsi, al";
+                }
+                if(operand1.type.isShort()){
+                    return "movsx rsi, ax";
+                }
+                if(operand1.type.isInteger()){
+                    return "movsx rsi, eax";
+                }
+                return "mov rsi, rax";
+
+            }
+            case MOV_RCX -> {
+                if(operand1.type.isByte()){
+                    return "movsx rcx, al";
+                }
+                if(operand1.type.isShort()){
+                    return "movsx rcx, ax";
+                }
+                if(operand1.type.isInteger()){
+                    return "movsx rcx, eax";
+                }
+                return "mov rcx, rax";
+            }
+            case MOV_RDX -> {
+                if(operand1.type.isByte()){
+                    return "movsx rdx, al";
+                }
+                if(operand1.type.isShort()){
+                    return "movsx rdx, ax";
+                }
+                if(operand1.type.isInteger()){
+                    return "movsx rdx, eax";
+                }
+                return "mov rdx, rax";
+            }
+            case MOV_R8 -> {
+                if(operand1.type.isByte()){
+                    return "movsx r8, al";
+                }
+                if(operand1.type.isShort()){
+                    return "movsx r8, ax";
+                }
+                if(operand1.type.isInteger()){
+                    return "movsx r8, eax";
+                }
+                return "mov r8, rax";
+            }
+            case MOV_R9 -> {
+                if(operand1.type.isByte()){
+                    return "movsx r9, al";
+                }
+                if(operand1.type.isShort()){
+                    return "movsx r9, ax";
+                }
+                if(operand1.type.isInteger()){
+                    return "movsx r9, eax";
+                }
+                return "mov r9, rax";
+            }
             case CALL -> {
                 int stackAligment = getFunctionArgumentsStackSize(operand1.name, functions, stack);
                 if (stackAligment != 0) {
@@ -319,7 +392,18 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 return String.format("call %s", operand1.name);
             }
             case LOGICAL_NOT -> {return "xor rax, 1";}
-            case NEGATE -> {return "not rax\ninc rax";}
+            case NEGATE -> {
+                if(operand1.type.isByte()){
+                    return "not al\ninc al";
+                }
+                if(operand1.type.isShort()){
+                    return "not ax\ninc ax";
+                }
+                if(operand1.type.isInteger()){
+                    return "not eax\ninc eax";
+                }
+                return "not rax\ninc rax";
+            }
             case ALLOCATE -> {
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand1;
                 return String.format("sub rsp, %s", immediateSymbol.getValue());

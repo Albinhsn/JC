@@ -52,12 +52,12 @@ public class CallExpr extends Expr{
 
            if (result.type.isFloat() || result.type.isDouble()) {
                if(floatCount >= 1){
-                   quads.createPush(Compiler.generateSymbol(DataType.getFloat()));
+                   quads.createPush(Compiler.generateSymbol(DataType.getDouble()));
                }
                quads.addAll(argQuads);
                quads.addQuad(LINUX_FLOATING_POINT_ARGUMENT_LOCATIONS[floatCount], result, null, null);
                if(floatCount >= 1){
-                   quads.createPop(Compiler.generateSymbol(DataType.getFloat()));
+                   quads.createPop(Compiler.generateSymbol(DataType.getDouble()));
                }
                floatCount++;
            } else {

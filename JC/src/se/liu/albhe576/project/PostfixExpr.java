@@ -27,7 +27,7 @@ public class PostfixExpr extends Expr{
 
         if(loadedSymbol.type.isPointer()){
             // Add by the size of the underlying type rather than 1 to maintain correct alignment
-            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), loadedSymbol.type);
+            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), loadedSymbol.type.getTypeFromPointer());
             quads.createMovRegisterAToC(loadedSymbol);
             Symbol loadedImmediate = quads.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
             quads.createAdd(loadedSymbol, loadedImmediate);

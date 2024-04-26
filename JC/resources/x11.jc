@@ -384,6 +384,7 @@ Reply poll_messages(int fd, int window_id, int gc_id){
 
     free(req);
     read_reply(&reply, fd);
+    printf("%d\n", reply.response[0]);
     return reply;
 }
      // 1     56                              opcode
@@ -440,25 +441,6 @@ struct AllocNamedColorReply{
   short visual_blue;
 }
 
-#define X11_OP_REQ_ALLOC_NAMED_COLOR 85
-int allocate_named_color(int color_map, string name, short name_length){
-  byte * req = malloc(1024);
-
-  int n = 0;
-  int p = 0;
-  int packets = 3 + (n + p) / 4; // 3 + 2 * 1
-
-  int COLORMAP = color_map;
-
-  int fst = (packets << 16) | X11_OP_REQ_ALLOC_NAMED_COLOR;
-  write_i32_to_bytes(fst, req);
-
-  int expected_response_size = 32;
-  //int got_response_size = read();
-
-}
-
-
 #define X11_OP_REQ_POLY_RECTANGLE 70
 
 int x11_draw_rect(x11_window * window, short x, short y, short w, short h){
@@ -492,7 +474,6 @@ int x11_draw_rect(x11_window * window, short x, short y, short w, short h){
 }
 
 #define X11_OP_REQ_IMAGE_TEXT8 0x4c
-
 int x11_draw_text(x11_window * window, string s, int s_length, int x, int y){
 
   byte * req = malloc(1024);

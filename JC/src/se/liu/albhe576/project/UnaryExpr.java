@@ -44,7 +44,8 @@ public class UnaryExpr extends Expr{
         quads.addQuad(QuadOp.DEREFERENCE, quads.getLastOperand1(), null, Compiler.generateSymbol(lastResult.type.getTypeFromPointer()));
     }
     private void compileNegate(QuadList quads, Symbol lastResult) throws CompileException {
-        if(!(lastResult.type.isInteger() || lastResult.type.isByte())){
+        // ToDo hoist
+        if(!(lastResult.type.isInteger() || lastResult.type.isByte() || lastResult.type.isShort() || lastResult.type.isLong())){
             Compiler.error("Can't negate non int/byte", this.line, this.file);
         }
         quads.addQuad(QuadOp.NEGATE, lastResult, null, lastResult);
@@ -57,7 +58,7 @@ public class UnaryExpr extends Expr{
         if(lastResult.type.isPointer()){
             op = op == QuadOp.INC ? QuadOp.ADD : QuadOp.SUB;
             QuadList immQuads = new QuadList();
-            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), lastQuad.operand1().type);
+            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), lastResult.type.getTypeFromPointer());
             movedImm = immQuads.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
             quads.createSetupBinary(immQuads, lastResult, movedImm);
         }

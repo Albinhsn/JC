@@ -838,13 +838,665 @@ void test_assign_arg(Foo foo){
 
 void test_assign_arg_long(long a){
     a = 5;
-    print_testl(a, 5, "long assign local");
+    print_testl(a, 5, "long assign arg");
+}
+void test_assign_arg_int(int a){
+    a = 5;
+    print_testi(a, 5, "int assign arg");
+}
+void test_assign_arg_short(short a){
+    a = 5;
+    print_tests(a, 5, "short assign arg");
 }
 
+void test_assign_arg_byte(byte a){
+    a = 5;
+    print_testb(a, 5, "byte assign arg");
+}
+void test_assign_arg_float(float a){
+    a = 5.0;
+    print_testf(a, 5.0, "float assign arg");
+}
+void test_assign_arg_double(double a){
+    a = 5.0;
+    print_testd(a, 5.0, "double assign arg");
+}
+
+byte test_return_byte(){
+    return 2;
+}
+short test_return_short(){
+    return 2;
+}
+int test_return_int(){
+    return 2;
+}
+float test_return_float(){
+    return 2.0;
+}
+double test_return_double(){
+    return 2.0;
+}
+long test_return_long(){
+    return 2;
+}
+
+
 struct FooLong{
-    short b;
     long a;
-    byte c;
+    int b;
+    short c;
+    byte d;
+    float e;
+    double f;
+}
+
+void test_double(){
+
+    // Array
+    double arr[3] = [1,2,3];
+    print_testd(arr[0] + arr[2],4, "double array index");
+    // Assign
+    //      Local
+    double a = 5;
+    a = 10;
+    print_testd(a, 10, "double assign local");
+
+    //      Argument
+    test_assign_arg_double(a);
+
+    //      Index
+    arr[1] = 5;
+    print_testd(arr[1], 5, "double assign index");
+    //      Dereference
+    double * p = &arr[0];
+    *p = 10;
+    print_testd(arr[0], 10, "double assign dereference");
+    //      Struct
+    FooLong foo;
+    foo.b = 5;
+    print_testd(foo.b, 5, "double assign struct");
+
+    // Binary
+    //      Arithmetic
+    a = 5 * 2.0 - 4.0;
+    print_testd(a, 6, "double arithmetic");
+    //      Augmented
+    a += 4;
+    print_testd(a, 10, "double augmented +");
+
+    // Cast
+    //      All the types :)
+    a = 15.0;
+    float f = a;
+    print_testf(f, 15.0, "double assign to float");
+    double d = a;
+    print_testd(d, 15.0, "double assign to double");
+    int b = a;
+    print_testd(b, 15, "double assign to int");
+    short s = a;
+    print_testd(s, 15, "double assign to short");
+    byte bb = a;
+    print_testb(bb, 15, "double assign to byte");
+
+    // Comparison
+    //      All the things and all the types
+    double comp_res = a < 5;
+    print_testd(comp_res, 0, "double comp < double");
+
+    comp_res = a >= 5.0;
+    print_testd(comp_res, 1, "double comp >= double");
+
+    double comp_double = 5;
+    comp_res = a != comp_double;
+    print_testd(comp_res, 1, "double comp != double");
+
+    double comp_s = 5;
+    comp_res = a > comp_s;
+    print_testd(comp_res, 1, "double comp > double");
+
+    // IndexExpr
+    //      Index with a double as index
+    double barr[3] = [1,2,3];
+    double idx = 2;
+    print_testd(barr[idx], 3, "double index");
+
+    // LogicalExpr
+    //      All the things
+    double answer;
+    if(idx <= 2.0 && idx > 0){
+       answer = 1;
+    }else{
+       answer = 0;
+    }
+    print_testd(answer, 1, "double logical and, double and double");
+
+    // Postfix
+    //      ++, --
+    double post = 0;
+    print_testd(++post, 1, "double ++post");
+    print_testd(post++, 1, "double post++");
+    print_testd(post, 2, "double post++ (afterwards)");
+
+    double post_arr[2] = [1,3];
+    print_testd(post_arr[0]++, 1, "double post_arr[0]++");
+    print_testd(post_arr[0], 2, "double post_arr[0]++ (afterwards)");
+    print_testd(++post_arr[0], 3, "double ++post_arr[0]");
+
+    post_arr[0] = 0;
+    double * post_p = &post_arr[0];
+    print_testd((*post_p)++, 0, "double (*post_p)++");
+    print_testd(*post_p, 1, "double (*post_p) (afterwards)");
+    print_testd(++(*post_p), 2, "double ++(*post_p)");
+    print_testd(*(post_p++), 2, "double *(post_p++)");
+    print_testd(*post_p, 3, "double *(post_p++) afterwards");
+    print_testd(*(--post_p), 2, "double *(--post_p)");
+
+    FooLong foo2;
+    foo2.f = 0;
+    print_testd(foo2.f++, 0, "double foo2.f++");
+    print_testd(foo2.f, 1, "double foo2.f++ (afterwards)");
+    print_testd(++foo2.f, 2, "double ++foo2.f");
+
+    // Return
+    //  As double and with casts
+    print_testd(test_return_long(), 2, "double return long");
+    print_testd(test_return_byte(), 2, "double return byte");
+    print_testd(test_return_short(), 2, "double return short");
+    print_testd(test_return_int(), 2, "double return int");
+    print_testd(test_return_double(), 2, "double return double");
+
+}
+
+void test_float(){
+
+    // Array
+    float arr[3] = [1,2,3];
+    print_testf(arr[0] + arr[2],4, "float array index");
+    // Assign
+    //      Local
+    float a = 5;
+    a = 10;
+    print_testf(a, 10, "float assign local");
+
+    //      Argument
+    test_assign_arg_float(a);
+
+    //      Index
+    arr[1] = 5;
+    print_testf(arr[1], 5, "float assign index");
+    //      Dereference
+    float * p = &arr[0];
+    *p = 10;
+    print_testf(arr[0], 10, "float assign dereference");
+    //      Struct
+    FooLong foo;
+    foo.b = 5;
+    print_testf(foo.b, 5, "float assign struct");
+
+    // Binary
+    //      Arithmetic
+    a = 5 * 2.0 - 4.0;
+    print_testf(a, 6, "float arithmetic");
+    //      Augmented
+    a += 4;
+    print_testf(a, 10, "float augmented +");
+
+    // Cast
+    //      All the types :)
+    a = 15.0;
+    float f = a;
+    print_testf(f, 15.0, "float assign to float");
+    double d = a;
+    print_testd(d, 15.0, "float assign to double");
+    int b = a;
+    print_testf(b, 15, "float assign to int");
+    short s = a;
+    print_testf(s, 15, "float assign to short");
+    byte bb = a;
+    print_testb(bb, 15, "float assign to byte");
+
+    // Comparison
+    //      All the things and all the types
+    float comp_res = a < 5;
+    print_testf(comp_res, 0, "float comp < float");
+
+    comp_res = a >= 5.0;
+    print_testf(comp_res, 1, "float comp >= float");
+
+    float comp_float = 5;
+    comp_res = a != comp_float;
+    print_testf(comp_res, 1, "float comp != float");
+
+    float comp_s = 5;
+    comp_res = a > comp_s;
+    print_testf(comp_res, 1, "float comp > float");
+
+    // IndexExpr
+    //      Index with a float as index
+    float barr[3] = [1,2,3];
+    float idx = 2;
+    print_testf(barr[idx], 3, "float index");
+
+    // LogicalExpr
+    //      All the things
+    float answer;
+    if(idx <= 2.0 && idx > 0){
+       answer = 1;
+    }else{
+       answer = 0;
+    }
+    print_testf(answer, 1, "float logical and, float and float");
+
+    // Postfix
+    //      ++, --
+    float post = 0;
+    print_testf(++post, 1, "float ++post");
+    print_testf(post++, 1, "float post++");
+    print_testf(post, 2, "float post++ (afterwards)");
+
+    float post_arr[2] = [1,3];
+    print_testf(post_arr[0]++, 1, "float post_arr[0]++");
+    print_testf(post_arr[0], 2, "float post_arr[0]++ (afterwards)");
+    print_testf(++post_arr[0], 3, "float ++post_arr[0]");
+
+    post_arr[0] = 0;
+    float * post_p = &post_arr[0];
+    print_testf((*post_p)++, 0, "float (*post_p)++");
+    print_testf(*post_p, 1, "float (*post_p) (afterwards)");
+    print_testf(++(*post_p), 2, "float ++(*post_p)");
+    print_testf(*(post_p++), 2, "float *(post_p++)");
+    print_testf(*post_p, 3, "float *(post_p++) afterwards");
+    print_testf(*(--post_p), 2, "float *(--post_p)");
+
+    FooLong foo2;
+    foo2.e = 0;
+    print_testf(foo2.e++, 0, "float foo2.e++");
+    print_testf(foo2.e, 1, "float foo2.e++ (afterwards)");
+    print_testf(++foo2.e, 2, "float ++foo2.e");
+
+    // Return
+    //  As float and with casts
+    print_testf(test_return_long(), 2, "float return long");
+    print_testf(test_return_byte(), 2, "float return byte");
+    print_testf(test_return_short(), 2, "float return short");
+    print_testf(test_return_int(), 2, "float return int");
+    print_testf(test_return_double(), 2, "float return double");
+
+}
+
+void test_int(){
+
+    // Array
+    int arr[3] = [1,2,3];
+    print_testi(arr[0] + arr[2],4, "int array index");
+    // Assign
+    //      Local
+    int a = 5;
+    a = 10;
+    print_testi(a, 10, "int assign local");
+
+    //      Argument
+    test_assign_arg_int(a);
+
+    //      Index
+    arr[1] = 5;
+    print_testi(arr[1], 5, "int assign index");
+    //      Dereference
+    int * p = &arr[0];
+    *p = 10;
+    print_testi(arr[0], 10, "int assign dereference");
+    //      Struct
+    FooLong foo;
+    foo.b = 5;
+    print_testi(foo.b, 5, "int assign struct");
+
+    // Binary
+    //      Arithmetic
+    a = 5 * 2.0 - 3.5;
+    print_testi(a, 6, "int arithmetic");
+    //      Augmented
+    a += 4;
+    print_testi(a, 10, "int augmented +");
+    a &= 8;
+    print_testi(a, 8, "int augmented &");
+    //      Bitwise
+    a = a | 7;
+    print_testi(a, 15, "int bitwise");
+
+    // Cast
+    //      All the types :)
+    float f = a;
+    print_testf(f, 15.0, "int assign to float");
+    double d = a;
+    print_testd(d, 15.0, "int assign to double");
+    int b = a;
+    print_testi(b, 15, "int assign to int");
+    short s = a;
+    print_testi(s, 15, "int assign to short");
+    byte bb = a;
+    print_testb(bb, 15, "int assign to byte");
+
+    // Comparison
+    //      All the things and all the types
+    int comp_res = a < 5;
+    print_testi(comp_res, 0, "int comp < int");
+
+    comp_res = a >= 5.0;
+    print_testi(comp_res, 1, "int comp >= float");
+
+    int comp_int = 5;
+    comp_res = a != comp_int;
+    print_testi(comp_res, 1, "int comp != int");
+
+    int comp_s = 5;
+    comp_res = a > comp_s;
+    print_testi(comp_res, 1, "int comp > int");
+
+    // IndexExpr
+    //      Index with a int as index
+    int barr[3] = [1,2,3];
+    int idx = 2;
+    print_testi(barr[idx], 3, "int index");
+
+    // LogicalExpr
+    //      All the things
+    int answer;
+    if(idx <= 2.0 && idx > 0){
+       answer = 1;
+    }else{
+       answer = 0;
+    }
+    print_testi(answer, 1, "int logical and, float and int");
+
+    // Postfix
+    //      ++, --
+    int post = 0;
+    print_testi(++post, 1, "int ++post");
+    print_testi(post++, 1, "int post++");
+    print_testi(post, 2, "int post++ (afterwards)");
+
+    int post_arr[2] = [1,3];
+    print_testi(post_arr[0]++, 1, "int post_arr[0]++");
+    print_testi(post_arr[0], 2, "int post_arr[0]++ (afterwards)");
+    print_testi(++post_arr[0], 3, "int ++post_arr[0]");
+
+    post_arr[0] = 0;
+    int * post_p = &post_arr[0];
+    print_testi((*post_p)++, 0, "int (*post_p)++");
+    print_testi(*post_p, 1, "int (*post_p) (afterwards)");
+    print_testi(++(*post_p), 2, "int ++(*post_p)");
+    print_testi(*(post_p++), 2, "int *(post_p++)");
+    print_testi(*post_p, 3, "int *(post_p++) afterwards");
+    print_testi(*(--post_p), 2, "int *(--post_p)");
+
+    FooLong foo2;
+    foo2.b = 0;
+    print_testi(foo2.b++, 0, "int foo2.b++");
+    print_testi(foo2.b, 1, "int foo2.b++ (afterwards)");
+    print_testi(++foo2.b, 2, "int ++foo2.b");
+
+    // Return
+    //  As int and with casts
+    print_testi(test_return_long(), 2, "int return long");
+    print_testi(test_return_byte(), 2, "int return byte");
+    print_testi(test_return_short(), 2, "int return short");
+    print_testi(test_return_float(), 2, "int return float");
+    print_testi(test_return_double(), 2, "int return double");
+
+    // Unary
+    int neg_l = 5;
+    print_testi(-neg_l, -5, "int -neg_l");
+
+
+}
+
+void test_short(){
+
+    // Array
+    short arr[3] = [1,2,3];
+    print_tests(arr[0] + arr[2],4, "short array index");
+    // Assign
+    //      Local
+    short a = 5;
+    a = 10;
+    print_tests(a, 10, "short assign local");
+
+    //      Argument
+    test_assign_arg_short(a);
+
+    //      Index
+    arr[1] = 5;
+    print_tests(arr[1], 5, "short assign index");
+    //      Dereference
+    short * p = &arr[0];
+    *p = 10;
+    print_tests(arr[0], 10, "short assign dereference");
+    //      Struct
+    FooLong foo;
+    foo.c = 5;
+    print_tests(foo.c, 5, "short assign struct");
+
+    // Binary
+    //      Arithmetic
+    a = 5 * 2.0 - 3.5;
+    print_tests(a, 6, "short arithmetic");
+    //      Augmented
+    a += 4;
+    print_tests(a, 10, "short augmented +");
+    a &= 8;
+    print_tests(a, 8, "short augmented &");
+    //      Bitwise
+    a = a | 7;
+    print_tests(a, 15, "short bitwise");
+
+    // Cast
+    //      All the types :)
+    float f = a;
+    print_testf(f, 15.0, "short assign to float");
+    double d = a;
+    print_testd(d, 15.0, "short assign to double");
+    short b = a;
+    print_tests(b, 15, "short assign to short");
+    short s = a;
+    print_tests(s, 15, "short assign to short");
+
+    // Comparison
+    //      All the things and all the types
+    short comp_res = a < 5;
+    print_tests(comp_res, 0, "short comp < int");
+
+    comp_res = a >= 5.0;
+    print_tests(comp_res, 1, "short comp >= float");
+
+    short comp_short = 5;
+    comp_res = a != comp_short;
+    print_tests(comp_res, 1, "short comp != short");
+
+    short comp_s = 5;
+    comp_res = a > comp_s;
+    print_tests(comp_res, 1, "short comp > short");
+
+    // IndexExpr
+    //      Index with a short as index
+    short barr[3] = [1,2,3];
+    short idx = 2;
+    print_tests(barr[idx], 3, "short index");
+
+    // LogicalExpr
+    //      All the things
+    int answer;
+    if(idx <= 2.0 && idx > 0){
+       answer = 1;
+    }else{
+       answer = 0;
+    }
+    print_tests(answer, 1, "short logical and, float and int");
+
+    // Postfix
+    //      ++, --
+    short post = 0;
+    print_tests(++post, 1, "short ++post");
+    print_tests(post++, 1, "short post++");
+    print_tests(post, 2, "short post++ (afterwards)");
+
+    short post_arr[2] = [1,3];
+    print_tests(post_arr[0]++, 1, "short post_arr[0]++");
+    print_tests(post_arr[0], 2, "short post_arr[0]++ (afterwards)");
+    print_tests(++post_arr[0], 3, "short ++post_arr[0]");
+
+    post_arr[0] = 0;
+    short * post_p = &post_arr[0];
+    print_tests((*post_p)++, 0, "short (*post_p)++");
+    print_tests(*post_p, 1, "short (*post_p) (afterwards)");
+    print_tests(++(*post_p), 2, "short ++(*post_p)");
+    print_tests(*(post_p++), 2, "short *(post_p++)");
+    print_tests(*post_p, 3, "short *(post_p++) afterwards");
+    print_tests(*(--post_p), 2, "short *(--post_p)");
+
+    FooLong foo2;
+    foo2.c = 0;
+    print_tests(foo2.c++, 0, "short foo2.c++");
+    print_tests(foo2.c, 1, "short foo2.c++ (afterwards)");
+    print_tests(++foo2.c, 2, "short ++foo2.c");
+
+    // Return
+    //  As short and with casts
+    print_tests(test_return_long(), 2, "short return long");
+    print_tests(test_return_byte(), 2, "short return byte");
+    print_tests(test_return_int(), 2, "short return int");
+    print_tests(test_return_float(), 2, "short return float");
+    print_tests(test_return_double(), 2, "short return double");
+
+    // Unary
+    short neg_l = 5;
+    print_tests(-neg_l, -5, "short -neg_l");
+
+
+}
+
+void test_byte2(){
+
+    // Array
+    byte arr[3] = [1,2,3];
+    print_testb(arr[0] + arr[2],4, "byte array index");
+    // Assign
+    //      Local
+    byte a = 5;
+    a = 10;
+    print_testb(a, 10, "byte assign local");
+
+    //      Argument
+    test_assign_arg_byte(a);
+
+    //      Index
+    arr[1] = 5;
+    print_testb(arr[1], 5, "byte assign index");
+    //      Dereference
+    byte * p = &arr[0];
+    *p = 10;
+    print_testb(arr[0], 10, "byte assign dereference");
+    //      Struct
+    FooLong foo;
+    foo.d = 5;
+    print_testb(foo.d, 5, "byte assign struct");
+
+    // Binary
+    //      Arithmetic
+    a = 5 * 2.0 - 3.5;
+    print_testb(a, 6, "byte arithmetic");
+    //      Augmented
+    a += 4;
+    print_testb(a, 10, "byte augmented +");
+    a &= 8;
+    print_testb(a, 8, "byte augmented &");
+    //      Bitwise
+    a = a | 7;
+    print_testb(a, 15, "byte bitwise");
+
+    // Cast
+    //      All the types :)
+    float f = a;
+    print_testf(f, 15.0, "byte assign to float");
+    double d = a;
+    print_testd(d, 15.0, "byte assign to double");
+    byte b = a;
+    print_testb(b, 15, "byte assign to byte");
+    short s = a;
+    print_tests(s, 15, "byte assign to short");
+
+    // Comparison
+    //      All the things and all the types
+    byte comp_res = a < 5;
+    print_testb(comp_res, 0, "byte comp < int");
+
+    comp_res = a >= 5.0;
+    print_testb(comp_res, 1, "byte comp >= float");
+
+    byte comp_byte = 5;
+    comp_res = a != comp_byte;
+    print_testb(comp_res, 1, "byte comp != byte");
+
+    short comp_s = 5;
+    comp_res = a > comp_s;
+    print_testb(comp_res, 1, "byte comp > short");
+
+    // IndexExpr
+    //      Index with a byte as index
+    byte barr[3] = [1,2,3];
+    byte idx = 2;
+    print_testb(barr[idx], 3, "byte index");
+
+    // LogicalExpr
+    //      All the things
+    int answer;
+    if(idx <= 2.0 && idx > 0){
+       answer = 1;
+    }else{
+       answer = 0;
+    }
+    print_testb(answer, 1, "byte logical and, float and int");
+
+    // Postfix
+    //      ++, --
+    byte post = 0;
+    print_testb(++post, 1, "byte ++post");
+    print_testb(post++, 1, "byte post++");
+    print_testb(post, 2, "byte post++ (afterwards)");
+
+    byte post_arr[2] = [1,3];
+    print_testb(post_arr[0]++, 1, "byte post_arr[0]++");
+    print_testb(post_arr[0], 2, "byte post_arr[0]++ (afterwards)");
+    print_testb(++post_arr[0], 3, "byte ++post_arr[0]");
+
+    post_arr[0] = 0;
+    byte * post_p = &post_arr[0];
+    print_testb((*post_p)++, 0, "byte (*post_p)++");
+    print_testb(*post_p, 1, "byte (*post_p) (afterwards)");
+    print_testb(++(*post_p), 2, "byte ++(*post_p)");
+    print_testb(*(post_p++), 2, "byte *(post_p++)");
+    print_testb(*post_p, 3, "byte *(post_p++) afterwards");
+    print_testb(*(--post_p), 2, "byte *(--post_p)");
+
+    FooLong foo2;
+    foo2.d = 0;
+    print_testb(foo2.d++, 0, "byte foo2.d++");
+    print_testb(foo2.d, 1, "byte foo2.d++ (afterwards)");
+    print_testb(++foo2.d, 2, "byte ++foo2.d");
+
+    // Return
+    //  As byte and with casts
+    print_testb(test_return_long(), 2, "byte return long");
+    print_testb(test_return_short(), 2, "byte return short");
+    print_testb(test_return_int(), 2, "byte return int");
+    print_testb(test_return_float(), 2, "byte return float");
+    print_testb(test_return_double(), 2, "byte return double");
+
+    // Unary
+    byte neg_l = 5;
+    print_testb(-neg_l, -5, "byte -neg_l");
+
+
 }
 
 void test_long(){
@@ -898,25 +1550,74 @@ void test_long(){
 
     // Comparison
     //      All the things and all the types
-    // DotExpr
-    //      As first field, as snd with other types prior
+    byte comp_res = a < 5;
+    print_testb(comp_res, 0, "long comp < int");
+
+    comp_res = a >= 5.0;
+    print_testb(comp_res, 1, "long comp >= float");
+
+    byte comp_byte = 5;
+    comp_res = a != comp_byte;
+    print_testb(comp_res, 1, "long comp != byte");
+
+    short comp_s = 5;
+    comp_res = a > comp_s;
+    print_testb(comp_res, 1, "long comp > short");
+
     // IndexExpr
     //      Index with a long as index
+    byte barr[3] = [1,2,3];
+    long idx = 2;
+    print_testb(barr[idx], 3, "long index");
+
     // LogicalExpr
     //      All the things
+    int answer;
+    if(idx <= 2.0 && idx > 0){
+       answer = 1;
+    }else{
+       answer = 0;
+    }
+    print_testb(answer, 1, "long logical and, float and int");
+
     // Postfix
     //      ++, --
+    long post = 0;
+    print_testl(++post, 1, "long ++post");
+    print_testl(post++, 1, "long post++");
+    print_testl(post, 2, "long post++ (afterwards)");
+
+    long post_arr[2] = [1,3];
+    print_testl(post_arr[0]++, 1, "long post_arr[0]++");
+    print_testl(post_arr[0], 2, "long post_arr[0]++ (afterwards)");
+    print_testl(++post_arr[0], 3, "long ++post_arr[0]");
+
+    post_arr[0] = 0;
+    long * post_p = &post_arr[0];
+    print_testl((*post_p)++, 0, "long (*post_p)++");
+    print_testl(*post_p, 1, "long (*post_p) (afterwards)");
+    print_testl(++(*post_p), 2, "long ++(*post_p)");
+    print_testl(*(post_p++), 2, "long *(post_p++)");
+    print_testl(*post_p, 3, "long *(post_p++) afterwards");
+    print_testl(*(--post_p), 2, "long *(--post_p)");
+
+    FooLong foo2;
+    foo2.a = 0;
+    print_testl(foo2.a++, 0, "long foo2.a++");
+    print_testl(foo2.a, 1, "long foo2.a++ (afterwards)");
+    print_testl(++foo2.a, 2, "long ++foo2.a");
+
     // Return
     //  As long and with casts
+    print_testl(test_return_byte(), 2, "long return byte");
+    print_testl(test_return_short(), 2, "long return short");
+    print_testl(test_return_int(), 2, "long return int");
+    print_testl(test_return_float(), 2, "long return float");
+    print_testl(test_return_double(), 2, "long return double");
+
     // Unary
-    //  -, !, *,
-
-}
-
-void test_short(){
-
-}
-void test_double(){
+    long neg_l = 5;
+    print_testl(-neg_l, -5, "long -neg_l");
 
 }
 
@@ -946,6 +1647,11 @@ int run_tests(){
     test_cast();
 
     test_long();
+    test_byte2();
+    test_short();
+    test_int();
+    test_float();
+    test_double();
 
     printf("Finished tests!\n");
     return 0;

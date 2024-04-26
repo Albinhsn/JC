@@ -144,9 +144,9 @@ public class QuadList extends ArrayList<Quad>{
                 return this.getLastResult();
             }
             case FLOAT -> {
-                Symbol floatSymbol = Compiler.generateSymbol(target.type);
-                this.addQuad(QuadOp.ZX_SHORT, value, null, floatSymbol);
-                this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, floatSymbol, null, Compiler.generateSymbol(target.type));
+                Symbol intSymbol = Compiler.generateSymbol(DataType.getInt());
+                this.addQuad(QuadOp.ZX_SHORT, value, null, intSymbol);
+                this.addQuad(QuadOp.CONVERT_INT_TO_FLOAT, intSymbol, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case DOUBLE -> {

@@ -43,11 +43,12 @@ public class AssignStmt extends Stmt{
         }
         throw new CompileException(String.format("Can't convert %s to %s", value.type.name, target.type.name));
     }
-    public static void compileStoreField(QuadList quads, QuadList variableQuads){
+    public static void compileStoreField(QuadList quads, QuadList variableQuads) throws CompileException {
         Quad   lastQuad     = variableQuads.pop();
         Symbol memberSymbol = lastQuad.operand2();
 
         quads.createSetupBinary(variableQuads, quads.getLastResult(), variableQuads.getLastResult());
+        AssignStmt.convertValue(quads.getLastResult(), memberSymbol, quads);
         quads.createSetField(memberSymbol, lastQuad.operand1());
     }
 
