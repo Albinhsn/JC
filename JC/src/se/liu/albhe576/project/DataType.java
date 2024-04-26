@@ -73,6 +73,9 @@ public class DataType {
         throw new CompileException(String.format("Can't parse value type from %s", token));
     }
     public static DataType getHighestDataTypePrecedence(DataType l, DataType r){
+        if(l.isPointer() || r.isPointer()){
+            return l.isPointer() ? l : r;
+        }
         if(l.isDouble() || r.isDouble()){
             return getFloat();
         }
@@ -80,7 +83,7 @@ public class DataType {
             return getFloat();
         }
         if(l.isInteger() || r.isInteger()){
-            return getFloat();
+            return getInt();
         }
         if(l.isShort() || r.isShort()){
             return getShort();

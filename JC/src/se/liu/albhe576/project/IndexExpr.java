@@ -23,8 +23,8 @@ public class IndexExpr extends Expr{
         int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), valResult.type.getTypeFromPointer());
         quadPair.right().createIMUL(structSize);
 
-        quads.createSetupBinary(quadPair.right(), valResult, Compiler.generateSymbol(DataType.getInt()));
-        quads.createAdd(Compiler.generateSymbol(DataType.getInt()), Compiler.generateSymbol(DataType.getInt()));
+        quads.createSetupBinary(quadPair.right(), valResult, Compiler.generateSymbol(DataType.getLong()));
+        quads.createAdd(Compiler.generateSymbol(DataType.getLong()), Compiler.generateSymbol(DataType.getLong()));
         quads.createIndex(valResult);
     }
     public IndexExpr(Expr value, Expr index, int line, String file){

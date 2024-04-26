@@ -82,6 +82,9 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 if (operand1.type.isFloat()) {
                     return "mov rcx, 1\ncvtsi2ss xmm1, rcx\nsubss xmm0, xmm1";
                 }
+                if (operand1.type.isInteger()) {
+                    return "dec eax";
+                }
                 return "dec rax";
             }
             case IMUL -> {
@@ -119,7 +122,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 if (result.type.isFloat()) {
                     return String.format("mulss %s, %s", reg0, reg1);
                 }
-                return String.format("mul %s, %s", reg0, reg1);
+                return String.format("mul %s", reg1);
             }
             case DIV -> {
                 String reg0 = getRegisterFromType(result.type, 0);
@@ -169,9 +172,16 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 return String.format("%s [rcx], %s", movePair.move(), movePair.register());
             }
             case CMP -> {
-                if (operand1 != null && operand1.type.isFloat()) {
+                if (operand1 != null && operand1.type.isDouble()) {
                     return "comisd xmm0, xmm1";
                 }
+                if (operand1 != null && operand1.type.isFloat()) {
+                    return "comiss xmm0, xmm1";
+                }
+                if (operand1 != null && operand1.type.isInteger()) {
+                    return "cmp eax, ecx";
+                }
+
                 return "cmp rax, rcx";
             }
             case JMP -> {return String.format("jmp %s", operand1.name);}
@@ -198,13 +208,14 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             case SETB -> {return "setb al\nmovzx rax, al";}
             case SETBE -> {return "setbe al\nmovzx rax, al";}
             case CONVERT_DOUBLE_TO_FLOAT-> {return "cvtsd2ss xmm0, xmm0";}
-            case CONVERT_FLOAT_TO_DOUBLE -> {return "cvtss2sd xmm0, xmm0";}
             case CONVERT_DOUBLE_TO_LONG-> {return "cvttsd2si rax, xmm0";}
+            case CONVERT_FLOAT_TO_DOUBLE -> {return "cvtss2sd xmm0, xmm0";}
+            case CONVERT_FLOAT_TO_INT-> {return "cvtss2si eax, xmm0";}
+            case CONVERT_INT_TO_FLOAT -> {return "cvtsi2ss xmm0, eax";}
             case CONVERT_LONG_TO_DOUBLE -> {return "cvtsi2sd xmm0, rax";}
             case ZX_SHORT -> {return "and rax, 0xFFFF";}
             case ZX_INT-> {return "mov eax, eax";}
             case ZX_BYTE -> {return "movzx rax, al";}
-            case ZX_FLOAT-> {return "cvtss2sd xmm0, xmm0";}
             case SHL -> {return "shl rax, cl";}
             case AND -> {return "and rax, rcx";}
             case OR -> {return "or rax, rcx";}

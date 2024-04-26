@@ -43,7 +43,7 @@ public class AssignStmt extends Stmt{
         }
         throw new CompileException(String.format("Can't convert %s to %s", value.type.name, target.type.name));
     }
-    public static void compileStoreField(QuadList quads, QuadList variableQuads) throws CompileException {
+    public static void compileStoreField(QuadList quads, QuadList variableQuads){
         Quad   lastQuad     = variableQuads.pop();
         Symbol memberSymbol = lastQuad.operand2();
 
@@ -110,7 +110,7 @@ public class AssignStmt extends Stmt{
                     quads.createSetupBinary(variableQuads, valueResult, variableType);
                     quads.addQuad(QuadOp.MOVE_STRUCT, valueResult, variableType, null);
                 }else{
-                    quads.createSetupBinary(variableQuads, valueResult, variableType);
+                    AssignStmt.convertValue(valueResult, variableQuads.getLastOperand1(), quads);
                     quads.createStoreVariable(variableQuads.getLastOperand1());
                 }
             }

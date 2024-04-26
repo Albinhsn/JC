@@ -54,7 +54,7 @@ public class BinaryExpr extends Expr{
             resultType           = lIsPointer ? lResult : rResult;
             QuadList quadsToIMUL = lIsPointer ? rQuads : lQuads;
 
-            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), resultType.type);
+            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), resultType.type.getTypeFromPointer());
             quadsToIMUL.createIMUL(structSize);
         }else{
             resultType = Compiler.generateSymbol(DataType.getHighestDataTypePrecedence(lType, rType));
