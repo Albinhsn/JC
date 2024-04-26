@@ -149,6 +149,7 @@ public class Scanner {
     private Token parseNumber(){
         int startIndex = this.index - 1;
         TokenType type = TokenType.TOKEN_INT_LITERAL;
+
         char currentChar = advance();
         if(this.input.charAt(startIndex) == '0'){
             if(currentChar == 'x'){
@@ -313,6 +314,8 @@ public class Scanner {
                     yield this.createToken(TokenType.TOKEN_DECREMENT, "--");
                 } else if (matchNext('=')) {
                     yield this.createToken(TokenType.TOKEN_AUGMENTED_MINUS, "+=");
+                }else if(Character.isDigit(getCurrentChar())){
+                   yield this.parseNumber();
                 }
                 yield this.createToken(TokenType.TOKEN_MINUS, "-");
             }

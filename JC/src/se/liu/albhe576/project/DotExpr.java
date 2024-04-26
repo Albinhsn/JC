@@ -15,9 +15,10 @@ public class DotExpr extends Expr{
         variable.compile(symbolTable, quads);
         Symbol lastSymbol = quads.getLastResult();
 
-        if(!lastSymbol.type.isStruct() && lastSymbol.type.depth > 1){
+        if(!(lastSymbol.type.type == DataTypes.STRUCT && lastSymbol.type.depth <= 1)){
             Compiler.error(String.format("Trying to access member of none struct '%s'", lastSymbol.type.name), line, file);
         }
+        // ToDo error if thing is not struct :)
         if(!symbolTable.isMemberOfStruct(lastSymbol.type, this.member.literal())){
             Compiler.error(String.format("Trying to access member %s of struct %s, doesn't exist!", lastSymbol.type.name, this.member.literal()), line, file);
         }

@@ -14,6 +14,22 @@ void print_testi(int got, int expected, string name){
         printf("FAILED: got %d expected %d with %s\n", got, expected, name);
     }
 }
+void print_tests(short got, short expected, string name){
+    if(got != expected){
+        printf("FAILED: got %d expected %d with %s\n", got, expected, name);
+    }
+}
+void print_testd(double got, double expected, string name){
+    if(got != expected){
+        printf("FAILED: got %lf expected %lf with %s\n", got, expected, name);
+    }
+}
+
+void print_testl(long got, long expected, string name){
+    if(got != expected){
+        printf("FAILED: got %ld expected %ld with %s\n", got, expected, name);
+    }
+}
 void print_testb(byte got, int expected, string name){
     if(got != expected){
         printf("FAILED: got %d expected %d with %s\n", got, expected, name);

@@ -156,7 +156,14 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             }
             case LOAD -> {
                 VariableSymbol variableSymbol = (VariableSymbol) operand1;
-                return stack.loadVariable(variableSymbol.id);
+                String out = stack.loadVariable(variableSymbol.id);
+                if(operand1.type.isByte()){
+                    return out + "\nmovzx rax, al";
+                }
+                if(operand1.type.isShort()){
+                    return out + "\nand rax, 0xFFFF";
+                }
+                return out;
             }
             case SET_FIELD -> {return stack.storeField(operand2.type, operand1);}
             case GET_FIELD -> {return stack.loadField(operand1.type, operand2.name);}
@@ -221,13 +228,27 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             case OR -> {return "or rax, rcx";}
             case XOR -> {return "xor rax, rcx";}
             case SHR -> {return "shr rax, cl";}
-            case PUSH -> {return operand1.type.isFloat() ? "sub rsp, 8\nmovsd [rsp], xmm0" : "push rax";}
+            case PUSH -> {
+                if (this.result.type.isFloat()) {
+                    return "sub rsp, 4\nmovss [rsp], xmm0";
+                }
+                if (this.result.type.isDouble()) {
+                    return "sub rsp, 8\nmovsd [rsp], xmm0";
+                }
+                return "push rax";
+            }
             case POP -> {
                 if (this.result.type.isFloat()) {
+                    return "movss xmm0, [rsp]\nadd rsp, 4";
+                }
+                if (this.result.type.isDouble()) {
                     return "movsd xmm0, [rsp]\nadd rsp, 8";
                 }
                 if (this.result.type.isByte()) {
                     return "pop rax\nmovzx rax, al";
+                }
+                if (this.result.type.isShort()) {
+                    return "pop rax\nand rax, 0xFF";
                 }
                 return "pop rax";
             }
@@ -242,12 +263,47 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             }
             case PUSH_STRUCT -> {return stack.pushStruct(operand1);}
             case MOVE_STRUCT -> {return stack.moveStruct(operand1);}
-            case MOV_XMM0 -> {return "nop ; mov_xmm0";}
-            case MOV_XMM1 -> {return "movss xmm1, xmm0";}
-            case MOV_XMM2 -> {return "movss xmm2, xmm0";}
-            case MOV_XMM3 -> {return "movss xmm3, xmm0";}
-            case MOV_XMM4 -> {return "movss xmm4, xmm0";}
-            case MOV_XMM5 -> {return "movss xmm5, xmm0";}
+            case MOV_XMM0 -> {
+                if(operand1.type.isFloat()){
+                   return "cvtss2sd xmm0, xmm0";
+                }
+                return "nop ; mov_xmm0";
+            }
+            case MOV_XMM1 -> {
+                if(operand1.type.isDouble()){
+                    return "movsd xmm1, xmm0";
+                }else{
+                    return "cvtss2sd xmm1, xmm0";
+                }
+            }
+            case MOV_XMM2 -> {
+                if(operand1.type.isDouble()){
+                    return "movsd xmm2, xmm0";
+                }else{
+                    return "cvtss2sd xmm2, xmm0";
+                }
+            }
+            case MOV_XMM3 -> {
+                if(operand1.type.isDouble()){
+                    return "movsd xmm3, xmm0";
+                }else{
+                    return "cvtss2sd xmm3, xmm0";
+                }
+            }
+            case MOV_XMM4 -> {
+                if(operand1.type.isDouble()){
+                    return "movsd xmm4, xmm0";
+                }else{
+                    return "cvtss2sd xmm4, xmm0";
+                }
+            }
+            case MOV_XMM5 -> {
+                if(operand1.type.isDouble()){
+                    return "movsd xmm5, xmm0";
+                }else{
+                    return "cvtss2sd xmm5, xmm0";
+                }
+            }
             case MOV_RDI -> {return operand1.type.isByte() ? "movzx rax, al\nmov rdi, rax" : "mov rdi, rax";}
             case MOV_RSI -> {return operand1.type.isByte() ? "movzx rax, al\nmov rsi, rax" : "mov rsi, rax";}
             case MOV_RCX -> {return operand1.type.isByte() ? "movzx rax, al\nmov rcx, rax" : "mov rcx, rax";}

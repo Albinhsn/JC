@@ -50,7 +50,7 @@ public class CallExpr extends Expr{
                Compiler.error(String.format("Can't call library function with more then %d ints and %d floats, you called %d, %d", generalCount, floatCount, generalRegistersLength, floatRegistersLength), line, file);
            }
 
-           if (result.type.isFloat()) {
+           if (result.type.isFloat() || result.type.isDouble()) {
                if(floatCount >= 1){
                    quads.createPush(Compiler.generateSymbol(DataType.getFloat()));
                }

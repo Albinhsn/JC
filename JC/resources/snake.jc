@@ -8,8 +8,8 @@
 #define DOWN 3
 
 struct timeval{
-    int tv_sec;
-    int tv_usec;
+    long tv_sec;
+    long tv_usec;
 }
 
 struct Grid{
@@ -20,6 +20,15 @@ struct Grid{
     byte height;
     byte item_x;
     byte item_y;
+}
+
+void debug_grid(Grid * grid){
+    printf("l: %ld, d: %ld, w: %ld, h: %ld\n", grid.length, grid.direction, grid.width, grid.height);
+    printf("ix: %d, iy: %d\n", grid.item_x, grid.item_y);
+    for(int i = 0; i < grid.length; i++){
+        printf("(%ld, %ld) -> ", grid.grid[i].x, grid.grid[i].y);
+    }
+    printf("\n");
 }
 
 
@@ -33,14 +42,14 @@ struct Position{
 int random(int timestamp){
 
     int hash = 2166136261;
-    for(int i = 0; i < 8; i++){
+    for(int i = 0; i < 4; i++){
         hash ^= (timestamp >> (i * 8)) & 0xFF;
         hash *= 16777619;
     }
     return hash;
 }
 
-int get_millis(timeval tv){
+long get_millis(timeval tv){
     return (tv.tv_sec*1000)+(tv.tv_usec/1000);
 }
 
@@ -87,6 +96,8 @@ void init_grid(Grid * grid, int current_timestamp, int width, int height){
 
 
 byte update(Grid * grid, int current_timestamp){
+    // debug_grid(grid);
+
     // Move
     byte direction = grid.direction;
     if(direction == UP){
@@ -116,6 +127,7 @@ byte update(Grid * grid, int current_timestamp){
         return 1;
     }
     if(head.y < 0 || head.y >= grid.height){
+        printf("%ld %ld\n", head.x, head.y);
         printf("Y OOB\n");
         return 1;
     }

@@ -73,22 +73,9 @@ struct x11_window{
   int window_root_id;
 }
 
-struct short{
-    byte low;
-    byte high;
-}
-
 void write_i16_to_bytes(short x, byte * b){
-    b[0] = x.low;
-    b[1] = x.high;
-}
-
-short create_short(int a){
-    short out;
-    out.low = a & 0xFF;
-    out.high = (a >> 8) & 0xFF;
-
-    return out;
+    b[0] = x & 0xFF;
+    b[1] = (x >> 8) & 0xFF;
 }
 
 void place_long(int * numb, byte * b){
@@ -103,11 +90,8 @@ void place_int(int * numb, byte * b){
         *numb |= b[i] << (i * 8);
     }
 }
-void place_short(int * numb, byte * b){
-    *numb = 0;
-    for(int i = 0; i < 2; i++){
-        *numb |= b[i] << (i * 8);
-    }
+void place_short(short * numb, byte * b){
+    *numb = (b[0] | ((short)b[1] << 8 ));
 }
 
 struct sockaddr_un{
@@ -166,7 +150,7 @@ void init_data(x11_data * data, byte * res, int server_read){
     place_int(&data.id_mask, &res[8]);
 
     // vendor length is offset 16, short
-    int vendor_length;
+    short vendor_length;
     place_short(&vendor_length, &res[16]);
 
     // number of formats, 21 offset, byte, is the size in bytes
@@ -477,17 +461,17 @@ int allocate_named_color(int color_map, string name, short name_length){
 
 #define X11_OP_REQ_POLY_RECTANGLE 70
 
-int x11_draw_rect(x11_window * window, int x, int y, int w, int h){
+int x11_draw_rect(x11_window * window, short x, short y, short w, short h){
   byte * req = malloc(1024);
 
   // drawable and gc
   write_i32_to_bytes(window.window_id, &req[4]);
   write_i32_to_bytes(window.gc_id, &req[8]);
 
-  write_i16_to_bytes(create_short(x), &req[12]);
-  write_i16_to_bytes(create_short(y), &req[14]);
-  write_i16_to_bytes(create_short(w), &req[16]);
-  write_i16_to_bytes(create_short(h), &req[18]);
+  write_i16_to_bytes(x, &req[12]);
+  write_i16_to_bytes(y, &req[14]);
+  write_i16_to_bytes(w, &req[16]);
+  write_i16_to_bytes(h, &req[18]);
 
   int packets = 5; // 3 + 2 * 1
 
@@ -515,8 +499,8 @@ int x11_draw_text(x11_window * window, string s, int s_length, int x, int y){
   write_i32_to_bytes(window.window_id, &req[4]);
   write_i32_to_bytes(window.gc_id, &req[8]);
 
-  write_i16_to_bytes(create_short(x), &req[12]);
-  write_i16_to_bytes(create_short(y), &req[14]);
+  write_i16_to_bytes(x, &req[12]);
+  write_i16_to_bytes(y, &req[14]);
 
   int count = (4-(s_length % 4)) % 4;
   int packets = ((count + s_length) >> 2) + 4;
@@ -548,16 +532,11 @@ int x11_draw_text(x11_window * window, string s, int s_length, int x, int y){
 void init_req(x11_connection_req_t * req){
   req.order = 108; // 'l' in ascii
   req.pad1 = 0;
-  req.major.low = 11;
-  req.major.high = 0;
-  req.minor.low = 0;
-  req.minor.high = 0;
-  req.auto_proto.low = 0;
-  req.auto_proto.high = 0;
-  req.auth_data.low = 0;
-  req.auth_data.high = 0;
-  req.pad2.low = 0;
-  req.pad2.high = 0;
+  req.major = 11;
+  req.minor = 0;
+  req.auto_proto = 0;
+  req.auth_data = 0;
+  req.pad2 = 0;
 }
 
 int create_x11_window(x11_window * window, int x, int y, int w, int h){
@@ -609,14 +588,8 @@ int create_x11_window(x11_window * window, int x, int y, int w, int h){
   open_font(window.fd, &data, window.font_id);
   x11_create_gc(window.fd, window.font_id, window.gc_id, window.window_root_id);
 
-  short xs = create_short(x);
-  short ys = create_short(y);
-
-  short ws = create_short(w);
-  short hs = create_short(h);
-
   window.window_id = x11_next_id(&data);
-  x11_create_window(window.fd, window.window_id, window.window_root_id, data.root_visual_id, xs, ys,ws, hs);
+  x11_create_window(window.fd, window.window_id, window.window_root_id, data.root_visual_id, x, y,w, h);
   x11_map_window(window.fd, window.window_id);
 
   //if(set_fd_non_blocking(window.fd) == 0){

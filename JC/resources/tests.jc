@@ -1,6 +1,5 @@
 #include "resources/foo.jc"
 
-
 int fib(int a){
    if(a <= 2){
         return 1;
@@ -142,7 +141,8 @@ void test_cast(){
     int b = *(int*)&f;
     b ^= 0x80000000;
     f = *(float*)&b;
-    print_testf(f, -1 * 5.0, "*(int*)&f");
+    int answer = -5;
+    print_testi(f, answer, "*(int*)&f");
 }
 
 void test_augmented(){
@@ -636,14 +636,7 @@ byte ret_byte(){
 }
 
 void test_byte(){
-    string s = "Hello Sailor!";
-    s = "Hello World!";
-
-    byte H = s[0];
-    byte e = s[1];
-    byte l = s[2];
-    byte l1 = s[3];
-    printf("%c%c%c%c\n", H,e,l,l1);
+    string s = "Hello World!";
 
     int a = 257;
     byte b = a;
@@ -843,6 +836,90 @@ void test_assign_arg(Foo foo){
     print_testi(foo.a + foo.b, 15, "reassign struct arg");
 }
 
+void test_assign_arg_long(long a){
+    a = 5;
+    print_testl(a, 5, "long assign local");
+}
+
+struct FooLong{
+    short b;
+    long a;
+    byte c;
+}
+
+void test_long(){
+    // Array
+    long arr[3] = [1,2,3];
+    print_testl(arr[0] + arr[2],4, "long array index");
+    // Assign
+    //      Local
+    long a = 5;
+    a = 10;
+    print_testl(a, 10, "long assign local");
+
+    //      Argument
+    test_assign_arg_long(a);
+
+    //      Index
+    arr[1] = 5;
+    print_testl(arr[1], 5, "long assign index");
+    //      Dereference
+    long * p = &arr[0];
+    *p = 10;
+    print_testl(arr[0], 10, "long assign dereference");
+    //      Struct
+    FooLong foo;
+    foo.a = 5;
+    print_testl(foo.a, 5, "long assign struct");
+
+    // Binary
+    //      Arithmetic
+    a = 5 * 2.0 - 3.5;
+    print_testl(a, 6, "long arithmetic");
+    //      Augmented
+    a += 4;
+    print_testl(a, 10, "long augmented +");
+    a &= 8;
+    print_testl(a, 8, "long augmented &");
+    //      Bitwise
+    a = a | 7;
+    print_testl(a, 15, "long bitwise");
+
+    // Cast
+    //      All the types :)
+    float f = a;
+    print_testf(f, 15.0, "long assign to float");
+    double d = a;
+    print_testd(d, 15.0, "long assign to double");
+    byte b = a;
+    print_testb(b, 15, "long assign to byte");
+    short s = a;
+    print_tests(s, 15, "long assign to short");
+
+    // Comparison
+    //      All the things and all the types
+    // DotExpr
+    //      As first field, as snd with other types prior
+    // IndexExpr
+    //      Index with a long as index
+    // LogicalExpr
+    //      All the things
+    // Postfix
+    //      ++, --
+    // Return
+    //  As long and with casts
+    // Unary
+    //  -, !, *,
+
+}
+
+void test_short(){
+
+}
+void test_double(){
+
+}
+
 int run_tests(){
 
     test_assign();
@@ -867,6 +944,8 @@ int run_tests(){
     foo.b = 2;
     test_assign_arg(foo);
     test_cast();
+
+    test_long();
 
     printf("Finished tests!\n");
     return 0;

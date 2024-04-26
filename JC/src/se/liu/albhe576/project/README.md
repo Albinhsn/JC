@@ -2,10 +2,10 @@
 
 ## Features remaining
 
-// Every move and arithmetic op should clean up the result
-// Rather then doing it before, unless it converted
+* redo/properly test everything
+ * just walk through every statement and test everything with every type
 
+* negative floating point?
 * can declare nonexisting fields?
-* can't declare -5.0
 * index struct assignment failed
 * return 0 from pointer

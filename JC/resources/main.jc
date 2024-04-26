@@ -6,13 +6,18 @@
 
 
 #include "resources/foo.jc"
-#include "resources/tests.jc"
+// #include "resources/tests.jc"
+
 
 
 int main(){
 
-    run_tests();
+    long a = 15;
+    double d = a;
+    print_testd(d, 15.0, "long assign to double");
+
     return 0;
+
 
 }
 
