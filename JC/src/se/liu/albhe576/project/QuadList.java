@@ -214,11 +214,11 @@ public class QuadList extends ArrayList<Quad>{
         this.addQuad(QuadOp.JE, jmpLocation, null, null);
     }
     public void createStore(Symbol value, Symbol arr){this.addQuad(QuadOp.STORE, value, arr, value);}
-    public void createLoad(Symbol pointer, Symbol result){this.addQuad(QuadOp.LOAD, pointer, null, result);}
+    public void createLoad(Symbol pointer){this.addQuad(QuadOp.LOAD, pointer, null, Compiler.generateSymbol(pointer.type.getTypeFromPointer()));}
     public void createCall(Symbol functionSymbol, Symbol returnType){this.addQuad(QuadOp.CALL, functionSymbol, null, returnType);}
     public void createCmp(Symbol left, Symbol right){this.addQuad(QuadOp.CMP, left, right, null);}
     public void createJmp(Symbol label){this.addQuad(QuadOp.JMP, label, null, null);}
-    public void createJmp(QuadOp condition, Symbol label){this.addQuad(condition, label, null, null);}
+    public void createJmpOnCondition(QuadOp condition, Symbol label){this.addQuad(condition, label, null, null);}
     public void createIncrement(Symbol symbol){this.addQuad(QuadOp.INC, symbol, null, Compiler.generateSymbol(symbol.type));}
     public void createDecrement(Symbol symbol){this.addQuad(QuadOp.DEC, symbol, null, Compiler.generateSymbol(symbol.type));}
     public void allocateArguments(int size){this.addQuad(QuadOp.ALLOCATE, new ImmediateSymbol("size", DataType.getInt(), String.valueOf(size)), null, null);}
@@ -232,7 +232,7 @@ public class QuadList extends ArrayList<Quad>{
             if(inverted){
                 jmpCondition = jmpCondition.invertJmpCondition();
             }
-            this.createJmp(jmpCondition, label);
+            this.createJmpOnCondition(jmpCondition, label);
         }else{
             this.insertJMPOnComparisonCheck(label, !inverted);
         }

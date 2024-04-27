@@ -18,7 +18,7 @@ public class VarExpr extends Expr {
         if(!symbol.type.isArray()){
             Symbol loadedSymbol = Compiler.generateSymbol(DataType.getPointerFromType(symbol.type));
             quads.addQuad(QuadOp.LOAD_VARIABLE_POINTER, symbol, null, loadedSymbol);
-            quads.addQuad(QuadOp.LOAD, loadedSymbol, null, symbol);
+            quads.createLoad(loadedSymbol);
         }else{
             quads.addQuad(QuadOp.LOAD_VARIABLE_POINTER, symbol, null, symbol);
         }

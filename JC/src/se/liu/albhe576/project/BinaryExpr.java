@@ -24,8 +24,8 @@ public class BinaryExpr extends Expr{
         Symbol lResult = quads.getLastResult();
         Symbol rResult = quadPair.right().getLastResult();
 
-        if (isInvalidBitwise(lResult.getType(), rResult.getType())) {
-            Compiler.error(String.format("Can't do bitwise with %s and %s", lResult.getType().name, rResult.getType().name), line, file);
+        if (isInvalidBitwise(lResult.type, rResult.type)) {
+            Compiler.error(String.format("Can't do bitwise with %s and %s", lResult.type.name, rResult.type.name), line, file);
         }
 
         quads.createSetupBinary(quadPair.right(), lResult, rResult);
@@ -38,11 +38,11 @@ public class BinaryExpr extends Expr{
         QuadListPair quadPair = QuadList.compileBinary(symbolTable, lQuads, left, right);
 
         Symbol lResult = lQuads.getLastResult();
-        DataType lType = lResult.getType();
+        DataType lType = lResult.type;
 
         QuadList rQuads = quadPair.right();
         Symbol rResult = rQuads.getLastResult();
-        DataType rType = rResult.getType();
+        DataType rType = rResult.type;
 
         if(isInvalidArithmetic(lType, rType)){
             Compiler.error(String.format("Can't do arithmetic op '%s' on %s and %s", op.literal(), lType, rType), line, file);

@@ -9,9 +9,7 @@ public class PostfixExpr extends Expr{
         this.target = target;
         this.op   = op;
     }
-
     private static boolean isInvalidPostfixTarget(DataType type){return type.isArray() || type.isString() || type.isStruct();}
-
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         this.target.compile(symbolTable, quads);
@@ -24,26 +22,7 @@ public class PostfixExpr extends Expr{
 
         Symbol loadedSymbol = Compiler.generateSymbol(target.type);
         quads.createPush(loadedSymbol);
-
-        if(loadedSymbol.type.isPointer()){
-            // Add by the size of the underlying type rather than 1 to maintain correct alignment
-            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), loadedSymbol.type.getTypeFromPointer());
-            quads.createMovRegisterAToC(loadedSymbol);
-            Symbol loadedImmediate = quads.createLoadImmediate(DataType.getInt(), String.valueOf(structSize));
-            quads.createAdd(loadedSymbol, loadedImmediate);
-
-        }else if(op.type() == TokenType.TOKEN_INCREMENT){
-                quads.createIncrement(loadedSymbol);
-        }else{
-                quads.createDecrement(loadedSymbol);
-        }
-
-        quads.createPush(loadedSymbol);
-        this.target.compile(symbolTable, quads);
-        quads.removeLastQuad();
-        quads.createMovRegisterAToC(quads.getLastResult());
-        Symbol popped = quads.createPop(loadedSymbol);
-        quads.addQuad(QuadOp.STORE, popped, null, popped);
+        UnaryExpr.compileIncrementAndDecrement(symbolTable, quads, this.target, loadedSymbol, this.op);
         quads.createPop(loadedSymbol);
     }
 }

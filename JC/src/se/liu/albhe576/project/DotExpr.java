@@ -34,6 +34,6 @@ public class DotExpr extends Expr{
         StructField field = Struct.getMember(struct, this.member.literal());
         Symbol member = Compiler.generateSymbol(DataType.getPointerFromType(field.type()));
         quads.addQuad(QuadOp.LOAD_FIELD_POINTER, lastSymbol, Compiler.generateImmediateSymbol(DataType.getLong(), String.valueOf(offset)), member);
-        quads.addQuad(QuadOp.LOAD, member, null, Compiler.generateSymbol(member.getType().getTypeFromPointer()));
+        quads.addQuad(QuadOp.LOAD, member, null, Compiler.generateSymbol(member.type.getTypeFromPointer()));
     }
 }

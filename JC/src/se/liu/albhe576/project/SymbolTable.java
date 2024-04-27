@@ -16,7 +16,6 @@ public class SymbolTable {
         this.currentFunctionName = name;
     }
     public Map<String, Struct> getStructs(){return this.structs;}
-    public Map<Integer, VariableSymbol> getAllScopedVariables(String functionName){return this.scopes.get(functionName).getAllScopedVariables();}
     private static final String[] internalStructs = new String[]{"int", "float", "byte", "string", "short", "double", "long"};
 
     public boolean isDeclaredStruct(String name){
@@ -78,7 +77,7 @@ public class SymbolTable {
         return variableSymbol;
     }
     public void addVariable(VariableSymbol symbol){
-        getCurrentScope().addVariable(symbol.getName(), symbol);
+        getCurrentScope().addVariable(symbol.name, symbol);
     }
 
     public int getLocalVariableStackSize(String name){
@@ -105,18 +104,11 @@ public class SymbolTable {
     public int getCurrentScopeSize(){
         return this.getLocalVariableStackSize(currentFunctionName);
     }
-    public void addFunction(String name, Function function){
-        this.functions.put(name, function);
-        this.currentFunctionName = name;
-    }
     public Function getFunction(String name) throws CompileException{
         if(!this.functions.containsKey(name)){
             throw new CompileException(String.format("Can't find function %s", name));
         }
         return this.functions.get(name);
-    }
-    public Map<String, Function> getAllFunctions() {
-        return this.functions;
     }
 
     public void addConstant(String constant, DataTypes type){

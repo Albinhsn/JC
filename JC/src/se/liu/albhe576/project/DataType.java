@@ -33,7 +33,6 @@ public class DataType {
     }
     private boolean isDecimal(){return this.isLong() || this.isShort() || this.isByte() || this.isInt() || this.isFloat() || this.isDouble();}
     public boolean isInteger(){return isInt() || isByte() || isShort() || isLong();}
-    public boolean isFloatingPoint(){return this.isFloat() || this.isDouble();}
     public boolean canBeCastedTo(DataType other){return (this.isDecimal() && other.isDecimal()) || this.isSameType(other);}
 
     public DataType getTypeFromPointer() {

@@ -28,7 +28,7 @@ public class IndexExpr extends Expr{
 
         quads.createSetupBinary(quadPair.right(), valResult, Compiler.generateSymbol(DataType.getLong()));
         quads.createAdd(valResult, Compiler.generateSymbol(DataType.getLong()));
-        quads.addQuad(QuadOp.LOAD, valResult, null, Compiler.generateSymbol(valResult.type.getTypeFromPointer()));
+        quads.createLoad(valResult);
     }
     public IndexExpr(Expr value, Expr index, int line, String file){
         super(line, file);
