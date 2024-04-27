@@ -2,16 +2,11 @@
 
 ## Features remaining
 ### IMPROVEMENTS
-* figure out if you can encode the position in the symbol
-  * symbolTable also calculates the size of the stack
-* quad -> instruction 
-* remove stack
-* emit is just emitting the thing nothign else
-* it's based on the actual x86 
 
-
-
-
+* unify functions regarding struct fields
+* remove setle things
+* actively disallow globals and things outside of function declaration
+* the parser can just parse functions and structs directly rather then a list of stmt
 
 * movsb rather then some wierd with another register
 * Do something with instructions that are just randomly spread out strings
@@ -20,3 +15,4 @@
 * Do lea rax, [0 + rax * structSize] for struct pointer thingy
 * Do proper cleanup of error messages
 * figure if which rules that don't exist
+* sizeof macro :)

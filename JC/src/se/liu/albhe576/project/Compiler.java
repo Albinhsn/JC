@@ -78,21 +78,21 @@ public class Compiler {
             stringBuilder.append(String.format("sub rsp, %d\n", scopeSize));
         }
     }
-    private void outputFunctionBody(StringBuilder stringBuilder, String functionName, Function function) throws CompileException {
+    private void outputFunctionBody(StringBuilder stringBuilder, Function function) throws CompileException {
         final Map<String, Function> functions = this.symbolTable.getAllFunctions();
         final Map<String, Constant> constants = this.symbolTable.getConstants();
+        final Map<String, Struct> structs = this.symbolTable.getStructs();
 
-        Stack stack = new Stack(this.symbolTable.getAllScopedVariables(functionName), this.symbolTable.getStructs());
 
         QuadList intermediates = function.getIntermediates();
         for (Quad intermediate : intermediates) {
             // stringBuilder.append(String.format("; %s\n", intermediate));
-            stringBuilder.append(intermediate.emit(stack, functions, constants)).append("\n");
+            stringBuilder.append(intermediate.emit(functions, constants, structs)).append("\n");
         }
 
         if(intermediates.isEmpty() || intermediates.getLastOp() != QuadOp.RET){
             Quad retQuad = new Quad(QuadOp.RET, null, null, null);
-            stringBuilder.append(retQuad.emit(stack, functions, constants)).append("\n");
+            stringBuilder.append(retQuad.emit(functions, constants, structs)).append("\n");
         }
 
     }
@@ -105,7 +105,7 @@ public class Compiler {
             String key = function.getKey();
             stringBuilder.append(String.format("\n\n%s:\npush rbp\nmov rbp, rsp\n", key));
             this.handleStackAlignment(stringBuilder, key);
-            this.outputFunctionBody(stringBuilder, key, function.getValue());
+            this.outputFunctionBody(stringBuilder, function.getValue());
         }
 
         FileWriter fileWriter = new FileWriter(name);

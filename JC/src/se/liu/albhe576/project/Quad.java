@@ -3,22 +3,8 @@ package se.liu.albhe576.project;
 import java.util.Map;
 
 public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
-    private static int getFunctionArgumentsStackSize(String name, Map<String, Function> functions, Stack stack) {
-        Function function = functions.get(name);
-        if (function.external) {
-            return 0;
-        }
 
-        int argSize = 0;
-        if (function.getArguments() != null) {
-            Map<String, Struct> structs = stack.getStructs();
-            for (StructField field : function.getArguments()) {
-                argSize += SymbolTable.getStructSize(structs, field.type());
-            }
-        }
-        return argSize;
-    }
-
+    public static String getVariableLocation(int offset){return offset >= 0 ? String.format("[rbp + %d]", offset) : String.format("[rbp %d]", offset);}
     private static final String[] FLOAT_REGISTERS = new String[]{"xmm0", "xmm1", "xmm2"};
     private static final String[] INTEGER_REGISTERS = new String[]{"eax", "ecx", "ebx"};
     private static final String[] BYTE_REGISTER = new String[]{"al", "cl", "bl"};
@@ -62,8 +48,49 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
 
         return String.format("%s %s, %s", movePair.move(), movePair.register(), immValue);
     }
+    int moveStructField(Map<String,Struct> structs, StringBuilder s, StructField field, int offset){
+        if(field.type().isStruct()){
+            Struct struct = structs.get(field.type().name);
+            for(StructField f : struct.getFields()){
+                offset = this.moveStructField(structs, s, f, offset);
+            }
+            return offset;
+        }
 
-    public String emit(Stack stack, Map<String, Function> functions, Map<String, Constant> constants) throws CompileException {
+        String register = Quad.getRegisterFromType(field.type(), 2);
+        s.append(String.format("mov %s, [rax + %d]\n", register, offset));
+        s.append(String.format("mov [rcx + %d], %s\n", offset, register));
+        return offset + SymbolTable.getStructSize(structs, field.type());
+    }
+    public String moveStruct(Map<String, Struct> structs, Symbol value){
+        Struct valueStruct  = structs.get(value.type.name);
+        StringBuilder s = new StringBuilder();
+
+        int offset = 0;
+        for(StructField field : valueStruct.getFields()){
+            offset = this.moveStructField(structs, s, field, offset);
+        }
+        return s.toString();
+    }
+    public String loadField(Map<String, Struct> structs, DataType type, String memberName) throws CompileException {
+        Struct struct = structs.get(type.name);
+        for(StructField field : struct.getFields()){
+            if(field.name().equals(memberName)){
+                StringPair movePair = Quad.getMovOpAndRegisterFromType(field.type(), 0);
+                String move  = field.type().isStruct() ? "lea" : movePair.move();
+
+                String out = String.format("%s %s, [rax + %d]",move, movePair.register(), Struct.getFieldOffset(structs, struct, memberName));
+                if(field.type().isByte() || field.type().isShort()){
+                    // ToDO hoist
+                    out += String.format("\nmovsx %s, %s", Quad.getRegisterFromType(DataType.getInt(), 0), movePair.register());
+                }
+                return out;
+            }
+        }
+        throw new CompileException(String.format("Couldn't find struct %s with member %s", type.name, memberName));
+    }
+
+    public String emit(Map<String, Function> functions, Map<String, Constant> constants, Map<String, Struct> structs) throws CompileException {
         switch (this.op) {
             case LOAD_IMM -> {return this.loadImmediate(constants);}
             case INC -> {
@@ -140,12 +167,21 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             }
             case LOAD_VARIABLE_POINTER -> {
                 VariableSymbol variableSymbol = (VariableSymbol) operand1;
-                return stack.loadVariablePointer(variableSymbol.id);
+                if(variableSymbol.offset < 0){
+                    return String.format("lea rax, [rbp %d]", variableSymbol.offset);
+                }
+                return String.format("lea rax, [rbp + %d]", variableSymbol.offset);
             }
             case LOAD_POINTER -> {return "lea rax, [rax]";}
             case LOAD_FIELD_POINTER -> {
                 VariableSymbol variable = (VariableSymbol) operand1;
-                return stack.loadFieldPointer(variable.id, operand2.name);
+                Struct struct = structs.get(variable.type.name);
+                int offset = Struct.getFieldOffset(structs, struct, operand2.name);
+                if(offset == 0){
+                    return "lea rax, [rax]";
+                }else{
+                    return String.format("lea rax, [rax + %d]", offset);
+                }
             }
             case DEREFERENCE, INDEX -> {
                 if (result.type.isStruct() && operand2.type.isPointer()) {
@@ -156,7 +192,8 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             }
             case LOAD -> {
                 VariableSymbol variableSymbol = (VariableSymbol) operand1;
-                String out = stack.loadVariable(variableSymbol.id);
+                StringPair movePair = Quad.getMovOpAndRegisterFromType(variableSymbol.type, 0);
+                String out = String.format("%s %s, %s", movePair.move(), movePair.register(), getVariableLocation(variableSymbol.offset));
                 if(operand1.type.isByte()){
                     return out + "\nmovsx rax, al";
                 }
@@ -165,11 +202,27 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 }
                 return out;
             }
-            case SET_FIELD -> {return stack.storeField(operand2.type, operand1);}
-            case GET_FIELD -> {return stack.loadField(operand1.type, operand2.name);}
+            case SET_FIELD -> {
+                StringPair movePair = Quad.getMovOpAndRegisterFromType(operand1.type, 0);
+                Struct struct       = structs.get(operand2.type.name);
+                int offset          = Struct.getFieldOffset(structs, struct, operand1.name);
+
+                if(operand1.type.isStruct()){
+                    return String.format("lea rcx, [rcx + %d]\n", offset) + moveStruct(structs, operand1);
+                }
+                if(offset != 0){
+                    return String.format("%s [rcx + %d], %s", movePair.move(), offset, movePair.register());
+                }
+                return String.format("%s [rcx], %s", movePair.move(), movePair.register());
+            }
+            case GET_FIELD -> {return loadField(structs, operand1.type, operand2.name);}
             case STORE -> {
                 VariableSymbol variableSymbol = (VariableSymbol) operand1;
-                return stack.storeVariable(variableSymbol.id);
+                if(variableSymbol.type.isStruct()){
+                    return moveStruct(structs, variableSymbol);
+                }
+                StringPair movePair = Quad.getMovOpAndRegisterFromType(variableSymbol.type, 0);
+                return String.format("%s %s, %s", movePair.move(), Quad.getVariableLocation(variableSymbol.offset), movePair.register());
             }
             case STORE_INDEX -> {
                 StringPair movePair = getMovOpAndRegisterFromType(operand1.type, 0);
@@ -262,19 +315,25 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 return "pop rax";
             }
             case MOV_REG_CA -> {
-                StringPair movePair = getMovOpAndRegisterFromType(operand1.type, 0);
-                String register2 = getRegisterFromType(operand1.type, 1);
-                String out = String.format("%s %s, %s", movePair.move(), register2, movePair.register());
                 if (operand1.type.isByte()) {
                     return "movsx rcx, al";
                 }
                 if (operand1.type.isShort()) {
                     return "movsx rcx, ax";
                 }
-                return out;
+                StringPair movePair = getMovOpAndRegisterFromType(operand1.type, 0);
+                String register2 = getRegisterFromType(operand1.type, 1);
+                return String.format("%s %s, %s", movePair.move(), register2, movePair.register());
             }
-            case PUSH_STRUCT -> {return stack.pushStruct(operand1);}
-            case MOVE_STRUCT -> {return stack.moveStruct(operand1);}
+            case PUSH_STRUCT -> {
+                Struct struct = structs.get(operand1.type.name);
+                int size = struct.getSize(structs);
+
+                return String.format("sub rsp, %d\n", size) +
+                        "lea rcx, [rsp]" +
+                        moveStruct(structs, operand1);
+            }
+            case MOVE_STRUCT -> {return moveStruct(structs, operand1);}
             case MOV_XMM0 -> {
                 if(operand1.type.isFloat()){
                    return "cvtss2sd xmm0, xmm0";
@@ -390,7 +449,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 return "mov r9, rax";
             }
             case CALL -> {
-                int stackAligment = getFunctionArgumentsStackSize(operand1.name, functions, stack);
+                int stackAligment = Struct.getFunctionArgumentsStackSize(operand1.name, functions, structs);
                 if (stackAligment != 0) {
                     stackAligment += Compiler.getStackPadding(stackAligment);
                     return String.format("call %s\nadd rsp, %d", operand1.name, stackAligment);
@@ -399,16 +458,8 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             }
             case LOGICAL_NOT -> {return "xor rax, 1";}
             case NEGATE -> {
-                if(operand1.type.isByte()){
-                    return "not al\ninc al";
-                }
-                if(operand1.type.isShort()){
-                    return "not ax\ninc ax";
-                }
-                if(operand1.type.isInteger()){
-                    return "not eax\ninc eax";
-                }
-                return "not rax\ninc rax";
+                String reg = getRegisterFromType(operand1.type, 0);
+                return String.format("not %s\ninc %s", reg, reg);
             }
             case ALLOCATE -> {
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand1;
@@ -416,7 +467,13 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             }
             case MOVE_ARG -> {
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand2;
-                return stack.moveArg(operand1, Integer.parseInt(immediateSymbol.getValue()));
+                int offset = Integer.parseInt(immediateSymbol.getValue());
+                if(operand1.type.isStruct()){
+                    return String.format("lea rcx, [rsp + %d]\n", offset) + moveStruct(structs, operand1);
+                }
+
+                StringPair movePair = Quad.getMovOpAndRegisterFromType(operand1.type, 0);
+                return String.format("%s [rsp + %d], %s",movePair.move(), offset, movePair.register());
             }
             case RET -> {return "mov rsp, rbp\npop rbp\nret";}
         }
