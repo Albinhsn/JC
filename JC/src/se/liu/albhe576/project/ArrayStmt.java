@@ -40,7 +40,12 @@ public class ArrayStmt extends Stmt {
             }
 
             QuadList setupPointerQuads = new QuadList();
-            Symbol addResult = setupPointerQuads.createSetupPointerOp(arraySymbol, itemSize * i);
+
+            Symbol loadedImmediate = setupPointerQuads.createLoadImmediate(DataType.getLong(), String.valueOf(itemSize * i));
+            setupPointerQuads.createMovRegisterAToC(loadedImmediate);
+            setupPointerQuads.addQuad(QuadOp.LOAD_VARIABLE_POINTER, arraySymbol, null, arraySymbol);
+            Symbol addResult = setupPointerQuads.createAdd(arraySymbol, Compiler.generateSymbol(DataType.getLong()));
+
             quads.createSetupBinary(setupPointerQuads, result, addResult);
             quads.createStore(result, addResult);
         }

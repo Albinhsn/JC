@@ -13,7 +13,6 @@ public class VariableStmt extends Stmt{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
-
         if(symbolTable.symbolExists(name)){
             Compiler.error(String.format("Trying to redeclare existing variable %s\n", name), line, file);
         }

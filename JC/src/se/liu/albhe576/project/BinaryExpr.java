@@ -10,7 +10,7 @@ public class BinaryExpr extends Expr{
         this.op = op;
         this.right = right;
     }
-    public static boolean isInvalidBitwise(DataType left, DataType right){return !(left.isLong() || left.isInt() || left.isByte() || left.isShort()) || !(right.isLong() || right.isInt() || right.isByte() || right.isShort());}
+    public static boolean isInvalidBitwise(DataType left, DataType right){return !(left.isInteger() && right.isInteger());}
     public static boolean isInvalidArithmetic(DataType left, DataType right){
         if((left.isPointer() && !right.isInt()) || (right.isPointer() && !left.isInt())){
             return true;
@@ -31,8 +31,6 @@ public class BinaryExpr extends Expr{
         quads.createSetupBinary(quadPair.right(), lResult, rResult);
         quads.addQuad(QuadOp.fromToken(op), lResult, rResult, Compiler.generateSymbol(DataType.getInt()));
     }
-
-
 
     private void arithmetic(SymbolTable symbolTable, QuadList lQuads)  throws CompileException{
         QuadListPair quadPair = QuadList.compileBinary(symbolTable, lQuads, left, right);

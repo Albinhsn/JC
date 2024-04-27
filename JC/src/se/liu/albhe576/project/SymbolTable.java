@@ -122,22 +122,7 @@ public class SymbolTable {
     public boolean isExternFunction(String name){
         return this.functions.get(name).external;
     }
-    public boolean symbolExists(String name) {
-        Scope scope = this.scopes.get(this.currentFunctionName);
-
-        while(true){
-            if(scope.variableExists(name)){
-               return true;
-            }
-            if(scope.getChildren().isEmpty()){
-                return false;
-            }
-            scope = scope.getLastChild();
-            if(scope.isClosed()){
-                return false;
-            }
-        }
-    }
+    public boolean symbolExists(String name) {return findSymbol(name) != null;}
     public Symbol findSymbol(String name){
         Scope scope = this.scopes.get(this.currentFunctionName);
         while(true){

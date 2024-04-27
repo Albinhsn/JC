@@ -24,7 +24,7 @@ public class WhileStmt extends Stmt{
         for(Stmt stmt : body){
             stmt.compile(symbolTable, quads);
         }
-        quads.createJmp( condLabel);
+        quads.addQuad(QuadOp.JMP, condLabel, null, null);
         quads.insertLabel(mergeLabel);
         symbolTable.exitScope();
     }

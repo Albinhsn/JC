@@ -96,14 +96,20 @@ public class Compiler {
 
 
         for (Quad intermediate : quads) {
-            // stringBuilder.append(String.format("; %s\n", intermediate));
+            stringBuilder.append(String.format("; %s\n", intermediate));
             System.out.printf("; %s\n", intermediate);
-            stringBuilder.append(intermediate.emit(functions, constants, structs)).append("\n");
+            Instruction[] instruction = intermediate.emitInstruction(functions, constants, structs);
+            for(Instruction ins : instruction){
+                stringBuilder.append(ins.emit().toLowerCase()).append("\n");
+            }
         }
 
         if(quads.isEmpty() || quads.getLastOp() != QuadOp.RET){
             Quad retQuad = new Quad(QuadOp.RET, null, null, null);
-            stringBuilder.append(retQuad.emit(functions, constants, structs)).append("\n");
+            Instruction[] instruction = retQuad.emitInstruction(functions, constants, structs);
+            for(Instruction ins : instruction){
+                stringBuilder.append(ins.emit().toLowerCase()).append("\n");
+            }
         }
 
     }

@@ -13,28 +13,14 @@ public class Parser {
     private record ParseFunction(Rule prefixRule, Rule infixRule, Precedence precedence) { }
     private final EnumMap<TokenType, ParseFunction> parseFunctions = new EnumMap<>(Map.ofEntries(
         Map.entry(TokenType.TOKEN_LEFT_BRACKET, new ParseFunction(null, this::index, Precedence.CALL)),
-        Map.entry(TokenType.TOKEN_RIGHT_BRACKET, new ParseFunction(null, null, Precedence.NONE)),
         Map.entry(TokenType.TOKEN_LEFT_PAREN, new ParseFunction(this::grouping, null, Precedence.CALL)),
-        Map.entry(TokenType.TOKEN_RIGHT_PAREN, new ParseFunction(null, null, Precedence.NONE)),
-        Map.entry(TokenType.TOKEN_LEFT_BRACE, new ParseFunction(null, null, Precedence.NONE)),
-        Map.entry(TokenType.TOKEN_RIGHT_BRACE, new ParseFunction(null, null, Precedence.NONE)),
-        Map.entry(TokenType.TOKEN_COMMA, new ParseFunction(null, null, Precedence.NONE)),
         Map.entry(TokenType.TOKEN_DOT, new ParseFunction(null, this::dot, Precedence.CALL)),
-        Map.entry(TokenType.TOKEN_AUGMENTED_SLASH, new ParseFunction(null, null, Precedence.NONE)),
-        Map.entry(TokenType.TOKEN_AUGMENTED_STAR, new ParseFunction(null, null, Precedence.NONE)),
-        Map.entry(TokenType.TOKEN_AUGMENTED_MINUS, new ParseFunction(null, null, Precedence.NONE)),
-        Map.entry(TokenType.TOKEN_AUGMENTED_PLUS, new ParseFunction(null, null, Precedence.NONE)),
-        Map.entry(TokenType.TOKEN_AUGMENTED_XOR, new ParseFunction(null, null, Precedence.NONE)),
-        Map.entry(TokenType.TOKEN_AUGMENTED_OR, new ParseFunction(null, null, Precedence.NONE)),
-        Map.entry(TokenType.TOKEN_AUGMENTED_AND, new ParseFunction(null, null, Precedence.NONE)),
         Map.entry(TokenType.TOKEN_MINUS, new ParseFunction(this::unary, this::binary, Precedence.TERM)),
         Map.entry(TokenType.TOKEN_PLUS, new ParseFunction(null, this::binary, Precedence.TERM)),
-        Map.entry(TokenType.TOKEN_SEMICOLON, new ParseFunction(null, null, Precedence.NONE)),
         Map.entry(TokenType.TOKEN_SLASH, new ParseFunction(null, this::binary, Precedence.FACTOR)),
         Map.entry(TokenType.TOKEN_STAR, new ParseFunction(this::dereference, this::binary, Precedence.FACTOR)),
         Map.entry(TokenType.TOKEN_BANG, new ParseFunction(this::unary, null, Precedence.NONE)),
         Map.entry(TokenType.TOKEN_BANG_EQUAL, new ParseFunction(null, this::comparison, Precedence.EQUALITY)),
-        Map.entry(TokenType.TOKEN_EQUAL, new ParseFunction(null, null, Precedence.NONE)),
         Map.entry(TokenType.TOKEN_EQUAL_EQUAL, new ParseFunction(null, this::comparison, Precedence.EQUALITY)),
         Map.entry(TokenType.TOKEN_GREATER, new ParseFunction(null, this::comparison, Precedence.COMPARISON)),
         Map.entry(TokenType.TOKEN_GREATER_EQUAL, new ParseFunction(null, this::comparison, Precedence.COMPARISON)),
@@ -53,9 +39,7 @@ public class Parser {
         Map.entry(TokenType.TOKEN_SHIFT_RIGHT, new ParseFunction(null, this::binary, Precedence.BITWISE)),
         Map.entry(TokenType.TOKEN_INCREMENT, new ParseFunction(this::unary, this::postfix, Precedence.TERM)),
         Map.entry(TokenType.TOKEN_DECREMENT, new ParseFunction(this::unary,this::postfix, Precedence.TERM)),
-        Map.entry(TokenType.TOKEN_MOD, new ParseFunction(null, this::binary, Precedence.TERM)),
-        Map.entry(TokenType.TOKEN_ELLIPSIS, new ParseFunction(null, null, Precedence.NONE)),
-        Map.entry(TokenType.TOKEN_EOF, new ParseFunction(null, null, Precedence.NONE))
+        Map.entry(TokenType.TOKEN_MOD, new ParseFunction(null, this::binary, Precedence.TERM))
     ));
     private final Map<String, Deque<Token>> defined;
     private final List<String> included;
@@ -172,8 +156,9 @@ public class Parser {
     private Expr parseExpr(Expr expr, Precedence precedence) throws CompileException{
 
         advance();
-        ParseFunction prefix = this.parseFunctions.getOrDefault(this.previous.type(), null);
-        if(prefix == null || prefix.prefixRule == null){
+
+        ParseFunction prefix = this.parseFunctions.getOrDefault(this.previous.type(), new ParseFunction(null, null, Precedence.NONE));
+        if(prefix.prefixRule == null){
             Compiler.error(String.format("Expected expression but got %s %s", this.previous.literal(), precedence), this.current.line(), this.fileName);
         }
 
@@ -182,16 +167,12 @@ public class Parser {
 
         expr = prefix.prefixRule.apply(expr, canAssign, this.previous.line());
 
-        ParseFunction currentRule = this.parseFunctions.get(this.current.type());
-
-        if(currentRule == null){
-            Compiler.error(String.format("Expected expression but got %s %s", this.previous.literal(), precedence), this.current.line(), this.fileName);
-        }
+        ParseFunction currentRule = this.parseFunctions.getOrDefault(this.current.type(), new ParseFunction(null, null, Precedence.NONE));
 
         while(precedenceOrdinal <= currentRule.precedence.ordinal()){
             advance();
             expr = currentRule.infixRule.apply(expr, canAssign, this.previous.line());
-            currentRule = this.parseFunctions.get(this.current.type());
+            currentRule = this.parseFunctions.getOrDefault(this.current.type(), new ParseFunction(null, null, Precedence.NONE));
         }
 
         if(canAssign && matchType(TokenType.TOKEN_EQUAL)){
@@ -540,6 +521,9 @@ public class Parser {
 
     private Expr getEmptyExpr(int line){return new Expr(line, this.fileName);}
 
+    public Parser(Scanner scanner, List<String> included, String fileName){
+        this(scanner, included, new HashMap<>(), fileName);
+    }
     public Parser(Scanner scanner, List<String> included, Map<String, Struct> structs, String fileName){
         this.included = included;
         this.definedQueue = new ArrayDeque<>();

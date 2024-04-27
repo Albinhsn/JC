@@ -42,12 +42,12 @@ public class ComparisonExpr extends Expr {
 
         DataType highestPrecedenceType = DataType.getHighestDataTypePrecedence(lResult.type, rResult.type);
         Symbol resultType = Compiler.generateSymbol(highestPrecedenceType);
-        rResult = AssignStmt.convertValue(rResult, resultType, rQuads);
         lResult = AssignStmt.convertValue(lResult, resultType, quads);
+        rResult = AssignStmt.convertValue(rResult, resultType, rQuads);
 
         lResult = quads.createSetupBinary(rQuads, lResult, rResult);
 
-        quads.createCmp(lResult, rResult);
+        quads.addQuad(QuadOp.CMP, lResult, rResult, null);
         quads.addQuad(op, null, null, Compiler.generateSymbol(DataType.getInt()));
     }
 }

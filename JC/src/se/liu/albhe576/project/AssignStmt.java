@@ -22,24 +22,12 @@ public class AssignStmt extends Stmt{
         }
 
         switch(value.type.type){
-            case DOUBLE -> {
-                return  quads.createConvertDouble(value, target);
-            }
-            case FLOAT-> {
-                return  quads.createConvertFloat(value,target);
-            }
-            case LONG -> {
-                return  quads.createConvertLong(value,target);
-            }
-            case INT-> {
-                return  quads.createConvertInt(value,target);
-            }
-            case SHORT-> {
-                return  quads.createConvertShort(value,target);
-            }
-            case BYTE-> {
-                return  quads.createConvertByte(value, target);
-            }
+            case DOUBLE -> {return  quads.createConvertDouble(value, target);}
+            case FLOAT-> {return  quads.createConvertFloat(value,target);}
+            case LONG -> {return  quads.createConvertLong(value,target);}
+            case INT-> {return  quads.createConvertInt(value,target);}
+            case SHORT-> {return  quads.createConvertShort(value,target);}
+            case BYTE-> {return  quads.createConvertByte(value, target);}
         }
         throw new CompileException(String.format("Can't convert %s to %s", value.type.name, target.type.name));
     }
@@ -57,20 +45,15 @@ public class AssignStmt extends Stmt{
 
         Symbol valueResult = quads.getLastResult();
 
-
         Symbol variableType = variableQuads.getLastResult();
         Symbol variablePointer = variableQuads.getLastOperand1();
-        variableQuads.removeLastQuad();
+        variableQuads.pop();
         if(isInvalidAssignment(variableType, valueResult, quads.getLastOperand1())){
             Compiler.error(String.format("Trying to assign type %s to %s", valueResult.type.name, variableType.type.name), line, file);
         }
 
-        // Setup binary
         valueResult = AssignStmt.convertValue(valueResult, variableType, quads);
-        quads.createPush(valueResult);
-        quads.addAll(variableQuads);
-        quads.createMovRegisterAToC(variablePointer);
-        quads.createPop(valueResult);
+        quads.createSetupBinary(variableQuads, valueResult, variablePointer);
         quads.createStoreVariable(variableType);
     }
 }

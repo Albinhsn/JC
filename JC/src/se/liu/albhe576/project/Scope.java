@@ -8,17 +8,6 @@ public class Scope {
     private boolean closed;
     public void closeScope(){this.closed = true;}
     public boolean isClosed(){return this.closed;}
-    public Map<Integer, VariableSymbol> getAllScopedVariables(){
-        Map<Integer, VariableSymbol> vars = new HashMap<>();
-        for(VariableSymbol symbol : this.variables.values()){
-            vars.put(symbol.id, symbol);
-        }
-        for(Scope child : children){
-            vars.putAll(child.getAllScopedVariables());
-        }
-        return vars;
-    }
-
     public Scope(Map<String, VariableSymbol> variables){
         this.children = new ArrayList<>();
         this.variables = variables;

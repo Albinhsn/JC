@@ -19,7 +19,7 @@ public class Main {
 
         List<String> included = new ArrayList<>();
         included.add(filePath);
-        Parser parser = new Parser(new Scanner(s, filePath), included, new HashMap<>(), filePath);
+        Parser parser = new Parser(new Scanner(s, filePath), included, filePath);
         parser.parse();
         Compiler compiler = new Compiler(parser.getStructs(), parser.getFunctions());
         compiler.compile("out.asm");

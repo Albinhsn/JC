@@ -41,7 +41,7 @@ public class UnaryExpr extends Expr{
         }
         quads.createPush(res);
         expr.compile(symbolTable, quads);
-        quads.removeLastQuad();
+        quads.pop();
         quads.createMovRegisterAToC(quads.getLastResult());
         Symbol popped = quads.createPop(res);
         quads.addQuad(QuadOp.STORE, popped, null, popped);
