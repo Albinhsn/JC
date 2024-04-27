@@ -6,7 +6,8 @@ import java.util.*;
 
 public class Compiler {
 
-    private final List<Stmt> stmts;
+    private final Map<String, Function> functions;
+    private final Map<String, QuadList> functionQuads;
     private final SymbolTable symbolTable;
     private static int resultCount;
     private static int labelCount;
@@ -28,9 +29,20 @@ public class Compiler {
     public void compile(String name) throws CompileException, IOException{
 
         // Intermediate code generation
-        for(Stmt stmt : stmts){
+        for(Map.Entry<String, Function> entry: this.functions.entrySet().stream().filter(x -> !x.getValue().external).toList()){
+            Function function = entry.getValue();
+            Map<String, VariableSymbol> localSymbols = new HashMap<>();
+
             QuadList quads = new QuadList();
-            stmt.compile(symbolTable, quads);
+            this.functionQuads.put(entry.getKey(), quads);
+
+            int offset = 16;
+            for(StructField arg : function.getArguments()){
+                localSymbols.put(arg.name(), new VariableSymbol(arg.name(), arg.type(), offset, symbolTable.generateVariableId()));
+                offset += SymbolTable.getStructSize(symbolTable.getStructs(), arg.type());
+            }
+            symbolTable.compileFunction(entry.getKey(), localSymbols);
+            Stmt.compileBlock(symbolTable, quads, function.getBody());
         }
 
         // Output intel assembly
@@ -78,19 +90,18 @@ public class Compiler {
             stringBuilder.append(String.format("sub rsp, %d\n", scopeSize));
         }
     }
-    private void outputFunctionBody(StringBuilder stringBuilder, Function function) throws CompileException {
-        final Map<String, Function> functions = this.symbolTable.getAllFunctions();
+    private void outputFunctionBody(StringBuilder stringBuilder, QuadList quads) throws CompileException {
         final Map<String, Constant> constants = this.symbolTable.getConstants();
         final Map<String, Struct> structs = this.symbolTable.getStructs();
 
 
-        QuadList intermediates = function.getIntermediates();
-        for (Quad intermediate : intermediates) {
+        for (Quad intermediate : quads) {
             // stringBuilder.append(String.format("; %s\n", intermediate));
+            System.out.printf("; %s\n", intermediate);
             stringBuilder.append(intermediate.emit(functions, constants, structs)).append("\n");
         }
 
-        if(intermediates.isEmpty() || intermediates.getLastOp() != QuadOp.RET){
+        if(quads.isEmpty() || quads.getLastOp() != QuadOp.RET){
             Quad retQuad = new Quad(QuadOp.RET, null, null, null);
             stringBuilder.append(retQuad.emit(functions, constants, structs)).append("\n");
         }
@@ -101,11 +112,10 @@ public class Compiler {
         final Map<String, Function> functions = this.symbolTable.getInternalFunctions();
         StringBuilder stringBuilder = initOutput(this.symbolTable.getConstants(), this.symbolTable.getExternalFunctions());
 
-        for (Map.Entry<String, Function> function : functions.entrySet()) {
-            String key = function.getKey();
+        for (String key : functions.keySet()) {
             stringBuilder.append(String.format("\n\n%s:\npush rbp\nmov rbp, rsp\n", key));
             this.handleStackAlignment(stringBuilder, key);
-            this.outputFunctionBody(stringBuilder, function.getValue());
+            this.outputFunctionBody(stringBuilder, this.functionQuads.get(key));
         }
 
         FileWriter fileWriter = new FileWriter(name);
@@ -114,9 +124,10 @@ public class Compiler {
         fileWriter.close();
     }
 
-    public Compiler(Map<String, Struct> structs, List<Stmt> stmts, Map<String, Function> extern){
-        this.stmts = stmts;
+    public Compiler(Map<String, Struct> structs, Map<String, Function> functions){
+        this.functions = functions;
+        this.functionQuads = new HashMap<>();
         Map<String, Constant> constants = new HashMap<>();
-        this.symbolTable = new SymbolTable(structs, constants, extern);
+        this.symbolTable = new SymbolTable(structs, constants, functions);
     }
 }

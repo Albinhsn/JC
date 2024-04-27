@@ -42,7 +42,7 @@ public class ArrayStmt extends Stmt {
             QuadList setupPointerQuads = new QuadList();
             Symbol addResult = setupPointerQuads.createSetupPointerOp(arraySymbol, itemSize * i);
             quads.createSetupBinary(setupPointerQuads, result, addResult);
-            quads.createStoreIndex(result, addResult);
+            quads.createStore(result, addResult);
         }
     }
 }

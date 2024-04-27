@@ -135,7 +135,7 @@ public class QuadList extends ArrayList<Quad>{
                 return this.getLastResult();
             }
         }
-        throw new CompileException(String.format("Can't convert long to %s", target.type.name));
+        throw new CompileException(String.format("Can't convert long to %s", target.type));
     }
     public Symbol createConvertShort(Symbol value, Symbol target) throws CompileException {
         switch(target.type.type){
@@ -194,12 +194,6 @@ public class QuadList extends ArrayList<Quad>{
         throw new CompileException(String.format("Can't convert short to %s", target.type.name));
     }
 
-    public Symbol createLoadPointer(Symbol toLoad){
-        Symbol loaded = Compiler.generateSymbol(toLoad.type);
-        this.addQuad(QuadOp.LOAD_VARIABLE_POINTER, toLoad, null, loaded);
-        return loaded;
-    }
-    public void createIndex(Symbol value){this.addQuad(QuadOp.INDEX, null, value, Compiler.generateSymbol(value.type.getTypeFromPointer()));}
     public Symbol createAdd(Symbol left, Symbol right){
         Symbol result = Compiler.generateSymbol(left.type);
         this.addQuad(QuadOp.ADD, left, right, result);
@@ -211,24 +205,22 @@ public class QuadList extends ArrayList<Quad>{
         this.createPush(immLoadResult);
         this.createLoadImmediate(DataType.getInt(), immediateLiteral);
         this.createMovRegisterAToC(immLoadResult);
-        this.createPop(Compiler.generateSymbol(DataType.getInt()));
-        this.addQuad(QuadOp.CMP, null, null,null);
+        Symbol popped = this.createPop(Compiler.generateSymbol(DataType.getInt()));
+        this.addQuad(QuadOp.CMP, popped, null,null);
     }
 
     public void insertJMPOnComparisonCheck(Symbol jmpLocation, boolean jumpIfTrue){
         this.insertBooleanComparison(jumpIfTrue ? "1" : "0");
         this.addQuad(QuadOp.JE, jmpLocation, null, null);
     }
-    public void createStoreIndex(Symbol value, Symbol arr){this.addQuad(QuadOp.STORE_INDEX, value, arr, value);}
-    public void createSetField(Symbol member, Symbol struct){this.addQuad(QuadOp.SET_FIELD, member, struct, member);}
-    public void createGetField(Symbol member, Symbol structSymbol){this.addQuad(QuadOp.GET_FIELD, structSymbol, member,Compiler.generateSymbol(member.type));}
+    public void createStore(Symbol value, Symbol arr){this.addQuad(QuadOp.STORE, value, arr, value);}
+    public void createLoad(Symbol pointer, Symbol result){this.addQuad(QuadOp.LOAD, pointer, null, result);}
     public void createCall(Symbol functionSymbol, Symbol returnType){this.addQuad(QuadOp.CALL, functionSymbol, null, returnType);}
     public void createCmp(Symbol left, Symbol right){this.addQuad(QuadOp.CMP, left, right, null);}
     public void createJmp(Symbol label){this.addQuad(QuadOp.JMP, label, null, null);}
     public void createJmp(QuadOp condition, Symbol label){this.addQuad(condition, label, null, null);}
     public void createIncrement(Symbol symbol){this.addQuad(QuadOp.INC, symbol, null, Compiler.generateSymbol(symbol.type));}
     public void createDecrement(Symbol symbol){this.addQuad(QuadOp.DEC, symbol, null, Compiler.generateSymbol(symbol.type));}
-    public void createReturn(){this.addQuad(QuadOp.RET, null, null, null);}
     public void allocateArguments(int size){this.addQuad(QuadOp.ALLOCATE, new ImmediateSymbol("size", DataType.getInt(), String.valueOf(size)), null, null);}
     public void createMoveArgument(Symbol argSymbol, int offset){this.addQuad(QuadOp.MOVE_ARG, argSymbol, new ImmediateSymbol("size", DataType.getInt(), String.valueOf(offset)), null);}
 
@@ -252,9 +244,9 @@ public class QuadList extends ArrayList<Quad>{
         return new QuadListPair(quads, rQuads);
     }
     public Symbol createSetupPointerOp(Symbol pointerSymbol, int immediate){
-        Symbol loadedImmediate = this.createLoadImmediate(DataType.getInt(), String.valueOf(immediate));
+        Symbol loadedImmediate = this.createLoadImmediate(DataType.getLong(), String.valueOf(immediate));
         this.createMovRegisterAToC(loadedImmediate);
-        Symbol loadedPointer = this.createLoadPointer(pointerSymbol);
-        return this.createAdd(loadedPointer, Compiler.generateSymbol(DataType.getInt()));
+        this.addQuad(QuadOp.LOAD_VARIABLE_POINTER, pointerSymbol, null, pointerSymbol);
+        return this.createAdd(pointerSymbol, Compiler.generateSymbol(DataType.getLong()));
     }
 }

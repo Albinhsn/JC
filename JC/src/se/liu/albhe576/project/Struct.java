@@ -30,6 +30,14 @@ public class Struct {
         }
         throw new CompileException(String.format("Couldn't find member %s?\n", memberName));
     }
+    public static StructField getMember(Struct struct, String memberName)throws CompileException  {
+        for(StructField field : struct.fields){
+            if(field.name().equals(memberName)){
+                return field;
+            }
+        }
+        throw new CompileException(String.format("Couldn't find member %s?\n", memberName));
+    }
     public static int getFunctionArgumentsStackSize(String name, Map<String, Function> functions, Map<String, Struct> structs) {
         Function function = functions.get(name);
         if (function.external) {

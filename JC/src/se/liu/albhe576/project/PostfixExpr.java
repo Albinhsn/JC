@@ -38,7 +38,12 @@ public class PostfixExpr extends Expr{
                 quads.createDecrement(loadedSymbol);
         }
 
-        AssignStmt.createStore(symbolTable, this.target, quads, lastQuad);
+        quads.createPush(loadedSymbol);
+        this.target.compile(symbolTable, quads);
+        quads.removeLastQuad();
+        quads.createMovRegisterAToC(quads.getLastResult());
+        Symbol popped = quads.createPop(loadedSymbol);
+        quads.addQuad(QuadOp.STORE, popped, null, popped);
         quads.createPop(loadedSymbol);
     }
 }

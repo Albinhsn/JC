@@ -5,17 +5,17 @@
 #extern float sqrt(float x)
 
 
-// #include "resources/foo.jc"
-// #include "resources/tests.jc"
+#include "resources/foo.jc"
+#include "resources/tests.jc"
 
-int destroy_me(){
-    printf("Hello Sailor!\n");
+int main(){
+
+    run_tests();
+
     return 0;
 }
 
-int main(){
-    // run_tests();
-    return 2.0 + destroy_me();
-}
+
+
 
 

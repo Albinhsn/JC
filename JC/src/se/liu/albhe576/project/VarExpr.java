@@ -15,7 +15,13 @@ public class VarExpr extends Expr {
         }
 
         assert symbol != null;
-        QuadOp op = (symbol.type.isStruct() || symbol.type.isArray()) ? QuadOp.LOAD_VARIABLE_POINTER : QuadOp.LOAD;
-        quads.addQuad(op, symbol, null, Compiler.generateSymbol(symbol.type));
+        if(!symbol.type.isArray()){
+            Symbol loadedSymbol = Compiler.generateSymbol(DataType.getPointerFromType(symbol.type));
+            quads.addQuad(QuadOp.LOAD_VARIABLE_POINTER, symbol, null, loadedSymbol);
+            quads.addQuad(QuadOp.LOAD, loadedSymbol, null, symbol);
+        }else{
+            quads.addQuad(QuadOp.LOAD_VARIABLE_POINTER, symbol, null, symbol);
+        }
+
     }
 }

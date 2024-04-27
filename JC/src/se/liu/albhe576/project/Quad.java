@@ -4,7 +4,6 @@ import java.util.Map;
 
 public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
 
-    public static String getVariableLocation(int offset){return offset >= 0 ? String.format("[rbp + %d]", offset) : String.format("[rbp %d]", offset);}
     private static final String[] FLOAT_REGISTERS = new String[]{"xmm0", "xmm1", "xmm2"};
     private static final String[] INTEGER_REGISTERS = new String[]{"eax", "ecx", "ebx"};
     private static final String[] BYTE_REGISTER = new String[]{"al", "cl", "bl"};
@@ -18,7 +17,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             return BYTE_REGISTER[registerIndex];
         } else if (type.isShort()) {
             return SHORT_REGISTER[registerIndex];
-        } else if (type.isInteger()) {
+        } else if (type.isInt()) {
             return INTEGER_REGISTERS[registerIndex];
         }
         return LONG_REGISTERS[registerIndex];
@@ -30,9 +29,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
         }
         return type.isDouble() ? "movsd" : "mov";
     }
-    public static StringPair getMovOpAndRegisterFromType(DataType type, int idx){
-        return new StringPair(getMovOpFromType(type), getRegisterFromType(type, idx));
-    }
+    public static StringPair getMovOpAndRegisterFromType(DataType type, int idx){return new StringPair(getMovOpFromType(type), getRegisterFromType(type, idx));}
     public static String getConstantStringLocation(Map<String, Constant> constants, DataType type, String label){
         if(type.isFloat()){
             return String.format("[%s]", constants.get(label).label());
@@ -48,47 +45,11 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
 
         return String.format("%s %s, %s", movePair.move(), movePair.register(), immValue);
     }
-    int moveStructField(Map<String,Struct> structs, StringBuilder s, StructField field, int offset){
-        if(field.type().isStruct()){
-            Struct struct = structs.get(field.type().name);
-            for(StructField f : struct.getFields()){
-                offset = this.moveStructField(structs, s, f, offset);
-            }
-            return offset;
-        }
-
-        String register = Quad.getRegisterFromType(field.type(), 2);
-        s.append(String.format("mov %s, [rax + %d]\n", register, offset));
-        s.append(String.format("mov [rcx + %d], %s\n", offset, register));
-        return offset + SymbolTable.getStructSize(structs, field.type());
-    }
     public String moveStruct(Map<String, Struct> structs, Symbol value){
         Struct valueStruct  = structs.get(value.type.name);
-        StringBuilder s = new StringBuilder();
-
-        int offset = 0;
-        for(StructField field : valueStruct.getFields()){
-            offset = this.moveStructField(structs, s, field, offset);
-        }
-        return s.toString();
+        return String.format("mov rsi, rax\nmov rdi, rcx\nmov rcx, %d\nrep movsb", valueStruct.getSize(structs));
     }
-    public String loadField(Map<String, Struct> structs, DataType type, String memberName) throws CompileException {
-        Struct struct = structs.get(type.name);
-        for(StructField field : struct.getFields()){
-            if(field.name().equals(memberName)){
-                StringPair movePair = Quad.getMovOpAndRegisterFromType(field.type(), 0);
-                String move  = field.type().isStruct() ? "lea" : movePair.move();
-
-                String out = String.format("%s %s, [rax + %d]",move, movePair.register(), Struct.getFieldOffset(structs, struct, memberName));
-                if(field.type().isByte() || field.type().isShort()){
-                    // ToDO hoist
-                    out += String.format("\nmovsx %s, %s", Quad.getRegisterFromType(DataType.getInt(), 0), movePair.register());
-                }
-                return out;
-            }
-        }
-        throw new CompileException(String.format("Couldn't find struct %s with member %s", type.name, memberName));
-    }
+    public String getSignExtend(String target, DataType value){return String.format("movsx %s, %s", target, getRegisterFromType(value, 0));}
 
     public String emit(Map<String, Function> functions, Map<String, Constant> constants, Map<String, Struct> structs) throws CompileException {
         switch (this.op) {
@@ -109,7 +70,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 if (operand1.type.isFloat()) {
                     return "mov rcx, 1\ncvtsi2ss xmm1, rcx\nsubss xmm0, xmm1";
                 }
-                if (operand1.type.isInteger()) {
+                if (operand1.type.isInt()) {
                     return "dec eax";
                 }
                 return "dec rax";
@@ -162,90 +123,45 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 }
                 return String.format("xor rdx, rdx\nidiv %s", reg1);
             }
-            case MOD -> {
-                return "cdq\nxor rdx, rdx\nidiv rcx\nmov rax, rdx\n";
+            case MOD -> {return "cdq\nxor rdx, rdx\nidiv rcx\nmov rax, rdx\n";}
+            case ADDI, SUBI-> {
+                ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand1;
+                return String.format("%s rax, %s", op == QuadOp.ADDI ? "add" : "sub", immediateSymbol.getValue());
             }
             case LOAD_VARIABLE_POINTER -> {
                 VariableSymbol variableSymbol = (VariableSymbol) operand1;
-                if(variableSymbol.offset < 0){
-                    return String.format("lea rax, [rbp %d]", variableSymbol.offset);
-                }
-                return String.format("lea rax, [rbp + %d]", variableSymbol.offset);
+                return String.format("lea rax, [rbp %+d]", variableSymbol.offset);
             }
-            case LOAD_POINTER -> {return "lea rax, [rax]";}
             case LOAD_FIELD_POINTER -> {
-                VariableSymbol variable = (VariableSymbol) operand1;
-                Struct struct = structs.get(variable.type.name);
-                int offset = Struct.getFieldOffset(structs, struct, operand2.name);
-                if(offset == 0){
-                    return "lea rax, [rax]";
-                }else{
-                    return String.format("lea rax, [rax + %d]", offset);
-                }
-            }
-            case DEREFERENCE, INDEX -> {
-                if (result.type.isStruct() && operand2.type.isPointer()) {
-                    return "lea rax, [rax]";
-                }
-                StringPair movePair = getMovOpAndRegisterFromType(result.type, 0);
-                return String.format("%s %s, [rax]", movePair.move(), movePair.register());
+                ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand2;
+                return String.format("lea rax, [rax + %s]", immediateSymbol.getValue());
             }
             case LOAD -> {
-                VariableSymbol variableSymbol = (VariableSymbol) operand1;
-                StringPair movePair = Quad.getMovOpAndRegisterFromType(variableSymbol.type, 0);
-                String out = String.format("%s %s, %s", movePair.move(), movePair.register(), getVariableLocation(variableSymbol.offset));
-                if(operand1.type.isByte()){
-                    return out + "\nmovsx rax, al";
+                StringPair movePair = Quad.getMovOpAndRegisterFromType(result.type, 0);
+                String out = String.format("%s %s, ", movePair.move(), movePair.register());
+                if(operand2 != null){
+                    ImmediateSymbol immediateSymbol = (ImmediateSymbol)  operand2;
+                    out += String.format("[rax + %s]", immediateSymbol.getValue());
+                }else{
+                    out += "[rax]";
                 }
-                if(operand1.type.isShort()){
-                    return out + "\nmovsx rax, ax";
+                if(operand1.type.isByte() || operand1.type.isShort()){
+                    return out + "\n" + getSignExtend("rax", operand1.type);
                 }
                 return out;
             }
-            case SET_FIELD -> {
-                StringPair movePair = Quad.getMovOpAndRegisterFromType(operand1.type, 0);
-                Struct struct       = structs.get(operand2.type.name);
-                int offset          = Struct.getFieldOffset(structs, struct, operand1.name);
-
-                if(operand1.type.isStruct()){
-                    return String.format("lea rcx, [rcx + %d]\n", offset) + moveStruct(structs, operand1);
-                }
-                if(offset != 0){
-                    return String.format("%s [rcx + %d], %s", movePair.move(), offset, movePair.register());
-                }
-                return String.format("%s [rcx], %s", movePair.move(), movePair.register());
-            }
-            case GET_FIELD -> {return loadField(structs, operand1.type, operand2.name);}
             case STORE -> {
-                VariableSymbol variableSymbol = (VariableSymbol) operand1;
-                if(variableSymbol.type.isStruct()){
-                    return moveStruct(structs, variableSymbol);
-                }
-                StringPair movePair = Quad.getMovOpAndRegisterFromType(variableSymbol.type, 0);
-                return String.format("%s %s, %s", movePair.move(), Quad.getVariableLocation(variableSymbol.offset), movePair.register());
-            }
-            case STORE_INDEX -> {
-                StringPair movePair = getMovOpAndRegisterFromType(operand1.type, 0);
+                StringPair movePair = Quad.getMovOpAndRegisterFromType(operand1.type, 0);
                 return String.format("%s [rcx], %s", movePair.move(), movePair.register());
             }
             case CMP -> {
-                if (operand1 != null && operand1.type.isDouble()) {
+                if (operand1.type.isDouble()) {
                     return "comisd xmm0, xmm1";
                 }
-                if (operand1 != null && operand1.type.isFloat()) {
+                if (operand1.type.isFloat()) {
                     return "comiss xmm0, xmm1";
                 }
-                if (operand1 != null && operand1.type.isInteger()) {
-                    return "cmp eax, ecx";
-                }
-                if (operand1 != null && operand1.type.isShort()) {
-                    return "cmp ax, cx";
-                }
-                if (operand1 != null && operand1.type.isByte()) {
-                    return "cmp al, cl";
-                }
-
-                return "cmp rax, rcx";
+                return String.format("cmp %s, %s", getRegisterFromType(operand1.type, 0), getRegisterFromType(operand1.type, 1));
             }
             case JMP -> {return String.format("jmp %s", operand1.name);}
             case JNZ -> {return String.format("jnz %s", operand1.name);}
@@ -284,167 +200,99 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             case OR -> {return "or rax, rcx";}
             case XOR -> {return "xor rax, rcx";}
             case SHR -> {return "shr rax, cl";}
-            case PUSH_RCX -> {
-                return "push rcx";
-            }
-            case POP_RCX -> {
-                return "pop rcx";
-            }
+            case PUSH_RCX -> {return "push rcx";}
+            case POP_RCX -> {return "pop rcx";}
             case PUSH -> {
                 if (this.result.type.isFloat()) {
-                    return "sub rsp, 4\nmovss [rsp], xmm0";
+                    return "sub rsp, 16\nmovss [rsp], xmm0";
                 }
                 if (this.result.type.isDouble()) {
-                    return "sub rsp, 8\nmovsd [rsp], xmm0";
+                    return "sub rsp, 16\nmovsd [rsp], xmm0";
                 }
-                return "push rax";
+                return "sub rsp, 8\npush rax";
             }
             case POP -> {
                 if (this.result.type.isFloat()) {
-                    return "movss xmm0, [rsp]\nadd rsp, 4";
+                    return "movss xmm0, [rsp]\nadd rsp, 16";
                 }
                 if (this.result.type.isDouble()) {
-                    return "movsd xmm0, [rsp]\nadd rsp, 8";
+                    return "movsd xmm0, [rsp]\nadd rsp, 16";
                 }
                 if (this.result.type.isByte()) {
-                    return "pop rax\nmovsx rax, al";
+                    return "pop rax\nadd rsp, 8\nmovsx rax, al";
                 }
                 if (this.result.type.isShort()) {
-                    return "pop rax\nmovsx rax, ax";
+                    return "pop rax\nadd rsp, 8\nmovsx rax, ax";
                 }
-                return "pop rax";
+                return "pop rax\nadd rsp, 8";
             }
             case MOV_REG_CA -> {
-                if (operand1.type.isByte()) {
-                    return "movsx rcx, al";
+                if (operand1.type.isByte() || operand1.type.isShort()) {
+                    return getSignExtend("rcx", operand1.type);
                 }
-                if (operand1.type.isShort()) {
-                    return "movsx rcx, ax";
-                }
+
                 StringPair movePair = getMovOpAndRegisterFromType(operand1.type, 0);
                 String register2 = getRegisterFromType(operand1.type, 1);
                 return String.format("%s %s, %s", movePair.move(), register2, movePair.register());
             }
-            case PUSH_STRUCT -> {
-                Struct struct = structs.get(operand1.type.name);
-                int size = struct.getSize(structs);
-
-                return String.format("sub rsp, %d\n", size) +
-                        "lea rcx, [rsp]" +
-                        moveStruct(structs, operand1);
-            }
             case MOVE_STRUCT -> {return moveStruct(structs, operand1);}
             case MOV_XMM0 -> {
-                if(operand1.type.isFloat()){
-                   return "cvtss2sd xmm0, xmm0";
-                }
-                return "nop ; mov_xmm0";
+                return operand1.type.isFloat() ? "cvtss2sd xmm0, xmm0": "nop ; mov_xmm0";
             }
             case MOV_XMM1 -> {
-                if(operand1.type.isDouble()){
-                    return "movsd xmm1, xmm0";
-                }else{
-                    return "cvtss2sd xmm1, xmm0";
-                }
+                String op = operand1.type.isDouble() ? "movsd" : "cvtss2sd";
+                return String.format("%s xmm1, xmm0", op);
             }
             case MOV_XMM2 -> {
-                if(operand1.type.isDouble()){
-                    return "movsd xmm2, xmm0";
-                }else{
-                    return "cvtss2sd xmm2, xmm0";
-                }
+                String op = operand1.type.isDouble() ? "movsd" : "cvtss2sd";
+                return String.format("%s xmm2, xmm0", op);
             }
             case MOV_XMM3 -> {
-                if(operand1.type.isDouble()){
-                    return "movsd xmm3, xmm0";
-                }else{
-                    return "cvtss2sd xmm3, xmm0";
-                }
+                String op = operand1.type.isDouble() ? "movsd" : "cvtss2sd";
+                return String.format("%s xmm3, xmm0", op);
             }
             case MOV_XMM4 -> {
-                if(operand1.type.isDouble()){
-                    return "movsd xmm4, xmm0";
-                }else{
-                    return "cvtss2sd xmm4, xmm0";
-                }
+                String op = operand1.type.isDouble() ? "movsd" : "cvtss2sd";
+                return String.format("%s xmm4, xmm0", op);
             }
             case MOV_XMM5 -> {
-                if(operand1.type.isDouble()){
-                    return "movsd xmm5, xmm0";
-                }else{
-                    return "cvtss2sd xmm5, xmm0";
-                }
+                String op = operand1.type.isDouble() ? "movsd" : "cvtss2sd";
+                return String.format("%s xmm5, xmm0", op);
             }
             case MOV_RDI -> {
-                if(operand1.type.isByte()){
-                    return "movsx rdi, al";
-                }
-                if(operand1.type.isShort()){
-                    return "movsx rdi, ax";
-                }
-                if(operand1.type.isInteger()){
-                    return "movsx rdi, eax";
+                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
+                    return String.format("movsx rdi, %s", getRegisterFromType(operand1.type, 0));
                 }
                 return "mov rdi, rax";
             }
             case MOV_RSI -> {
-                if(operand1.type.isByte()){
-                    return "movsx rsi, al";
-                }
-                if(operand1.type.isShort()){
-                    return "movsx rsi, ax";
-                }
-                if(operand1.type.isInteger()){
-                    return "movsx rsi, eax";
+                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
+                    return String.format("movsx rsi, %s", getRegisterFromType(operand1.type, 0));
                 }
                 return "mov rsi, rax";
 
             }
             case MOV_RCX -> {
-                if(operand1.type.isByte()){
-                    return "movsx rcx, al";
-                }
-                if(operand1.type.isShort()){
-                    return "movsx rcx, ax";
-                }
-                if(operand1.type.isInteger()){
-                    return "movsx rcx, eax";
+                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
+                    return String.format("movsx rcx, %s", getRegisterFromType(operand1.type, 0));
                 }
                 return "mov rcx, rax";
             }
             case MOV_RDX -> {
-                if(operand1.type.isByte()){
-                    return "movsx rdx, al";
-                }
-                if(operand1.type.isShort()){
-                    return "movsx rdx, ax";
-                }
-                if(operand1.type.isInteger()){
-                    return "movsx rdx, eax";
+                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
+                    return String.format("movsx rdx, %s", getRegisterFromType(operand1.type, 0));
                 }
                 return "mov rdx, rax";
             }
             case MOV_R8 -> {
-                if(operand1.type.isByte()){
-                    return "movsx r8, al";
-                }
-                if(operand1.type.isShort()){
-                    return "movsx r8, ax";
-                }
-                if(operand1.type.isInteger()){
-                    return "movsx r8, eax";
+                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
+                    return String.format("movsx r8, %s", getRegisterFromType(operand1.type, 0));
                 }
                 return "mov r8, rax";
             }
             case MOV_R9 -> {
-                if(operand1.type.isByte()){
-                    return "movsx r9, al";
-                }
-                if(operand1.type.isShort()){
-                    return "movsx r9, ax";
-                }
-                if(operand1.type.isInteger()){
-                    return "movsx r9, eax";
+                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
+                    return String.format("movsx r9, %s", getRegisterFromType(operand1.type, 0));
                 }
                 return "mov r9, rax";
             }

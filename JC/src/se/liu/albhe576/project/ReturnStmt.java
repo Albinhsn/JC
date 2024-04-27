@@ -23,6 +23,6 @@ public class ReturnStmt extends Stmt{
         else if(returnType.type != DataTypes.VOID){
             Compiler.error(String.format("Expected return value in function %s", symbolTable.getCurrentFunctionName()), line, file);
         }
-        quads.createReturn();
+        quads.addQuad(QuadOp.RET, null, null, null);
     }
 }

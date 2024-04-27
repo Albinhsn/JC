@@ -60,15 +60,14 @@ public class Parser {
     private final Map<String, Deque<Token>> defined;
     private final List<String> included;
     private final String fileName;
-    private final Map<String, Function> extern;
+    private final Map<String, Function> functions;
     private final Map<String, Struct> structs;
     private final Scanner scanner;
     private Token current;
     private Token previous;
-    private final List<Stmt> stmts;
     private final Deque<Token> definedQueue;
 
-    public Map<String, Function> getExtern(){return this.extern;}
+    public Map<String, Function> getFunctions(){return this.functions;}
     public Map<String, Deque<Token>> getDefined(){return this.defined;}
     public Map<String, Struct> getStructs(){return this.structs;}
 
@@ -283,17 +282,8 @@ public class Parser {
                 args.add(this.parseStructField());
             }while(matchType(TokenType.TOKEN_COMMA));
         }
-        return args;
-    }
-
-    private Stmt function(DataType type, String name, int line) throws CompileException {
-        List<StructField> args = this.parseArguments();
-
         consume(TokenType.TOKEN_RIGHT_PAREN, String.format("Expected right paren after arguments but got %s", this.current.type()));
-        consume(TokenType.TOKEN_LEFT_BRACE, String.format("Expected { to start function body but got %s", this.current.type()));
-
-        List<Stmt> body = this.parseBody();
-        return new FunctionStmt(type, name,args, body, line, this.fileName);
+        return args;
     }
 
     private Stmt array(String name, DataType type, int line) throws CompileException {
@@ -327,7 +317,6 @@ public class Parser {
                 consume(TokenType.TOKEN_SEMICOLON, String.format("expected semicolon after assign expr but got %s", this.current.type()));
                 return new VariableStmt(type, name,value, line, this.fileName);
             }
-            case TOKEN_LEFT_PAREN -> {return this.function(type, name, line);}
             case TOKEN_SEMICOLON -> {return new VariableStmt(type, name, null, line, this.fileName);}
             default -> {
                 if(this.previous.type() != TokenType.TOKEN_LEFT_BRACKET){
@@ -393,12 +382,11 @@ public class Parser {
         }
 
         Parser includeParser = new Parser(new Scanner(s, fileName), this.included, this.structs, fileName);
-        List<Stmt> included = includeParser.parse();
+        includeParser.parse();
 
-        this.extern.putAll(includeParser.getExtern());
+        this.functions.putAll(includeParser.getFunctions());
         this.defined.putAll(includeParser.getDefined());
         this.structs.putAll(includeParser.structs);
-        this.stmts.addAll(included);
     }
 
     private void parseDefine() throws CompileException {
@@ -425,14 +413,33 @@ public class Parser {
         String funcName = this.previous.literal();
         consume(TokenType.TOKEN_LEFT_PAREN, "Expected ( for function args after function name in extern");
         if(matchType(TokenType.TOKEN_ELLIPSIS)){
-            this.extern.put(funcName, new Function(type, null, this.fileName, this.previous.line()));
+            this.functions.put(funcName, new Function(null, type, null, this.fileName, this.previous.line(), true));
+            consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ) after function args in extern");
         }else{
-            this.extern.put(funcName, new Function(this.parseArguments(), type, null, this.fileName, this.previous.line(), true));
+            this.functions.put(funcName, new Function(this.parseArguments(), type, null, this.fileName, this.previous.line(), true));
         }
-        consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ) after function args in extern");
+    }
+    private void parseFunction() throws CompileException {
+        if(!(isVariableType() || this.structs.containsKey(this.current.literal()))){
+            Compiler.error("Can't declare something other then extern, include, struct or function in outer scope", this.scanner.getLine(), this.fileName);
+        }
+
+        DataType type = parseType();
+        int line = this.scanner.getLine();
+        consume(TokenType.TOKEN_IDENTIFIER, String.format("Expected function name after type but got %s", this.current.type()));
+        String name = this.previous.literal();
+
+        consume(TokenType.TOKEN_LEFT_PAREN, String.format("Expected '(' for function parameters when parsing function signature in outer scope, got %s", this.current.literal()));
+        List<StructField> args = this.parseArguments();
+
+        consume(TokenType.TOKEN_LEFT_BRACE, String.format("Expected { to start function body but got %s", this.current.type()));
+
+        List<Stmt> body = this.parseBody();
+        this.functions.put(name, new Function(args, type, body, this.fileName, line, false));
+
     }
 
-    public List<Stmt> parse() throws CompileException {
+    public void parse() throws CompileException {
         advance();
         while(!matchType(TokenType.TOKEN_EOF)){
             if(matchType(TokenType.TOKEN_INCLUDE)){
@@ -444,10 +451,9 @@ public class Parser {
             }else if(matchType(TokenType.TOKEN_EXTERN)){
                 this.parseExtern();
             } else if(!matchType(TokenType.TOKEN_SEMICOLON)){
-                this.stmts.add(parseStmt());
+                this.parseFunction();
             }
         }
-        return this.stmts;
     }
     private Expr grouping(Expr expr, boolean canAssign, int line) throws CompileException{
         if(isVariableType()){
@@ -537,9 +543,8 @@ public class Parser {
     public Parser(Scanner scanner, List<String> included, Map<String, Struct> structs, String fileName){
         this.included = included;
         this.definedQueue = new ArrayDeque<>();
-        this.stmts = new ArrayList<>();
         this.defined = new HashMap<>();
-        this.extern = new HashMap<>();
+        this.functions = new HashMap<>();
         this.structs = structs;
         this.scanner = scanner;
         this.fileName = fileName;

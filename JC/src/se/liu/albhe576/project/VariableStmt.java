@@ -34,11 +34,10 @@ public class VariableStmt extends Stmt{
                 Compiler.error(String.format("Trying to assign type %s to type %s", lastSymbol.type, type), line, file);
             }
 
-            if(type.isStruct()){
-                QuadList rQuads = new QuadList();
-                Symbol loadedPointer = rQuads.createLoadPointer(variable);
-                quads.createSetupBinary(rQuads, lastSymbol, loadedPointer);
-            }
+            QuadList rQuads = new QuadList();
+            Symbol loadedPointer = Compiler.generateSymbol(DataType.getPointerFromType(variable.type));
+            rQuads.addQuad(QuadOp.LOAD_VARIABLE_POINTER, variable, null, loadedPointer);
+            quads.createSetupBinary(rQuads, lastSymbol, loadedPointer);
             quads.createStoreVariable(variable);
         }
     }

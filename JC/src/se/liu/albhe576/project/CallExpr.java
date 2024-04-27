@@ -83,6 +83,9 @@ public class CallExpr extends Expr{
 
            argSymbol = AssignStmt.convertValue(argSymbol, Compiler.generateSymbol(functionArguments.get(i).type()), argQuad);
 
+           if(argSymbol.type.isStruct()){
+               argQuad.removeLastQuad();
+           }
            argQuad.createMoveArgument(argSymbol, argSize);
            argSize += SymbolTable.getStructSize(symbolTable.getStructs(), argSymbol.type);
        }

@@ -2,17 +2,13 @@
 
 ## Features remaining
 ### IMPROVEMENTS
+Every load has a load pointer to the address before it
 
-* unify functions regarding struct fields
-* remove setle things
-* actively disallow globals and things outside of function declaration
-* the parser can just parse functions and structs directly rather then a list of stmt
-
-* movsb rather then some wierd with another register
-* Do something with instructions that are just randomly spread out strings
 * Do some cleanup with what state that gets sent around to each parser/scanner
-* redo the symboltable static getSize struct
-* Do lea rax, [0 + rax * structSize] for struct pointer thingy
 * Do proper cleanup of error messages
 * figure if which rules that don't exist
 * sizeof macro :)
+* macros with arguments
+
+* Do something with instructions that are just randomly spread out strings
+* Figure out if you can unify the and simplify the quadOps

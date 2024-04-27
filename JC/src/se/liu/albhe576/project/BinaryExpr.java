@@ -10,9 +10,9 @@ public class BinaryExpr extends Expr{
         this.op = op;
         this.right = right;
     }
-    public static boolean isInvalidBitwise(DataType left, DataType right){return !(left.isLong() || left.isInteger() || left.isByte() || left.isShort()) || !(right.isLong() || right.isInteger() || right.isByte() || right.isShort());}
+    public static boolean isInvalidBitwise(DataType left, DataType right){return !(left.isLong() || left.isInt() || left.isByte() || left.isShort()) || !(right.isLong() || right.isInt() || right.isByte() || right.isShort());}
     public static boolean isInvalidArithmetic(DataType left, DataType right){
-        if((left.isPointer() && !right.isInteger()) || (right.isPointer() && !left.isInteger())){
+        if((left.isPointer() && !right.isInt()) || (right.isPointer() && !left.isInt())){
             return true;
         }
         return left.isArray() || left.isStruct() || right.isArray() || right.isStruct();

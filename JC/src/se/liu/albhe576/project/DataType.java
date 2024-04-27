@@ -7,7 +7,7 @@ public class DataType {
     protected final DataTypes type;
     protected final int depth;
     public boolean isFloat(){return this.type == DataTypes.FLOAT && depth == 0;}
-    public boolean isInteger(){return this.type == DataTypes.INT && depth == 0;}
+    public boolean isInt(){return this.type == DataTypes.INT && depth == 0;}
     public boolean isShort(){return this.type == DataTypes.SHORT && depth == 0;}
     public boolean isLong(){return this.type == DataTypes.LONG && depth == 0;}
     public boolean isDouble(){return this.type == DataTypes.DOUBLE && depth == 0;}
@@ -20,7 +20,7 @@ public class DataType {
         if(isPointer() || isLong() || isDouble()){
             return 8;
         }
-        if(isInteger() || isFloat()){
+        if(isInt() || isFloat()){
             return 4;
         }
         return isShort() ? 2 : 1;
@@ -31,7 +31,9 @@ public class DataType {
         }
         return ((type == other.type && depth == 0 && other.depth == 0)) || (depth > 0 && other.depth > 0);
     }
-    private boolean isDecimal(){return this.isLong() || this.isShort() || this.isByte() || this.isInteger() || this.isFloat() || this.isDouble();}
+    private boolean isDecimal(){return this.isLong() || this.isShort() || this.isByte() || this.isInt() || this.isFloat() || this.isDouble();}
+    public boolean isInteger(){return isInt() || isByte() || isShort() || isLong();}
+    public boolean isFloatingPoint(){return this.isFloat() || this.isDouble();}
     public boolean canBeCastedTo(DataType other){return (this.isDecimal() && other.isDecimal()) || this.isSameType(other);}
 
     public DataType getTypeFromPointer() {
@@ -43,7 +45,7 @@ public class DataType {
     public static DataType getPointerFromType(DataType type){
         if(type.type == DataTypes.ARRAY){
             ArrayDataType arrayDataType = (ArrayDataType) type;
-            return new ArrayDataType(arrayDataType.name, arrayDataType.type, arrayDataType.itemType, arrayDataType.depth + 1);
+            return new DataType(arrayDataType.name, arrayDataType.itemType.type, arrayDataType.depth);
         }
         return new DataType(type.name, type.type, type.depth + 1);
     }
@@ -85,7 +87,7 @@ public class DataType {
         if(l.isLong() || r.isLong()){
             return getLong();
         }
-        if(l.isInteger() || r.isInteger()){
+        if(l.isInt() || r.isInt()){
             return getInt();
         }
         if(l.isShort() || r.isShort()){

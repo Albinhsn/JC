@@ -173,17 +173,6 @@ public class SymbolTable {
         }
         return false;
     }
-    public Symbol getMemberSymbol(Symbol structSymbol, String member) throws CompileException {
-        Struct struct = this.structs.get(structSymbol.getType().name);
-        // This calculates the actual offset form the struct we had
-        for(StructField field : struct.getFields()){
-            if(field.name().equals(member)){
-               return new Symbol(member, field.type());
-            }
-        }
-        throw new CompileException(String.format("Tried to access member '%s' in struct '%s', doesnt exist", member, structSymbol.getName()));
-    }
-
     public SymbolTable(Map<String, Struct> structs, Map<String, Constant> constants, Map<String, Function> extern){
         this.structs = structs;
         this.constants =constants;

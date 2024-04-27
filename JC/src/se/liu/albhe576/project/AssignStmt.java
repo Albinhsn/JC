@@ -43,53 +43,10 @@ public class AssignStmt extends Stmt{
         }
         throw new CompileException(String.format("Can't convert %s to %s", value.type.name, target.type.name));
     }
-    public static void compileStoreField(QuadList quads, QuadList variableQuads) throws CompileException {
-        Quad   lastQuad     = variableQuads.pop();
-        Symbol memberSymbol = lastQuad.operand2();
 
-        quads.createSetupBinary(variableQuads, quads.getLastResult(), variableQuads.getLastResult());
-        AssignStmt.convertValue(quads.getLastResult(), memberSymbol, quads);
-        quads.createSetField(memberSymbol, lastQuad.operand1());
-    }
-
-    public static void compileStoreDereferenced(QuadList valueQuads, QuadList variableQuads) throws CompileException {
-        variableQuads.removeLastQuad();
-        Symbol target = Compiler.generateSymbol(variableQuads.getLastResult().type.getTypeFromPointer());
-        storeIndex(valueQuads, variableQuads, valueQuads.getLastResult(), variableQuads.getLastResult(), target);
-    }
-
-
-    public static void compileStoreIndex(QuadList quads, QuadList variableQuads) throws CompileException {
-        Quad lastVariableQuad   = variableQuads.pop();
-        Symbol res              = lastVariableQuad.operand2();
-
-        storeIndex(quads, variableQuads, quads.getLastResult(), res,Compiler.generateSymbol(res.type.getTypeFromPointer()));
-    }
-    private static void storeIndex(QuadList quads, QuadList variableQuads, Symbol toStore, Symbol result, Symbol target) throws CompileException {
-        Symbol lSymbol = quads.createSetupBinary(variableQuads, toStore, variableQuads.getLastResult());
-        toStore = AssignStmt.convertValue(lSymbol, target, quads);
-        if(toStore.type.isStruct()){
-            quads.addQuad(QuadOp.MOVE_STRUCT, toStore, result, null);
-        }else{
-            quads.createStoreIndex(toStore, result);
-        }
-    }
-
-    public static void createStore(SymbolTable symbolTable, Expr variableExpr, QuadList valueQuads, Quad lastQuad) throws CompileException {
-        QuadList variableQuads = new QuadList();
-        variableExpr.compile(symbolTable, variableQuads);
-
-        switch(lastQuad.op()){
-            case DEREFERENCE -> AssignStmt.compileStoreDereferenced(valueQuads, variableQuads);
-            case GET_FIELD-> AssignStmt.compileStoreField(valueQuads, variableQuads);
-            case INDEX -> AssignStmt.compileStoreIndex(valueQuads, variableQuads);
-            default -> valueQuads.createStoreVariable(lastQuad.operand1());
-        }
-    }
     public static boolean isInvalidAssignment(Symbol variableType, Symbol valueResult, Symbol lastOperand){
         return !(variableType.type.canBeCastedTo(valueResult.type)  || lastOperand.isNull());
     }
-
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
@@ -99,26 +56,21 @@ public class AssignStmt extends Stmt{
         variable.compile(symbolTable, variableQuads);
 
         Symbol valueResult = quads.getLastResult();
-        Symbol variableType = variableQuads.getLastResult();
 
+
+        Symbol variableType = variableQuads.getLastResult();
+        Symbol variablePointer = variableQuads.getLastOperand1();
+        variableQuads.removeLastQuad();
         if(isInvalidAssignment(variableType, valueResult, quads.getLastOperand1())){
             Compiler.error(String.format("Trying to assign type %s to %s", valueResult.type.name, variableType.type.name), line, file);
         }
 
-
-        switch (variableQuads.getLastOp()){
-            case GET_FIELD   -> compileStoreField(quads, variableQuads);
-            case DEREFERENCE -> compileStoreDereferenced(quads, variableQuads);
-            case INDEX       -> compileStoreIndex(quads, variableQuads);
-            default          -> {
-                if(valueResult.type.isStruct()){
-                    quads.createSetupBinary(variableQuads, valueResult, variableType);
-                    quads.addQuad(QuadOp.MOVE_STRUCT, valueResult, variableType, null);
-                }else{
-                    AssignStmt.convertValue(valueResult, variableQuads.getLastOperand1(), quads);
-                    quads.createStoreVariable(variableQuads.getLastOperand1());
-                }
-            }
-        }
+        // Setup binary
+        valueResult = AssignStmt.convertValue(valueResult, variableType, quads);
+        quads.createPush(valueResult);
+        quads.addAll(variableQuads);
+        quads.createMovRegisterAToC(variablePointer);
+        quads.createPop(valueResult);
+        quads.createStoreVariable(variableType);
     }
 }

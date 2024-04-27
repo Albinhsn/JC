@@ -5,7 +5,7 @@ public class Symbol {
 
     @Override
     public String toString() {
-        return name;
+        return type.toString();
     }
 
     public boolean isNull(){
