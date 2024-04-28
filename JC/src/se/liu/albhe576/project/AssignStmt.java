@@ -49,7 +49,7 @@ public class AssignStmt extends Stmt{
         Symbol variablePointer = variableQuads.getLastOperand1();
         variableQuads.pop();
         if(isInvalidAssignment(variableType, valueResult, quads.getLastOperand1())){
-            Compiler.error(String.format("Trying to assign type %s to %s", valueResult.type.name, variableType.type.name), line, file);
+            Compiler.error(String.format("Trying to assign type %s to %s", valueResult.type, variableType.type), line, file);
         }
 
         valueResult = AssignStmt.convertValue(valueResult, variableType, quads);

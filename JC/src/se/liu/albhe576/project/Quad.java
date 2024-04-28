@@ -172,7 +172,8 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 };
             }
             case LOAD -> {
-                Operation operation = getMovOpFromType(result.type);
+                Operation operation = result.type.isStruct() ? Operation.LEA : getMovOpFromType(result.type);
+
                 Register target = getRegisterFromType(result.type, 0);
                 Operand value = new Operand(new Address(Register.RAX, true));
 
@@ -193,6 +194,10 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 return out;
             }
             case STORE -> {
+                if(operand1.type.isStruct()){
+                    return moveStruct(structs, operand1);
+                }
+
                 return new Instruction[]{
                         new Instruction(
                             getMovOpFromType(operand1.type),
@@ -461,7 +466,9 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                     Instruction [] movedStruct = moveStruct(structs, operand1);
                     Instruction[] out = new Instruction[1 + movedStruct.length];
                     out[0] = lea;
-                    System.arraycopy(movedStruct, 0, out, 1, out.length - 1);
+                    for(int i = 0; i < movedStruct.length; i++){
+                        out[i + 1] = movedStruct[i];
+                    }
                     return out;
                 }
 

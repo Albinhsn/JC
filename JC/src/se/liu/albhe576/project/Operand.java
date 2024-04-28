@@ -9,8 +9,8 @@ public class Operand {
         return address.toString();
     }
 
-    Address address;
-    String immediate;
+    public final Address address;
+    private final String immediate;
 
     public Operand(String immediate){
         this.immediate = immediate;

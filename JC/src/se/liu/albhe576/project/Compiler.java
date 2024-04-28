@@ -100,7 +100,7 @@ public class Compiler {
             System.out.printf("; %s\n", intermediate);
             Instruction[] instruction = intermediate.emitInstruction(functions, constants, structs);
             for(Instruction ins : instruction){
-                stringBuilder.append(ins.emit().toLowerCase()).append("\n");
+                stringBuilder.append(ins.emit()).append("\n");
             }
         }
 
@@ -108,7 +108,7 @@ public class Compiler {
             Quad retQuad = new Quad(QuadOp.RET, null, null, null);
             Instruction[] instruction = retQuad.emitInstruction(functions, constants, structs);
             for(Instruction ins : instruction){
-                stringBuilder.append(ins.emit().toLowerCase()).append("\n");
+                stringBuilder.append(ins.emit()).append("\n");
             }
         }
 

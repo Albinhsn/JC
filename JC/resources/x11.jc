@@ -134,7 +134,6 @@ void init_data(x11_data * data, byte * res, int server_read){
     data.id_base = 0;
     place_int(&data.id_base, &res[4]);
 
-    printf("cast: %ld\n", *(int*)&res[8]);
 
     // id_mask is offset 8, int
     data.id_mask = 0;
@@ -155,6 +154,7 @@ void init_data(x11_data * data, byte * res, int server_read){
     place_int(&data.id, &res[offset]);
     data.root_visual_id = 0;
     place_int(&data.root_visual_id, &res[offset + 32]);
+
 
 }
 
@@ -368,7 +368,6 @@ Reply poll_messages(int fd, int window_id, int gc_id){
 
     free(req);
     read_reply(&reply, fd);
-    printf("%d\n", reply.response[0]);
     return reply;
 }
 
@@ -510,10 +509,6 @@ int create_x11_window(x11_window * window, int x, int y, int w, int h){
   byte * server_res = malloc(server_res_size);
 
   int server_read = read(window.fd, server_res, server_res_size);
-    for(int i = 4; i < 8; i++){
-        printf("(%x,%d)",0xFF & server_res[i], server_res[i]);
-    }
-    printf("\n");
 
   if(server_read <= 0){
     printf("Failed to do the big read, read %d\n", server_read);
@@ -521,7 +516,6 @@ int create_x11_window(x11_window * window, int x, int y, int w, int h){
 
   x11_data data;
   init_data(&data, server_res, server_read);
-  printf("id: %ld, base: %ld, mask: %ld, root_visual_id: %d\n", data.id, data.id_base, data.id_mask, data.root_visual_id);
   free(server_res);
 
   window.window_root_id = data.id;

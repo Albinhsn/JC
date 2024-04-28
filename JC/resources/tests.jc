@@ -418,6 +418,23 @@ void test_fib(){
     print_testi(fib(6), 8, "fib");
 }
 
+
+struct StructPair{
+    byte x;
+    byte y;
+ }
+struct StructResponse{
+    StructPair * response;
+}
+
+void test_struct_arg(StructResponse * resp){
+    for(int i = 0; i < 8; i++){
+        print_testi(resp.response[i].x, i, "Struct Arg response");
+        print_testi(resp.response[i].y, i, "Struct Arg response");
+    }
+}
+
+
 void test_structs(){
     Bar bar;
     bar.c = 3;
@@ -427,6 +444,17 @@ void test_structs(){
     print_testi(arr_conversions(), 33, "arr_conversions");
     print_testi(move_struct(), 5, "move_struct");
 
+    StructResponse resp;
+    resp.response = malloc(16);
+    for(int i = 0; i < 8; i++){
+        resp.response[i].x = i;
+        resp.response[i].y = i;
+    }
+    test_struct_arg(&resp);
+    for(int i = 0; i < 8; i++){
+        print_testi(resp.response[i].x, i, "Struct Arg response");
+        print_testi(resp.response[i].y, i, "Struct Arg response");
+    }
 
     Foo foo;
     foo = bar.foo;
@@ -567,6 +595,7 @@ void test_fp(){
     print_testi(answer, 1, "!=, i - f");
 
 }
+
 
 void test_assign(){
     int a = 0;

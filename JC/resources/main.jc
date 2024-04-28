@@ -8,11 +8,13 @@
 #include "resources/foo.jc"
 #include "resources/tests.jc"
 
-
 int main(){
-    //int a = 5 * 2.0 - 3.5;
+
+    // assign to struct
+
     run_tests();
-    return 0;
+
+
 }
 
 

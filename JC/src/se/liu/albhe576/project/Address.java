@@ -8,15 +8,15 @@ public class Address {
             return effective ? "[" + label + "]" : label;
         }
         if(effective){
-            return String.format("[%s %+d]", register.name(), offset);
+            return String.format("[%s %+d]", register.name(), offset).toLowerCase();
         }
-        return register.name();
+        return register.name().toLowerCase();
     }
 
-    Register register;
-    int offset;
-    String label;
-    boolean effective;
+    private final Register register;
+    public int offset;
+    private final String label;
+    public boolean effective;
 
     public Address(int offset, Register register, boolean effective, String label){
         this.effective = effective;
