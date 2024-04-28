@@ -8,10 +8,12 @@ public class IndexExpr extends Expr{
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
         QuadListPair quadPair = QuadList.compileBinary(symbolTable, quads, value, index);
         Symbol valResult = quads.getLastResult();
+
         if(valResult.type.isArray()){
             ArrayDataType array = (ArrayDataType) valResult.type;
             valResult = Compiler.generateSymbol(DataType.getPointerFromType(array.itemType));
         }
+
         Symbol idxResult = quadPair.right().getLastResult();
 
         if(isInvalidValueToIndex(valResult.type)){
@@ -23,7 +25,7 @@ public class IndexExpr extends Expr{
             Compiler.error(String.format("Can't use type %s as index", idxResult.type), line, file);
         }
 
-        int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), valResult.type.getTypeFromPointer());
+        int structSize = symbolTable.getStructSize(valResult.type.getTypeFromPointer());
         quadPair.right().createIMUL(structSize);
 
         quads.createSetupBinary(quadPair.right(), valResult, Compiler.generateSymbol(DataType.getLong()));

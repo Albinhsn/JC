@@ -76,6 +76,7 @@ int draw_grid(x11_window * window, Grid * grid){
   x11_change_color(window.fd, window.gc_id, window.window_root_id, window.font_id, GREEN);
   int window_x = grid.item_x * block_width;
   int window_y = block_height * grid.item_y;
+  printf("%d, %d\n", window_x, window_y);
   x11_draw_rect(window, window_x, window_y, block_width, block_height);
 
 }

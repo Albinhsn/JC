@@ -30,8 +30,9 @@ public class DotExpr extends Expr{
         Struct struct = symbolTable.getStructs().get(lastSymbol.type.name);
         int offset = Struct.getFieldOffset(symbolTable.getStructs(), struct, this.member.literal());
         StructField field = Struct.getMember(struct, this.member.literal());
-        Symbol member = Compiler.generateSymbol(DataType.getPointerFromType(field.type()));
-        quads.addQuad(QuadOp.LOAD_FIELD_POINTER, lastSymbol, Compiler.generateImmediateSymbol(DataType.getLong(), String.valueOf(offset)), member);
-        quads.addQuad(QuadOp.LOAD, member, null, Compiler.generateSymbol(member.type.getTypeFromPointer()));
+        Symbol memberPointer = Compiler.generateSymbol(DataType.getPointerFromType(field.type()));
+        Symbol immediateSymbol = Compiler.generateImmediateSymbol(DataType.getLong(), String.valueOf(offset));
+        quads.addQuad(QuadOp.LOAD_FIELD_POINTER, lastSymbol, immediateSymbol, memberPointer);
+        quads.addQuad(QuadOp.LOAD, memberPointer, null, Compiler.generateSymbol(memberPointer.type.getTypeFromPointer()));
     }
 }

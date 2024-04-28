@@ -10,13 +10,12 @@ public class SymbolTable {
     private final Map<String, Constant> constants;
     private final Map<String, Scope> scopes;
     private String currentFunctionName;
-    private int variableCount;
+    private static final String[] internalStructs = new String[]{"int", "float", "byte", "string", "short", "double", "long"};
     public void compileFunction(String name, Map<String, VariableSymbol> arguments){
         this.scopes.put(name, new Scope(arguments));
         this.currentFunctionName = name;
     }
     public Map<String, Struct> getStructs(){return this.structs;}
-    private static final String[] internalStructs = new String[]{"int", "float", "byte", "string", "short", "double", "long"};
 
     public boolean isDeclaredStruct(String name){
         if(Arrays.asList(SymbolTable.internalStructs).contains(name)){
@@ -26,6 +25,12 @@ public class SymbolTable {
     }
 
     public static int getStructSize(Map<String, Struct> structs, DataType type){
+        if(structs.containsKey(type.name) && type.isStruct()){
+            return structs.get(type.name).getSize(structs);
+        }
+        return type.getSize();
+    }
+    public int getStructSize(DataType type){
         if(structs.containsKey(type.name) && type.isStruct()){
             return structs.get(type.name).getSize(structs);
         }
@@ -60,10 +65,6 @@ public class SymbolTable {
     public Map<String, Constant> getConstants(){
         return this.constants;
     }
-    public int generateVariableId(){
-        return this.variableCount++;
-    }
-
     public void enterScope(){
         Scope lastScope = this.getCurrentScope();
         lastScope.addChild();
@@ -72,7 +73,7 @@ public class SymbolTable {
 
     public VariableSymbol addVariable(String name, DataType type){
         int offset = -SymbolTable.getStructSize(structs, type) - this.getLocalVariableStackSize(this.currentFunctionName);
-        VariableSymbol variableSymbol = new VariableSymbol(name, type, offset, this.generateVariableId());
+        VariableSymbol variableSymbol = new VariableSymbol(name, type, offset);
         getCurrentScope().addVariable(name, variableSymbol);
         return variableSymbol;
     }
@@ -155,6 +156,5 @@ public class SymbolTable {
         this.constants =constants;
         this.functions = new HashMap<>(extern);
         this.scopes = new HashMap<>();
-        this.variableCount = 0;
     }
 }

@@ -1,23 +1,13 @@
 package se.liu.albhe576.project;
 
-public class Operand {
-    @Override
-    public String toString() {
-        if(address == null){
-            return  immediate;
-        }
-        return address.toString();
-    }
-
-    public final Address address;
-    private final String immediate;
-
-    public Operand(String immediate){
-        this.immediate = immediate;
-        this.address = null;
-    }
-    public Operand(Address address){
-        this.address = address;
-        this.immediate = null;
-    }
+public abstract class Operand {
+    public boolean isPrimary(){return false;}
+    public boolean isPrimaryFloat(){return false;}
+    public boolean isPrimaryEffective(){return false;}
+    public boolean isPrimaryPointer(){return false;}
+    public boolean isSecondaryEffective(){return false;}
+    public boolean isImmediate(){return false;}
+    public boolean isStackPointer(){return false;}
+    public boolean isRSP(){return false;}
+    public boolean isSecondary(){return false;}
 }

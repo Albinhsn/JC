@@ -37,13 +37,13 @@ public class QuadList extends ArrayList<Quad>{
     }
     public void createIMUL(int immediate){this.addQuad(QuadOp.IMUL , Compiler.generateImmediateSymbol(DataType.getInt(), String.valueOf(immediate)), null,Compiler.generateSymbol(DataType.getInt()));}
     public Symbol createConvertByte(Symbol value, Symbol target){
-        this.addQuad(QuadOp.ZX_BYTE, value, null, Compiler.generateSymbol(target.type));
-        if(target.type.isFloat() || target.type.isDouble()){
-            Symbol doubleResult = Compiler.generateSymbol(DataType.getDouble());
-            this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, this.getLastResult(), null, doubleResult);
-            if(target.type.isFloat()){
-                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_FLOAT, doubleResult, null, Compiler.generateSymbol(DataType.getFloat()));
-            }
+        Symbol extended = Compiler.generateSymbol(target.type);
+        this.addQuad(QuadOp.SIGN_EXTEND_BYTE, value, null, extended);
+        if(target.type.isFloat()) {
+            this.addQuad(QuadOp.CONVERT_INT_TO_FLOAT, extended, null, Compiler.generateSymbol(DataType.getFloat()));
+        }
+        else if(target.type.isDouble()){
+            this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, this.getLastResult(), null, Compiler.generateSymbol(DataType.getDouble()));
         }
         return this.getLastResult();
     }
@@ -54,11 +54,11 @@ public class QuadList extends ArrayList<Quad>{
                 return this.getLastResult();
             }
             case BYTE -> {
-                this.addQuad(QuadOp.ZX_BYTE, value, null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.SIGN_EXTEND_BYTE, value, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case SHORT -> {
-                this.addQuad(QuadOp.ZX_SHORT, value, null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.SIGN_EXTEND_SHORT, value, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case FLOAT -> {
@@ -66,7 +66,7 @@ public class QuadList extends ArrayList<Quad>{
                 return this.getLastResult();
             }
             case LONG -> {
-                this.addQuad(QuadOp.ZX_INT, null, null, Compiler.generateSymbol(DataType.getLong()));
+                this.addQuad(QuadOp.SIGN_EXTEND_INT, null, null, Compiler.generateSymbol(DataType.getLong()));
                 return this.getLastResult();
             }
             case STRUCT -> {
@@ -86,13 +86,13 @@ public class QuadList extends ArrayList<Quad>{
             case BYTE -> {
                 Symbol intSymbol = Compiler.generateSymbol(DataType.getInt());
                 this.addQuad(QuadOp.CONVERT_FLOAT_TO_INT, value, null, intSymbol);
-                this.addQuad(QuadOp.ZX_BYTE, intSymbol, null, Compiler.generateSymbol(DataType.getByte()));
+                this.addQuad(QuadOp.SIGN_EXTEND_BYTE, intSymbol, null, Compiler.generateSymbol(DataType.getByte()));
                 return this.getLastResult();
             }
             case SHORT -> {
                 Symbol intSymbol = Compiler.generateSymbol(DataType.getInt());
                 this.addQuad(QuadOp.CONVERT_FLOAT_TO_INT, value, null, intSymbol);
-                this.addQuad(QuadOp.ZX_SHORT, intSymbol, null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.SIGN_EXTEND_SHORT, intSymbol, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case INT -> {
@@ -100,9 +100,7 @@ public class QuadList extends ArrayList<Quad>{
                 return this.getLastResult();
             }
             case LONG -> {
-                Symbol doubleSymbol =Compiler.generateSymbol(DataType.getDouble());
-                this.addQuad(QuadOp.CONVERT_FLOAT_TO_DOUBLE, value, null, doubleSymbol);
-                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, doubleSymbol, null, Compiler.generateSymbol(DataType.getLong()));
+                this.addQuad(QuadOp.CONVERT_FLOAT_TO_INT, value, null, Compiler.generateSymbol(DataType.getLong()));
                 return this.getLastResult();
             }
         }
@@ -111,15 +109,15 @@ public class QuadList extends ArrayList<Quad>{
     public Symbol createConvertLong(Symbol value, Symbol target) throws CompileException {
         switch(target.type.type){
             case BYTE -> {
-                this.addQuad(QuadOp.ZX_BYTE, value, null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.SIGN_EXTEND_BYTE, value, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case SHORT -> {
-                this.addQuad(QuadOp.ZX_SHORT, value, null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.SIGN_EXTEND_SHORT, value, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case INT -> {
-                this.addQuad(QuadOp.ZX_INT, value, null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.SIGN_EXTEND_INT, value, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case FLOAT -> {
@@ -137,22 +135,22 @@ public class QuadList extends ArrayList<Quad>{
     public Symbol createConvertShort(Symbol value, Symbol target) throws CompileException {
         switch(target.type.type){
             case BYTE -> {
-                this.addQuad(QuadOp.ZX_BYTE, value, null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.SIGN_EXTEND_BYTE, value, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case INT, LONG -> {
-                this.addQuad(QuadOp.ZX_SHORT, value, null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.SIGN_EXTEND_SHORT, value, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case FLOAT -> {
                 Symbol intSymbol = Compiler.generateSymbol(DataType.getInt());
-                this.addQuad(QuadOp.ZX_SHORT, value, null, intSymbol);
+                this.addQuad(QuadOp.SIGN_EXTEND_SHORT, value, null, intSymbol);
                 this.addQuad(QuadOp.CONVERT_INT_TO_FLOAT, intSymbol, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case DOUBLE -> {
                 Symbol longSymbol = Compiler.generateSymbol(DataType.getLong());
-                this.addQuad(QuadOp.ZX_SHORT, value, null, longSymbol);
+                this.addQuad(QuadOp.SIGN_EXTEND_SHORT, value, null, longSymbol);
                 this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, longSymbol, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
@@ -164,19 +162,19 @@ public class QuadList extends ArrayList<Quad>{
             case BYTE -> {
                 Symbol longSymbol = Compiler.generateSymbol(DataType.getLong());
                 this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, longSymbol);
-                this.addQuad(QuadOp.ZX_BYTE, longSymbol, null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.SIGN_EXTEND_BYTE, longSymbol, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case SHORT -> {
                 Symbol longSymbol = Compiler.generateSymbol(DataType.getLong());
                 this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, longSymbol);
-                this.addQuad(QuadOp.ZX_SHORT, value, null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.SIGN_EXTEND_SHORT, value, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case INT -> {
                 Symbol longSymbol = Compiler.generateSymbol(DataType.getLong());
                 this.addQuad(QuadOp.CONVERT_DOUBLE_TO_LONG, value, null, longSymbol);
-                this.addQuad(QuadOp.ZX_INT, value, null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.SIGN_EXTEND_INT, value, null, Compiler.generateSymbol(target.type));
                 return this.getLastResult();
             }
             case FLOAT -> {

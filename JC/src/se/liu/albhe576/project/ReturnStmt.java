@@ -16,7 +16,7 @@ public class ReturnStmt extends Stmt{
             expr.compile(symbolTable, quads);
             Symbol returnSymbol = AssignStmt.convertValue(quads.getLastResult(), Compiler.generateSymbol(returnType), quads);
 
-            if(!returnSymbol.type.isSameType(returnType) && !returnSymbol.type.canBeCastedTo(returnType)){
+            if(!returnSymbol.type.isSameType(returnType) && !returnSymbol.type.canBeConvertedTo(returnType)){
                 Compiler.error(String.format("Mismatch in return type in function %s, expected %s got %s", symbolTable.getCurrentFunctionName(), returnType.name, returnSymbol.type.name), line, file);
             }
         }

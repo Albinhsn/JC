@@ -20,33 +20,32 @@ public class ArrayStmt extends Stmt {
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         DataType itemType = type.itemType;
 
-        int itemSize = SymbolTable.getStructSize(symbolTable.getStructs(), itemType);
-        int offset = -(itemSize * this.size + symbolTable.getCurrentScopeSize());
+        int itemSize = symbolTable.getStructSize(itemType);
+        int stackOffset = -(itemSize * this.size + symbolTable.getCurrentScopeSize());
 
-        VariableSymbol arraySymbol = new VariableSymbol(name, DataType.getArray(itemType), offset, symbolTable.generateVariableId());
+        VariableSymbol arraySymbol = new VariableSymbol(name, DataType.getArray(itemType), stackOffset);
         symbolTable.addVariable(arraySymbol);
 
         for(int i = this.items.size() - 1; i >= 0; i--){
-            Expr item = this.items.get(i);
-            item.compile(symbolTable, quads);
-            Symbol result = quads.getLastResult();
+            this.items.get(i).compile(symbolTable, quads);
+            Symbol result   = quads.getLastResult();
 
-            if(itemType.canBeCastedTo(result.type)){
+            if(itemType.canBeConvertedTo(result.type)){
                 result = AssignStmt.convertValue(result, Compiler.generateSymbol(itemType), quads);
             }
 
             if(!itemType.isSameType(result.type)){
-                Compiler.error("Can't have different types in array declaration", line, file);
+                Compiler.error(String.format("Can't have different type then declared in array declaration, expected %s got %s", itemType, result.type), line, file);
             }
 
-            QuadList setupPointerQuads = new QuadList();
+            QuadList pointerQuads= new QuadList();
 
-            Symbol loadedImmediate = setupPointerQuads.createLoadImmediate(DataType.getLong(), String.valueOf(itemSize * i));
-            setupPointerQuads.createMovRegisterAToC(loadedImmediate);
-            setupPointerQuads.addQuad(QuadOp.LOAD_VARIABLE_POINTER, arraySymbol, null, arraySymbol);
-            Symbol addResult = setupPointerQuads.createAdd(arraySymbol, Compiler.generateSymbol(DataType.getLong()));
+            Symbol loadedImmediate  =  pointerQuads.createLoadImmediate(DataType.getLong(), String.valueOf(itemSize * i));
+            pointerQuads.createMovRegisterAToC(loadedImmediate);
+            pointerQuads.addQuad(QuadOp.LOAD_VARIABLE_POINTER, arraySymbol, null, arraySymbol);
+            Symbol addResult        =  pointerQuads.createAdd(arraySymbol, Compiler.generateSymbol(DataType.getLong()));
 
-            quads.createSetupBinary(setupPointerQuads, result, addResult);
+            quads.createSetupBinary(pointerQuads, result, addResult);
             quads.createStore(result, addResult);
         }
     }

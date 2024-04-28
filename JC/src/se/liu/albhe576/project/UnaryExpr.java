@@ -33,7 +33,7 @@ public class UnaryExpr extends Expr{
         Symbol res = Compiler.generateSymbol(lastResult.type);
         if(lastResult.type.isPointer()){
             QuadOp op =  tokenOp.type() == TokenType.TOKEN_INCREMENT ? QuadOp.ADDI : QuadOp.SUBI;
-            int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), lastResult.type.getTypeFromPointer());
+            int structSize = symbolTable.getStructSize(lastResult.type.getTypeFromPointer());
             quads.addQuad(op, Compiler.generateImmediateSymbol(DataType.getLong(), String.valueOf(structSize)), null, lastResult);
         }else{
             QuadOp op = tokenOp.type() == TokenType.TOKEN_INCREMENT ? QuadOp.INC : QuadOp.DEC;

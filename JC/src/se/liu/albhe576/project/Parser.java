@@ -50,19 +50,31 @@ public class Parser {
     private Token current;
     private Token previous;
     private final Deque<Token> definedQueue;
-
     public Map<String, Function> getFunctions(){return this.functions;}
     public Map<String, Deque<Token>> getDefined(){return this.defined;}
     public Map<String, Struct> getStructs(){return this.structs;}
 
     private void updateCurrent(){
         if(this.current.type() == TokenType.TOKEN_IDENTIFIER && this.defined.containsKey(this.current.literal())){
-            Deque<Token> macro = this.defined.get(this.current.literal());
-            for(Token token : macro){
+            for(Token token : this.defined.get(this.current.literal())){
                 this.definedQueue.addFirst(token);
             }
             this.current = this.definedQueue.pop();
         }
+    }
+    private void parseSizeOf() throws CompileException {
+        advance();
+        if(this.previous.type() != TokenType.TOKEN_LEFT_PAREN){
+            Compiler.error("Expected '(' after sizeof", this.scanner.getLine(), this.fileName);
+        }
+        advance();
+        Token type = this.previous;
+        advance();
+        if(this.previous.type() != TokenType.TOKEN_RIGHT_PAREN){
+            Compiler.error("Expected ')' after sizeof", this.scanner.getLine(), this.fileName);
+        }
+        int size = SymbolTable.getStructSize(this.structs, DataType.getDataTypeFromToken(type));
+        this.previous = new Token(TokenType.TOKEN_INT_LITERAL, this.scanner.getLine(), String.valueOf(size));
     }
 
     private void advance() throws CompileException{
@@ -72,7 +84,12 @@ public class Parser {
         }else{
             current = scanner.parseToken();
         }
+
         this.updateCurrent();
+
+        if(this.previous != null && this.previous.type() == TokenType.TOKEN_IDENTIFIER && this.previous.literal().equals("sizeof")){
+            this.parseSizeOf();
+        }
     }
 
     private boolean matchType(TokenType type) throws CompileException{
@@ -154,7 +171,6 @@ public class Parser {
     private Expr literal(Expr expr, boolean canAssign, int line) {return new LiteralExpr(this.previous, this.previous.line(), this.fileName);}
 
     private Expr parseExpr(Expr expr, Precedence precedence) throws CompileException{
-
         advance();
 
         ParseFunction prefix = this.parseFunctions.getOrDefault(this.previous.type(), new ParseFunction(null, null, Precedence.NONE));
@@ -256,11 +272,18 @@ public class Parser {
         }
         return body;
     }
+
     private List<StructField> parseArguments() throws CompileException {
+        List<String> argNames = new ArrayList<>();
         List<StructField> args = new ArrayList<>();
         if(this.current.type() != TokenType.TOKEN_RIGHT_PAREN){
             do{
-                args.add(this.parseStructField());
+                StructField field = this.parseStructField();
+                if(argNames.stream().anyMatch(x -> x.equals(field.name()))){
+                    Compiler.error(String.format("Can't declare multiple fields/arguments with the same name '%s'!", field.name()), this.scanner.getLine(), this.fileName);
+                }
+                argNames.add(field.name());
+                args.add(field);
             }while(matchType(TokenType.TOKEN_COMMA));
         }
         consume(TokenType.TOKEN_RIGHT_PAREN, String.format("Expected right paren after arguments but got %s", this.current.type()));
@@ -337,6 +360,9 @@ public class Parser {
                     DataType type = parseType();
                     return variableDeclaration(type);
                 }
+                if(matchType(TokenType.TOKEN_SEMICOLON)){
+                    return new ExprStmt(new Expr(this.scanner.getLine(), this.fileName), this.scanner.getLine(), this.fileName);
+                }
                 Stmt out = expressionStatement();
                 consume(TokenType.TOKEN_SEMICOLON, String.format("Expected ';' after expression Stmt %s", out));
                 return out;
@@ -373,12 +399,15 @@ public class Parser {
     private void parseDefine() throws CompileException {
         int line = this.previous.line();
         consume(TokenType.TOKEN_IDENTIFIER, "Expected name of macro!");
+
         String name = this.previous.literal();
         Deque<Token> macro = new ArrayDeque<>();
+
         while(this.current.type() != TokenType.TOKEN_EOF  && this.scanner.getLine() == line){
             macro.addLast(this.current);
             advance();
         }
+
         if(macro.isEmpty()){
             Compiler.error("Can't declare an empty macro!", line, this.fileName);
         }

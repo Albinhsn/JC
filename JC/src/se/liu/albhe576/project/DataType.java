@@ -31,9 +31,9 @@ public class DataType {
         }
         return ((type == other.type && depth == 0 && other.depth == 0)) || (depth > 0 && other.depth > 0);
     }
-    private boolean isDecimal(){return this.isLong() || this.isShort() || this.isByte() || this.isInt() || this.isFloat() || this.isDouble();}
+    public boolean isDecimal(){return this.isInteger() || this.isFloat() || this.isDouble();}
     public boolean isInteger(){return isInt() || isByte() || isShort() || isLong();}
-    public boolean canBeCastedTo(DataType other){return (this.isDecimal() && other.isDecimal()) || this.isSameType(other);}
+    public boolean canBeConvertedTo(DataType other){return (this.isDecimal() && other.isDecimal()) || this.isSameType(other);}
 
     public DataType getTypeFromPointer() {
         if(this.type == DataTypes.STRING && this.depth == 1){

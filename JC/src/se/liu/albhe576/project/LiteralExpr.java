@@ -1,7 +1,6 @@
 package se.liu.albhe576.project;
 
 public class LiteralExpr extends Expr{
-
     private final Token token;
     public LiteralExpr(Token token, int line, String file){
         super(line, file);

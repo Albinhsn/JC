@@ -14,7 +14,6 @@ public class LogicalExpr extends Expr{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException {
-        left.compile(symbolTable, quads);
 
         Symbol shortCircuitLabel = Compiler.generateLabel();
         Symbol mergeLabel = Compiler.generateLabel();
@@ -23,13 +22,19 @@ public class LogicalExpr extends Expr{
         String fstImm = jumpIfTrue ? "1" : "0";
         String sndImm = jumpIfTrue ? "0" : "1";
 
+        left.compile(symbolTable, quads);
         quads.createJumpOnComparison(shortCircuitLabel, jumpIfTrue);
+
         right.compile(symbolTable, quads);
         quads.createJumpOnComparison(shortCircuitLabel, jumpIfTrue);
+
         quads.createLoadImmediate(DataType.getInt(), fstImm);
         quads.addQuad(QuadOp.JMP, mergeLabel, null, null);
+
         quads.insertLabel(shortCircuitLabel);
         quads.createLoadImmediate(DataType.getInt(), sndImm);
+
+
         quads.insertLabel(mergeLabel);
     }
 }

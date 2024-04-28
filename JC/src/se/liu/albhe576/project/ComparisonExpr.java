@@ -21,7 +21,9 @@ public class ComparisonExpr extends Expr {
         }
     }
     private void typeCheckComparison(DataType left, DataType right) throws CompileException{
-        if(left.isArray() || right.isArray() || left.isStruct() || right.isStruct() || left.isString() || right.isString()){
+        boolean leftIsValid = left.isDecimal() || left.isPointer();
+        boolean rightIsValid = right.isDecimal() || right.isPointer();
+        if(!(leftIsValid && rightIsValid)){
             Compiler.error(String.format("Can't do comparison op %s with types %s and %s", this.op.literal(), left, right), line, file);
         }
     }
@@ -41,6 +43,7 @@ public class ComparisonExpr extends Expr {
         }
 
         DataType highestPrecedenceType = DataType.getHighestDataTypePrecedence(lResult.type, rResult.type);
+
         Symbol resultType = Compiler.generateSymbol(highestPrecedenceType);
         lResult = AssignStmt.convertValue(lResult, resultType, quads);
         rResult = AssignStmt.convertValue(rResult, resultType, rQuads);

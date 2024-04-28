@@ -18,10 +18,9 @@ public class CallExpr extends Expr{
        QuadList[] quads         = new QuadList[numberOfArguments];
 
        for(int i = 0; i < numberOfArguments; i++){
-            Expr arg = this.args.get(i);
-            QuadList argQuads = new QuadList();
-            arg.compile(symbolTable, argQuads);
-            Symbol result = argQuads.getLastResult();
+            QuadList argQuads   = new QuadList();
+            this.args.get(i).compile(symbolTable, argQuads);
+            Symbol result       = argQuads.getLastResult();
 
            if(!varArgs){
                DataType argType = functionArgs.get(i).type();
@@ -74,7 +73,7 @@ public class CallExpr extends Expr{
    private void compileInternalFunctionArguments(SymbolTable symbolTable, QuadList quads, List<StructField> functionArguments) throws CompileException {
        QuadList[] argQuads = this.compileAndTypeCheckArgument(symbolTable, functionArguments);
 
-       int argSize = 0;
+       int argumentStackSize = 0;
        for(int i = 0; i < argQuads.length; i++){
            QuadList argQuad = argQuads[i];
            Symbol argSymbol = argQuad.getLastResult();
@@ -84,13 +83,13 @@ public class CallExpr extends Expr{
            if(argSymbol.type.isStruct()){
                argQuad.pop();
            }
-           argQuad.createMoveArgument(argSymbol, argSize);
-           argSize += SymbolTable.getStructSize(symbolTable.getStructs(), argSymbol.type);
+           argQuad.createMoveArgument(argSymbol, argumentStackSize);
+           argumentStackSize += symbolTable.getStructSize(argSymbol.type);
        }
 
-       if(argSize > 0){
-           argSize += Compiler.getStackPadding(argSize);
-           quads.allocateArguments(argSize);
+       if(argumentStackSize > 0){
+           argumentStackSize += Compiler.getStackPadding(argumentStackSize);
+           quads.allocateArguments(argumentStackSize);
            for(QuadList argQuad : argQuads){
                quads.addAll(argQuad);
            }
@@ -108,7 +107,7 @@ public class CallExpr extends Expr{
        List<StructField> functionArguments = function.getArguments();
 
        if(functionArguments != null && args.size() > functionArguments.size()){
-            Compiler.error(String.format("Function parameter mismatch expected %d got %d on line %d when calling %s", functionArguments.size(), args.size(), name.line(), name.literal()), line, file);
+            Compiler.error(String.format("Function parameter mismatch expected %d got %d when calling %s", functionArguments.size(), args.size(), name.literal()), line, file);
        }
 
        if(symbolTable.isExternFunction(functionName)){
