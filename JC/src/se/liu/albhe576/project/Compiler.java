@@ -4,8 +4,6 @@ import java.awt.*;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class Compiler {
 
@@ -126,7 +124,7 @@ public class Compiler {
 
     public void generateAssembly(String name, Map<String, QuadList> functionQuads) throws IOException, CompileException {
         StringBuilder stringBuilder = initOutput(this.symbolTable.getExternalFunctions());
-        Optimizer optimizer         = new Optimizer(this.symbolTable, removedMap);
+        Optimizer optimizer         = new Optimizer(removedMap);
 
         for (String key : this.symbolTable.getInternalFunctions().keySet()) {
             System.out.printf("Optimizing %s\n", key);
