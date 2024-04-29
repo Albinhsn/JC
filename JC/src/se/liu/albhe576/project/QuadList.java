@@ -121,8 +121,7 @@ public class QuadList extends ArrayList<Quad>{
                 return this.getLastResult();
             }
             case FLOAT -> {
-                this.addQuad(QuadOp.CONVERT_LONG_TO_DOUBLE, value, null, Compiler.generateSymbol(DataType.getDouble()));
-                this.addQuad(QuadOp.CONVERT_DOUBLE_TO_FLOAT, this.getLastResult(), null, Compiler.generateSymbol(target.type));
+                this.addQuad(QuadOp.CONVERT_INT_TO_FLOAT, value, null, Compiler.generateSymbol(DataType.getFloat()));
                 return this.getLastResult();
             }
             case DOUBLE -> {

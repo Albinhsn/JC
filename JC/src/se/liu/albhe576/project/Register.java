@@ -17,12 +17,16 @@ public class Register extends Address{
         return (this.type == RegisterType.XMM0) && this.offset == 0 && !this.effective;
     }
     @Override
+    public boolean isSecondaryFloat() {
+        return (this.type == RegisterType.XMM1) && this.offset == 0 && !this.effective;
+    }
+    @Override
     public boolean isPrimaryEffective() {
         return (this.type == RegisterType.RAX || this.type == RegisterType.AX || this.type == RegisterType.AL || this.type == RegisterType.EAX) && this.offset == 0 && this.effective;
     }
     @Override
     public boolean isPrimaryPointer() {
-        return (this.type == RegisterType.RAX || this.type == RegisterType.AX || this.type == RegisterType.AL || this.type == RegisterType.EAX) && this.effective;
+        return (this.type == RegisterType.RAX) && this.effective;
     }
     @Override
     public boolean isSecondaryEffective() {
@@ -37,10 +41,22 @@ public class Register extends Address{
     public boolean isSecondary() {
         return (this.type == RegisterType.RCX || this.type == RegisterType.CX || this.type == RegisterType.CL || this.type == RegisterType.ECX) && this.offset == 0 && !this.effective;
     }
+    @Override
+    public boolean shouldBeExtendedPrimary() {
+        return this.type == RegisterType.AX || this.type == RegisterType.AL;
+    }
 
     @Override
     public boolean isRSP() {
         return this.type == RegisterType.RSP;
+    }
+    @Override
+    public boolean isRSPEffective() {
+        return this.isRSP() && this.effective;
+    }
+    @Override
+    public boolean isEffective() {
+        return this.effective;
     }
 
     @Override

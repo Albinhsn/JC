@@ -399,7 +399,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 return new Instruction[]{new Instruction(op, RegisterType.XMM5, RegisterType.XMM0)};
             }
             case MOV_RDI -> {
-                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
+                if(operand1.type.isByte() || operand1.type.isShort()){
                     return new Instruction[]{new Instruction(Operation.MOVSX, RegisterType.RDI, getRegisterFromType(operand1.type, 0))};
                 }
                 return new Instruction[]{new Instruction(Operation.MOV, RegisterType.RDI, RegisterType.RAX)};

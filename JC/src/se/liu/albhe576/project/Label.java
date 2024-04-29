@@ -10,7 +10,16 @@ public class Label extends Address{
         return label;
     }
 
-    private final String label;
+    @Override
+    public boolean isEffective() {
+        return effective;
+    }
+    @Override
+    public boolean isImmediate() {
+        return effective;
+    }
+
+    public final String label;
 
     public Label(String label){
         this.effective = false;

@@ -1,10 +1,5 @@
 ## ToDo
 
-## Features remaining
-### IMPROVEMENTS
+* Cleanup optimizer
+* docs
 
-* optimizations :)
-* macros with arguments
-* actually allow unlimited arguments with extern
-
-* send it over :)

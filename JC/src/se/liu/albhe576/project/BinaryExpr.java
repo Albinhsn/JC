@@ -63,8 +63,8 @@ public class BinaryExpr extends Expr{
             rResult = AssignStmt.convertValue(rResult, resultType, rQuads);
         }
 
-        lQuads.createSetupBinary(rQuads, lResult, rResult);
         lResult = AssignStmt.convertValue(lResult, resultType, lQuads);
+        lQuads.createSetupBinary(rQuads, lResult, rResult);
         lQuads.addQuad(op, lResult, rResult, resultType);
     }
 
