@@ -1,8 +1,11 @@
 package se.liu.albhe576.project;
 
+import java.awt.*;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class Compiler {
 
@@ -20,21 +23,18 @@ public class Compiler {
     }
     public static ImmediateSymbol generateImmediateSymbol(DataType type, String literal){return new ImmediateSymbol("T" + resultCount++, type, literal);}
     public static Symbol generateLabel(){return new Symbol( String.format("label%d", labelCount++), new DataType("label", DataTypes.VOID, 0));}
-    public static int getStackPadding(int stackSize){
-        // This is the same as saying (scopeSize == 16 ? 0 : (16 - (scopeSize % 16))
-        return (16 - (stackSize % 16)) & 0xF;
-    }
-
+    // This is the same as saying (scopeSize == 16 ? 0 : (16 - (scopeSize % 16))
+    public static int getStackPadding(int stackSize){return (16 - (stackSize % 16)) & 0xF;}
     public void compile(String name) throws CompileException, IOException{
-
         Map<String, QuadList> functionQuads = new HashMap<>();
+
+        System.out.println("Compiling!");
 
         // Intermediate code generation
         for(Map.Entry<String, Function> entry: this.symbolTable.getInternalFunctions().entrySet()){
-            Function function = entry.getValue();
+            Function function                        = entry.getValue();
             Map<String, VariableSymbol> localSymbols = new HashMap<>();
-
-            QuadList quads = new QuadList();
+            QuadList quads                           = new QuadList();
 
             // IP and RBP
             int offset = 16;
@@ -46,6 +46,7 @@ public class Compiler {
             Stmt.compileBlock(symbolTable, quads, function.getBody());
             functionQuads.put(entry.getKey(), quads);
         }
+        System.out.println("Compiled!");
 
         // Output intel assembly
         this.generateAssembly(name, functionQuads);
@@ -119,14 +120,32 @@ public class Compiler {
 
     }
 
+    public String getPrologue(String functionName){return String.format("\n\n%s:\npush rbp\nmov rbp, rsp\n", functionName);}
+
+    public Map<String, Point> removedMap = new HashMap<>();
+
     public void generateAssembly(String name, Map<String, QuadList> functionQuads) throws IOException, CompileException {
         StringBuilder stringBuilder = initOutput(this.symbolTable.getExternalFunctions());
-        Optimizer optimizer         = new Optimizer(this.symbolTable);
+        Optimizer optimizer         = new Optimizer(this.symbolTable, removedMap);
 
         for (String key : this.symbolTable.getInternalFunctions().keySet()) {
-            stringBuilder.append(String.format("\n\n%s:\npush rbp\nmov rbp, rsp\n", key));
+            System.out.printf("Optimizing %s\n", key);
+            stringBuilder.append(getPrologue(key));
             this.outputFunctionBody(optimizer, stringBuilder, functionQuads.get(key) ,key);
         }
+
+        System.out.println("Optimizing result:");
+        OptimizationResults comp = new OptimizationResults();
+
+        int sum = 0;
+        int count = 0;
+        for(Map.Entry<String, Point> removed : this.removedMap.entrySet().stream().sorted(Collections.reverseOrder(comp)).toList()){
+            Point point = removed.getValue();
+            System.out.printf("\t%s: %d -> %d\n", removed.getKey(), point.x, point.y);
+            sum += point.y;
+            count += point.x;
+        }
+        System.out.printf("Total removed: %d -> %d\n", count, sum);
 
         Compiler.outputConstants(stringBuilder, this.symbolTable.getConstants());
 

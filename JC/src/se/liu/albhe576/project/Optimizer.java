@@ -1,9 +1,8 @@
 package se.liu.albhe576.project;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
+import java.awt.*;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
 
 public class Optimizer {
 
@@ -12,9 +11,11 @@ public class Optimizer {
         boolean optimize(LinkedList<Instruction> instructions, int i) throws CompileException;
     }
 
+
     private final List<OptimizeFunction> optimizationFunctions = new ArrayList<>(
             List.of(this::optimizeStore,
                 this::optimizeAddImmediate,
+                this::optimizeCompareLocal,
                 this::optimizeLoadEffective,
                 this::optimizeLoad,
                 this::optimizeLoadFloat,
@@ -42,8 +43,10 @@ public class Optimizer {
     );
 
     private final SymbolTable symbolTable;
-    public Optimizer(SymbolTable symbolTable){
+    private final Map<String, Point> removedMap;
+    public Optimizer(SymbolTable symbolTable, Map<String, Point> removedMap){
         this.symbolTable = symbolTable;
+        this.removedMap = removedMap;
     }
 
     public void optimize(LinkedList<Instruction> instructions) throws CompileException {
@@ -81,6 +84,11 @@ public class Optimizer {
         instructions.remove(i + 1);
         instructions.remove(i);
         instructions.add(i, new Instruction(first.op, second.operand0, first.operand0));
+        String name = "BinaryMove";
+        Point current = this.removedMap.getOrDefault(name, new Point(0,0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
         return true;
     }
     private boolean optimizeStackAligning(LinkedList<Instruction> instructions, int i){
@@ -98,24 +106,31 @@ public class Optimizer {
             return false;
         }
 
-            Immediate fstImm = (Immediate) first.operand1;
-            Immediate sndImm = (Immediate) second.operand1;
+        Immediate fstImm = (Immediate) first.operand1;
+        Immediate sndImm = (Immediate) second.operand1;
 
-            int fstSize = Integer.parseInt(fstImm.immediate);
-            fstSize = first.op == Operation.ADD ? fstSize : -fstSize;
-            int sndSize = Integer.parseInt(sndImm.immediate);
-            sndSize = second.op == Operation.ADD ? sndSize : -sndSize;
-            int newSize = fstSize + sndSize;
+        int fstSize = Integer.parseInt(fstImm.immediate);
+        fstSize = first.op == Operation.ADD ? fstSize : -fstSize;
+        int sndSize = Integer.parseInt(sndImm.immediate);
+        sndSize = second.op == Operation.ADD ? sndSize : -sndSize;
+        int newSize = fstSize + sndSize;
 
-            Immediate newImm = new Immediate(String.valueOf(Math.abs(newSize)));
-            Operation newOp = newSize < 0 ? Operation.SUB : Operation.ADD;
+        Immediate newImm = new Immediate(String.valueOf(Math.abs(newSize)));
+        Operation newOp = newSize < 0 ? Operation.SUB : Operation.ADD;
 
-            instructions.remove(i + 1);
-            instructions.remove(i);
-            if (newSize != 0) {
-                instructions.add(i, new Instruction(newOp, second.operand0, newImm));
-            }
-            return true;
+        instructions.remove(i + 1);
+        instructions.remove(i);
+        int removed = 2;
+        if (newSize != 0) {
+            instructions.add(i, new Instruction(newOp, second.operand0, newImm));
+            removed--;
+        }
+        String name = "Stack aligning";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y += removed;
+        this.removedMap.put(name, current);
+        return true;
     }
 
     private boolean optimizePush(LinkedList<Instruction> instructions, int start){
@@ -140,6 +155,12 @@ public class Optimizer {
             else if(prev.op == Operation.POP && prev.operand0.isPrimary() && curr.op == Operation.ADD && curr.operand0.isRSP()){
                 instructions.remove(i);
                 instructions.remove(start);
+
+                String name = "Push";
+                Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+                current.x++;
+                current.y++;
+                this.removedMap.put(name, current);
                 return true;
             }
             i++;
@@ -163,6 +184,11 @@ public class Optimizer {
         instructions.remove(i + 1);
         instructions.remove(i);
         instructions.add(i, new Instruction(first.op, second.operand0, first.operand1));
+        String name = "Load";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
         return true;
     }
     private boolean optimizeBinary(LinkedList<Instruction> instructions, int i){
@@ -182,7 +208,49 @@ public class Optimizer {
         instructions.remove(i + 1);
         instructions.remove(i);
         instructions.add(i, new Instruction(second.op, second.operand0, first.operand1));
+        String name = "Binary";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
         return true;
+    }
+
+    private boolean optimizeCompareLocal(LinkedList<Instruction> instructions, int i) throws CompileException {
+        if(instructions.size() <= i + 2){
+            return false;
+        }
+        Instruction first = instructions.get(i);
+        if(first.op != Operation.MOV || !first.operand0.isPrimary() || !first.operand1.isStackPointer()){
+            return false;
+        }
+
+        Instruction second = instructions.get(i + 1);
+        if(second.op == Operation.CMP && second.operand0.isPrimary() && second.operand1.isImmediate()){
+            instructions.remove(i + 1);
+            instructions.remove(i);
+            OperationSize size = OperationSize.getSizeFromRegister((Register)first.operand0);
+            instructions.add(i, new Instruction(second.op, size, first.operand1, (Immediate) second.operand1));
+            String name = "Compare Local";
+            Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+            current.x++;
+            current.y++;
+            this.removedMap.put(name, current);
+            return true;
+        }
+
+        instructions.remove(i + 1);
+        instructions.remove(i);
+        OperationSize size = OperationSize.getSizeFromRegister((Register)first.operand0);
+        instructions.add(i, new Instruction(second.op, size, first.operand1, (Immediate) second.operand1));
+        String name = "Compare Local";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
+
+        return true;
+
     }
     private boolean optimizeLoadEffective(LinkedList<Instruction> instructions, int i){
 
@@ -195,7 +263,7 @@ public class Optimizer {
             return false;
         }
         Instruction second = instructions.get(i + 1);
-        if(!(second.op.isMove() || second.op == Operation.LEA) || !second.operand1.isPrimaryEffective()){
+        if(!(second.op.isMove() || second.op == Operation.LEA) || !(second.operand1.isPrimaryPointer() || second.operand1.isPrimaryEffective())){
             return false;
         }
 
@@ -207,6 +275,11 @@ public class Optimizer {
         instructions.remove(i);
 
         instructions.add(i, new Instruction(second.op, second.operand0, new Register(reg0.type, newEffective, true)));
+        String name = "Load Effective";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
         return true;
     }
     private boolean optimizeLoadEffectiveField(LinkedList<Instruction> instructions, int i){
@@ -232,6 +305,11 @@ public class Optimizer {
         instructions.remove(i);
 
         instructions.add(i, new Instruction(Operation.LEA, first.operand0, new Register(reg0.type, newEffective, true)));
+        String name = "Load Effective Field";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
         return true;
     }
     private boolean optimizePushAndPopFloat(LinkedList<Instruction> instructions, int i){
@@ -260,6 +338,12 @@ public class Optimizer {
         instructions.remove(i + 1);
         instructions.remove(i);
 
+        String name = "Push and Pop Float";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y += 3;
+        this.removedMap.put(name, current);
+
         return true;
     }
     private boolean optimizeStoreImmediate(LinkedList<Instruction> instructions, int i) throws CompileException {
@@ -282,6 +366,12 @@ public class Optimizer {
         instructions.remove(i + 1);
         instructions.remove(i);
         instructions.add(i, new Instruction(second.op, size, second.operand0, immediate));
+
+        String name = "Store Immediate";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
 
         return true;
     }
@@ -306,6 +396,11 @@ public class Optimizer {
         instructions.remove(i);
         instructions.add(i, new Instruction(Operation.MOVSS, RegisterType.XMM0, new Label(label, true)));
 
+        String name = "Store Immediate Float";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
 
         return true;
     }
@@ -338,6 +433,12 @@ public class Optimizer {
         instructions.remove(i);
         instructions.add(i, new Instruction(Operation.MOV, RegisterType.EAX, new Immediate(String.valueOf(value))));
 
+        String name = "Store Immediate Float Conversion";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
+
         return true;
     }
     private boolean optimizeAddImmediate(LinkedList<Instruction> instructions, int i){
@@ -360,6 +461,13 @@ public class Optimizer {
         if(Integer.parseInt(immediate.immediate) != 0){
             instructions.add(i, new Instruction(second.op, second.operand0, immediate));
         }
+
+        String name = "Add immediate";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
+
         return true;
     }
     private boolean optimizeLoadFloat(LinkedList<Instruction> instructions, int i) {
@@ -379,6 +487,12 @@ public class Optimizer {
         instructions.remove(i + 1);
         instructions.remove(i);
         instructions.add(i, new Instruction(second.op, second.operand0, first.operand1));
+        String name = "Load Float";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
+
         return true;
     }
     private boolean optimizeMoveStruct(LinkedList<Instruction> instructions, int i){
@@ -410,6 +524,12 @@ public class Optimizer {
         instructions.add(i, new Instruction(first.op, third.operand0, first.operand1));
         instructions.add(i + 1, new Instruction(second.op, fourth.operand0, second.operand1));
 
+        String name = "Move struct";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y+=2;
+        this.removedMap.put(name, current);
+
         return true;
 
     }
@@ -430,6 +550,12 @@ public class Optimizer {
         instructions.remove(i);
 
         instructions.add(i, new Instruction(Operation.MOV, first.operand1, second.operand1));
+
+        String name = "Store";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
 
         return true;
     }
@@ -457,6 +583,11 @@ public class Optimizer {
         instructions.remove(i + 3);
         instructions.add(i + 3, new Instruction(fourth.op, first.operand1, fourth.operand1));
         instructions.remove(i);
+        String name = "Store Float";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
         return true;
     }
     private boolean optimizePointerArithmetic(LinkedList<Instruction> instructions, int i){
@@ -484,6 +615,12 @@ public class Optimizer {
 
         int newImmValue = (Integer.parseInt(fstImm.immediate) * Integer.parseInt(sndImm.immediate));
         instructions.add(i, new Instruction(Operation.MOV, third.operand0, new Immediate(String.valueOf(newImmValue))));
+
+        String name = "Pointer arithmetic";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y+=2;
+        this.removedMap.put(name, current);
 
         return true;
     }
@@ -550,6 +687,12 @@ public class Optimizer {
         instructions.remove(i);
 
         instructions.add(i, new Instruction(fifth.op, fourth.operand0, third.operand1));
+
+        String name = "Setup floating point binary";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y+=4;
+        this.removedMap.put(name, current);
         return true;
     }
     private boolean optimizeSetupBinaryStore(LinkedList<Instruction> instructions, int i){
@@ -569,6 +712,13 @@ public class Optimizer {
             instructions.remove(i + 1);
             instructions.remove(i);
             instructions.add(i, new Instruction(Operation.POP, RegisterType.RCX));
+
+            String name = "Setup binary store";
+            Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+            current.x++;
+            current.y++;
+            this.removedMap.put(name, current);
+
             return true;
         }
         return false;
@@ -599,6 +749,12 @@ public class Optimizer {
 
         instructions.add(i, new Instruction(Operation.LEA, third.operand0, new Register(stackPointer.type, stackPointer.offset + additionalOffset, true)));
 
+        String name = "Indexing";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y+=2;
+        this.removedMap.put(name, current);
+
         return true;
     }
     private boolean optimizeSetupBinary(LinkedList<Instruction> instructions, int i){
@@ -620,6 +776,12 @@ public class Optimizer {
         instructions.remove(i + 2);
         instructions.remove(i);
 
+        String name = "Setup Binary";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y+=2;
+        this.removedMap.put(name, current);
+
         return true;
     }
     private boolean optimizeSignExtendImmediateMove(LinkedList<Instruction> instructions, int i) {
@@ -640,6 +802,12 @@ public class Optimizer {
         instructions.remove(i);
         instructions.add(i, new Instruction(Operation.MOV, second.operand0, first.operand1));
 
+        String name = "Sign Extend Immediate";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
+
         return true;
     }
 
@@ -659,6 +827,12 @@ public class Optimizer {
         instructions.remove(i + 1);
         instructions.remove(i);
         instructions.add(i, new Instruction(Operation.MOV, second.operand0, first.operand1));
+
+        String name = "Sign Extend";
+        Point current = this.removedMap.getOrDefault(name, new Point(0, 0));
+        current.x++;
+        current.y++;
+        this.removedMap.put(name, current);
 
         return true;
     }

@@ -7,9 +7,7 @@ import java.util.*;
 
 public class Parser {
     @FunctionalInterface
-    private interface Rule{
-        Expr apply(Expr expr, boolean canAssign, int line) throws CompileException;
-    }
+    private interface Rule{ Expr apply(Expr expr, boolean canAssign, int line) throws CompileException;}
     private record ParseFunction(Rule prefixRule, Rule infixRule, Precedence precedence) { }
     private final EnumMap<TokenType, ParseFunction> parseFunctions = new EnumMap<>(Map.ofEntries(
         Map.entry(TokenType.TOKEN_LEFT_BRACKET, new ParseFunction(null, this::index, Precedence.CALL)),

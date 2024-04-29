@@ -102,9 +102,6 @@ public class SymbolTable {
         return this.functions.containsKey(name);
     }
 
-    public int getCurrentScopeSize(){
-        return this.getLocalVariableStackSize(currentFunctionName);
-    }
     public Function getFunction(String name) throws CompileException{
         if(!this.functions.containsKey(name)){
             throw new CompileException(String.format("Can't find function %s", name));

@@ -21,7 +21,7 @@ public class ArrayStmt extends Stmt {
         DataType itemType = type.itemType;
 
         int itemSize = symbolTable.getStructSize(itemType);
-        int stackOffset = -(itemSize * this.size + symbolTable.getCurrentScopeSize());
+        int stackOffset = -(itemSize * this.size + symbolTable.getLocalVariableStackSize(symbolTable.getCurrentFunctionName()));
 
         VariableSymbol arraySymbol = new VariableSymbol(name, DataType.getArray(itemType), stackOffset);
         symbolTable.addVariable(arraySymbol);
