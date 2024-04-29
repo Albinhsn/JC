@@ -3,7 +3,6 @@ package se.liu.albhe576.project;
 import java.util.Map;
 
 public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
-
     private static final RegisterType[] FLOAT_REGISTER_TYPES = new RegisterType[]{RegisterType.XMM0, RegisterType.XMM1, RegisterType.XMM2};
     private static final RegisterType[] INTEGER_REGISTER_TYPES = new RegisterType[]{RegisterType.EAX, RegisterType.ECX, RegisterType.EBX, RegisterType.EDX};
     private static final RegisterType[] BYTE_REGISTER_TYPE = new RegisterType[]{RegisterType.AL, RegisterType.CL, RegisterType.BL, RegisterType.DL};
@@ -28,6 +27,15 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             return Operation.MOVSS;
         }
         return type.isDouble() ? Operation.MOVSD : Operation.MOV;
+    }
+    public static Operation getSignExtendOrMoveFromType(DataType type){
+        if(type.isInteger() || type.isPointer()){
+            if(type.isPointer() || type.isLong()){
+                return Operation.MOV;
+            }
+            return Operation.MOVSX;
+        }
+        return type.isDouble() ? Operation.MOVSD : Operation.CVTSS2SD;
     }
     public static Operand getConstantStringLocation(Map<String, Constant> constants, DataType type, String label){
         if(type.isFloat()){
@@ -98,8 +106,6 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 return new Instruction[]{new Instruction(Operation.IMUL, RegisterType.RAX, new Immediate(immediateSymbol.getValue()))};
             }
             case ADD -> {
-                RegisterType reg0 = getRegisterFromType(result.type, 0);
-                RegisterType reg1 = getRegisterFromType(result.type, 1);
                 Operation operation;
                 if (result.type.isDouble()) {
                     operation = Operation.ADDSD;
@@ -107,11 +113,9 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 else{
                     operation = result.type.isFloat() ? Operation.ADDSS  : Operation.ADD;
                 }
-                return new Instruction[]{new Instruction(operation, reg0, reg1)};
+                return new Instruction[]{new Instruction(operation, getRegisterFromType(result.type, 0), getRegisterFromType(result.type, 1))};
             }
             case SUB -> {
-                RegisterType reg0 = getRegisterFromType(result.type, 0);
-                RegisterType reg1 = getRegisterFromType(result.type, 1);
                 Operation operation;
                 if (result.type.isDouble()) {
                     operation = Operation.SUBSD;
@@ -119,17 +123,14 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 else{
                     operation = result.type.isFloat() ? Operation.SUBSS  : Operation.SUB;
                 }
-                return new Instruction[]{new Instruction(operation, reg0, reg1)};
+                return new Instruction[]{new Instruction(operation, getRegisterFromType(result.type, 0), getRegisterFromType(result.type, 1))};
             }
             case MUL -> {
-                RegisterType reg0 = getRegisterFromType(result.type, 0);
-                RegisterType reg1 = getRegisterFromType(result.type, 1);
-                Operation operation;
                 if (result.type.isDouble() || result.type.isFloat()) {
-                    operation = result.type.isFloat() ? Operation.MULSS : Operation.MULSD;
-                    return new Instruction[]{new Instruction(operation, reg0, reg1)};
+                    Operation operation = result.type.isFloat() ? Operation.MULSS : Operation.MULSD;
+                    return new Instruction[]{new Instruction(operation, getRegisterFromType(result.type, 0), getRegisterFromType(result.type, 1))};
                 }
-                return new Instruction[]{new Instruction(Operation.MUL, reg1)};
+                return new Instruction[]{new Instruction(Operation.MUL, getRegisterFromType(result.type, 1))};
             }
             case DIV -> {
                 RegisterType reg0 = getRegisterFromType(result.type, 0);
@@ -158,21 +159,15 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             case ADDI, SUBI-> {
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand1;
                 Operation operation = op == QuadOp.ADDI ? Operation.ADD : Operation.SUB;
-                return new Instruction[]{
-                        new Instruction(operation, RegisterType.RAX, new Immediate(immediateSymbol.getValue()))
-                };
+                return new Instruction[]{new Instruction(operation, RegisterType.RAX, new Immediate(immediateSymbol.getValue()))};
             }
             case LOAD_VARIABLE_POINTER -> {
                 VariableSymbol variableSymbol = (VariableSymbol) operand1;
-                return new Instruction[]{
-                        new Instruction(Operation.LEA, RegisterType.RAX, new Register(RegisterType.RBP, variableSymbol.offset))
-                };
+                return new Instruction[]{new Instruction(Operation.LEA, RegisterType.RAX, new Register(RegisterType.RBP, variableSymbol.offset))};
             }
             case LOAD_FIELD_POINTER -> {
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand2;
-                return new Instruction[]{
-                        new Instruction(Operation.LEA, RegisterType.RAX, new Register(RegisterType.RAX, Integer.parseInt(immediateSymbol.getValue())))
-                };
+                return new Instruction[]{new Instruction(Operation.LEA, RegisterType.RAX, new Register(RegisterType.RAX, Integer.parseInt(immediateSymbol.getValue())))};
             }
             case LOAD -> {
                 Operation operation = result.type.isStruct() ? Operation.LEA : getMovOpFromType(result.type);
@@ -185,14 +180,9 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                     value.effective = true;
                     value.offset = Integer.parseInt(immediateSymbol.getValue());
                 }
-                Instruction[] out = new Instruction[]{
-                        new Instruction(operation, target, value)
-                };
+                Instruction[] out = new Instruction[]{new Instruction(operation, target, value)};
                 if(operand1.type.isByte() || operand1.type.isShort()){
-                    return new Instruction[]{
-                            out[0],
-                           getSignExtend(RegisterType.RAX, operand1.type)
-                    };
+                    return new Instruction[]{out[0], getSignExtend(RegisterType.RAX, operand1.type)};
                 }
                 return out;
             }
@@ -211,14 +201,10 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             }
             case CMP -> {
                 if (operand1.type.isDouble()) {
-                    return new Instruction[]{
-                            new Instruction(Operation.COMISD, RegisterType.XMM0, RegisterType.XMM1)
-                    };
+                    return new Instruction[]{new Instruction(Operation.COMISD, RegisterType.XMM0, RegisterType.XMM1)};
                 }
                 if (operand1.type.isFloat()) {
-                    return new Instruction[]{
-                            new Instruction(Operation.COMISS, RegisterType.XMM0, RegisterType.XMM1)
-                    };
+                    return new Instruction[]{new Instruction(Operation.COMISS, RegisterType.XMM0, RegisterType.XMM1)};
                 }
                 return new Instruction[]{
                         new Instruction(
@@ -284,30 +270,17 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                     new Instruction(Operation.MOVSX, RegisterType.RAX, RegisterType.AL)
             };}
             case CONVERT_DOUBLE_TO_FLOAT-> {
-                return new Instruction[]{
-                        new Instruction(Operation.CVTSD2SS, RegisterType.XMM0, RegisterType.XMM0)
-                };
+                return new Instruction[]{new Instruction(Operation.CVTSD2SS, RegisterType.XMM0, RegisterType.XMM0)};
             }
             case CONVERT_DOUBLE_TO_LONG-> {return new Instruction[]{
                     new Instruction(Operation.CVTTSD2SI, RegisterType.RAX, RegisterType.XMM0)
             };}
             case CONVERT_FLOAT_TO_DOUBLE -> {
-                return new Instruction[]{
-                        new Instruction(Operation.CVTSS2SD, RegisterType.XMM0, RegisterType.XMM0)
-                };
+                return new Instruction[]{new Instruction(Operation.CVTSS2SD, RegisterType.XMM0, RegisterType.XMM0)};
             }
-            case CONVERT_FLOAT_TO_INT-> {return new Instruction[]{
-                    new Instruction(Operation.CVTSS2SI, RegisterType.EAX, RegisterType.XMM0)
-            };}
-            case CONVERT_INT_TO_FLOAT -> {return new Instruction[]{
-                    new Instruction(Operation.CVTSI2SS, RegisterType.XMM0, RegisterType.EAX)
-            };
-            }
-            case CONVERT_LONG_TO_DOUBLE -> {
-                return new Instruction[]{
-                        new Instruction(Operation.CVTSI2SD, RegisterType.XMM0, RegisterType.RAX)
-                };
-            }
+            case CONVERT_FLOAT_TO_INT-> {return new Instruction[]{new Instruction(Operation.CVTSS2SI, RegisterType.EAX, RegisterType.XMM0)};}
+            case CONVERT_INT_TO_FLOAT -> {return new Instruction[]{new Instruction(Operation.CVTSI2SS, RegisterType.XMM0, RegisterType.EAX)};}
+            case CONVERT_LONG_TO_DOUBLE -> {return new Instruction[]{new Instruction(Operation.CVTSI2SD, RegisterType.XMM0, RegisterType.RAX)};}
             case SIGN_EXTEND_SHORT -> {return new Instruction[]{new Instruction(Operation.MOVSX, RegisterType.RAX, RegisterType.AX)};}
             case SIGN_EXTEND_INT -> {return new Instruction[]{new Instruction(Operation.MOVSX, RegisterType.RAX, RegisterType.EAX)};}
             case SIGN_EXTEND_BYTE -> {return new Instruction[]{new Instruction(Operation.MOVSX, RegisterType.RAX, RegisterType.AL)};}
@@ -365,76 +338,26 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 if (operand1.type.isByte() || operand1.type.isShort()) {
                     return new Instruction[]{getSignExtend(RegisterType.RCX, operand1.type)};
                 }
-                return new Instruction[]{
-                        new Instruction(getMovOpFromType(operand1.type), getRegisterFromType(operand1.type, 1), getRegisterFromType(operand1.type, 0))
-                };
+                return new Instruction[]{new Instruction(getMovOpFromType(operand1.type), getRegisterFromType(operand1.type, 1), getRegisterFromType(operand1.type, 0))};
             }
             case MOVE_STRUCT -> {return moveStruct(structs, operand1);}
             case MOV_XMM0 -> {
                 if(operand1.type.isFloat()){
-                    return new Instruction[]{
-                            new Instruction(Operation.CVTSS2SD, RegisterType.XMM0, RegisterType.XMM0)
-                    };
+                    return new Instruction[]{new Instruction(Operation.CVTSS2SD, RegisterType.XMM0, RegisterType.XMM0)};
                 }
                 return new Instruction[0];
             }
-            case MOV_XMM1 -> {
-                Operation op = operand1.type.isDouble() ? Operation.MOVSD : Operation.CVTSS2SD;
-                return new Instruction[]{new Instruction(op, RegisterType.XMM1, RegisterType.XMM0)};
-            }
-            case MOV_XMM2 -> {
-                Operation op = operand1.type.isDouble() ? Operation.MOVSD : Operation.CVTSS2SD;
-                return new Instruction[]{new Instruction(op, RegisterType.XMM2, RegisterType.XMM0)};
-            }
-            case MOV_XMM3 -> {
-                Operation op = operand1.type.isDouble() ? Operation.MOVSD : Operation.CVTSS2SD;
-                return new Instruction[]{new Instruction(op, RegisterType.XMM3, RegisterType.XMM0)};
-            }
-            case MOV_XMM4 -> {
-                Operation op = operand1.type.isDouble() ? Operation.MOVSD : Operation.CVTSS2SD;
-                return new Instruction[]{new Instruction(op, RegisterType.XMM4, RegisterType.XMM0)};
-            }
-            case MOV_XMM5 -> {
-                Operation op = operand1.type.isDouble() ? Operation.MOVSD : Operation.CVTSS2SD;
-                return new Instruction[]{new Instruction(op, RegisterType.XMM5, RegisterType.XMM0)};
-            }
-            case MOV_RDI -> {
-                if(operand1.type.isByte() || operand1.type.isShort()){
-                    return new Instruction[]{new Instruction(Operation.MOVSX, RegisterType.RDI, getRegisterFromType(operand1.type, 0))};
-                }
-                return new Instruction[]{new Instruction(Operation.MOV, RegisterType.RDI, RegisterType.RAX)};
-            }
-            case MOV_RSI -> {
-                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
-                    return new Instruction[]{new Instruction(Operation.MOVSX, RegisterType.RSI, getRegisterFromType(operand1.type, 0))};
-                }
-                return new Instruction[]{new Instruction(Operation.MOV, RegisterType.RSI, RegisterType.RAX)};
-
-            }
-            case MOV_RCX -> {
-                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
-                    return new Instruction[]{new Instruction(Operation.MOVSX, RegisterType.RCX, getRegisterFromType(operand1.type, 0))};
-                }
-                return new Instruction[]{new Instruction(Operation.MOV, RegisterType.RCX, RegisterType.RAX)};
-            }
-            case MOV_RDX -> {
-                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
-                    return new Instruction[]{new Instruction(Operation.MOVSX, RegisterType.RDX, getRegisterFromType(operand1.type, 0))};
-                }
-                return new Instruction[]{new Instruction(Operation.MOV, RegisterType.RDX, RegisterType.RAX)};
-            }
-            case MOV_R8 -> {
-                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
-                    return new Instruction[]{new Instruction(Operation.MOVSX, RegisterType.R8, getRegisterFromType(operand1.type, 0))};
-                }
-                return new Instruction[]{new Instruction(Operation.MOV, RegisterType.R8, RegisterType.RAX)};
-            }
-            case MOV_R9 -> {
-                if(operand1.type.isByte() || operand1.type.isShort() || operand1.type.isInt()){
-                    return new Instruction[]{new Instruction(Operation.MOVSX, RegisterType.R9, getRegisterFromType(operand1.type, 0))};
-                }
-                return new Instruction[]{new Instruction(Operation.MOV, RegisterType.R9, RegisterType.RAX)};
-            }
+            case MOV_XMM1 -> {return new Instruction[]{new Instruction(getSignExtendOrMoveFromType(operand1.type), RegisterType.XMM1, RegisterType.XMM0)};}
+            case MOV_XMM2 -> {return new Instruction[]{new Instruction(getSignExtendOrMoveFromType(operand1.type), RegisterType.XMM2, RegisterType.XMM0)};}
+            case MOV_XMM3 -> {return new Instruction[]{new Instruction(getSignExtendOrMoveFromType(operand1.type), RegisterType.XMM3, RegisterType.XMM0)};}
+            case MOV_XMM4 -> {return new Instruction[]{new Instruction(getSignExtendOrMoveFromType(operand1.type), RegisterType.XMM4, RegisterType.XMM0)};}
+            case MOV_XMM5 -> {return new Instruction[]{new Instruction(getSignExtendOrMoveFromType(operand1.type), RegisterType.XMM5, RegisterType.XMM0)};}
+            case MOV_RDI -> {return new Instruction[]{new Instruction(getSignExtendOrMoveFromType(operand1.type), RegisterType.RDI, getRegisterFromType(operand1.type, 0))};}
+            case MOV_RSI -> {return new Instruction[]{new Instruction(getSignExtendOrMoveFromType(operand1.type), RegisterType.RSI, getRegisterFromType(operand1.type, 0))};}
+            case MOV_RCX -> {return new Instruction[]{new Instruction(getSignExtendOrMoveFromType(operand1.type), RegisterType.RCX, getRegisterFromType(operand1.type, 0))};}
+            case MOV_RDX -> {return new Instruction[]{new Instruction(getSignExtendOrMoveFromType(operand1.type), RegisterType.RDX, getRegisterFromType(operand1.type, 0))};}
+            case MOV_R8 -> {return new Instruction[]{new Instruction(getSignExtendOrMoveFromType(operand1.type), RegisterType.R8, getRegisterFromType(operand1.type, 0))};}
+            case MOV_R9 -> {return new Instruction[]{new Instruction(getSignExtendOrMoveFromType(operand1.type), RegisterType.R9, getRegisterFromType(operand1.type, 0))};}
             case CALL -> {
                 int stackAligment = Struct.getFunctionArgumentsStackSize(operand1.name, functions, structs);
                 if (stackAligment != 0) {
@@ -446,15 +369,10 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 }
                 return new Instruction[]{new Instruction(Operation.CALL, new Label(operand1.name))};
             }
-            case LOGICAL_NOT -> {
-                return new Instruction[]{new Instruction(Operation.XOR, RegisterType.RAX, new Immediate("1"))};
-            }
+            case LOGICAL_NOT -> {return new Instruction[]{new Instruction(Operation.XOR, RegisterType.RAX, new Immediate("1"))};}
             case NEGATE -> {
                 RegisterType reg = getRegisterFromType(operand1.type, 0);
-                return new Instruction[]{
-                        new Instruction(Operation.NOT, reg),
-                        new Instruction(Operation.INC, reg),
-                };
+                return new Instruction[]{new Instruction(Operation.NOT, reg), new Instruction(Operation.INC, reg),};
             }
             case ALLOCATE -> {
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand1;
@@ -464,7 +382,6 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand2;
                 int offset = Integer.parseInt(immediateSymbol.getValue());
                 if(operand1.type.isStruct()){
-
                     Instruction lea  = new Instruction(Operation.LEA, RegisterType.RCX, new Register(RegisterType.RSP, offset));
                     Instruction [] movedStruct = moveStruct(structs, operand1);
                     Instruction[] out = new Instruction[1 + movedStruct.length];
@@ -474,14 +391,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                     }
                     return out;
                 }
-
-                return new Instruction[]{
-                        new Instruction(
-                                getMovOpFromType(operand1.type),
-                                new Register(RegisterType.RSP, offset),
-                                getRegisterFromType(operand1.type, 0)
-                        )
-                };
+                return new Instruction[]{new Instruction(getMovOpFromType(operand1.type), new Register(RegisterType.RSP, offset), getRegisterFromType(operand1.type, 0))};
             }
             case RET -> {
                 return new Instruction[]{

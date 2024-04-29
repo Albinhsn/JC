@@ -151,9 +151,9 @@ public class SymbolTable {
         }
         return false;
     }
-    public SymbolTable(Map<String, Struct> structs, Map<String, Constant> constants, Map<String, Function> extern){
+    public SymbolTable(Map<String, Struct> structs, Map<String, Function> extern){
         this.structs = structs;
-        this.constants =constants;
+        this.constants = new HashMap<>();
         this.functions = new HashMap<>(extern);
         this.scopes = new HashMap<>();
     }

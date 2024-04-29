@@ -7,13 +7,9 @@ import java.util.*;
 public class Compiler {
 
     private final Map<String, Function> functions;
-    private final Map<String, QuadList> functionQuads;
     private final SymbolTable symbolTable;
     private static int resultCount;
     private static int labelCount;
-    private final Optimizer optimizer;
-    private int removed     = 0;
-    private int totalSize   = 0;
     public static void error(String msg, int line, String filename) throws CompileException{
         System.out.printf("%s:%d[%s]", filename,line,msg);
         System.exit(1);
@@ -31,13 +27,14 @@ public class Compiler {
 
     public void compile(String name) throws CompileException, IOException{
 
+        Map<String, QuadList> functionQuads = new HashMap<>();
+
         // Intermediate code generation
-        for(Map.Entry<String, Function> entry: this.functions.entrySet().stream().filter(x -> !x.getValue().external).toList()){
+        for(Map.Entry<String, Function> entry: this.symbolTable.getInternalFunctions().entrySet()){
             Function function = entry.getValue();
             Map<String, VariableSymbol> localSymbols = new HashMap<>();
 
             QuadList quads = new QuadList();
-            this.functionQuads.put(entry.getKey(), quads);
 
             // IP and RBP
             int offset = 16;
@@ -47,10 +44,11 @@ public class Compiler {
             }
             symbolTable.compileFunction(entry.getKey(), localSymbols);
             Stmt.compileBlock(symbolTable, quads, function.getBody());
+            functionQuads.put(entry.getKey(), quads);
         }
 
         // Output intel assembly
-        this.generateAssembly(name);
+        this.generateAssembly(name, functionQuads);
     }
 
     private static void outputConstants(StringBuilder footer, Map<String,Constant> constants){
@@ -90,20 +88,17 @@ public class Compiler {
         return header;
     }
 
-    private void handleStackAlignment(List<Instruction> instructions,  String functionName) {
-        int scopeSize = this.symbolTable.getLocalVariableStackSize(functionName);
-        scopeSize += getStackPadding(scopeSize);
-        if(scopeSize != 0){
-            instructions.add(new Instruction(Operation.SUB, RegisterType.RSP, new Immediate(String.valueOf(scopeSize))));
-        }
-    }
-    private void outputFunctionBody(StringBuilder stringBuilder, String key) throws CompileException {
-        QuadList quads = this.functionQuads.get(key);
+    private void outputFunctionBody(Optimizer optimizer, StringBuilder stringBuilder, QuadList quads, String functionName) throws CompileException {
         final Map<String, Constant> constants   = this.symbolTable.getConstants();
         final Map<String, Struct> structs       = this.symbolTable.getStructs();
 
         LinkedList<Instruction> functionInstruction = new LinkedList<>();
-        this.handleStackAlignment(functionInstruction, key);
+
+        int scopeSize = this.symbolTable.getLocalVariableStackSize(functionName);
+        scopeSize += getStackPadding(scopeSize);
+        if(scopeSize != 0){
+            functionInstruction.add(new Instruction(Operation.SUB, RegisterType.RSP, new Immediate(String.valueOf(scopeSize))));
+        }
 
         for (Quad intermediate : quads) {
             Instruction[] instruction = intermediate.emitInstruction(functions, constants, structs);
@@ -116,8 +111,7 @@ public class Compiler {
             functionInstruction.addAll(Arrays.stream(instruction).toList());
         }
 
-        totalSize += functionInstruction.size();
-        removed += optimizer.optimize(functionInstruction, key);
+        optimizer.optimize(functionInstruction);
 
         for (Instruction instruction : functionInstruction) {
             stringBuilder.append(instruction.emit()).append("\n");
@@ -125,15 +119,14 @@ public class Compiler {
 
     }
 
-    public void generateAssembly(String name) throws IOException, CompileException {
-        final Map<String, Function> functions = this.symbolTable.getInternalFunctions();
+    public void generateAssembly(String name, Map<String, QuadList> functionQuads) throws IOException, CompileException {
         StringBuilder stringBuilder = initOutput(this.symbolTable.getExternalFunctions());
+        Optimizer optimizer         = new Optimizer(this.symbolTable);
 
-        for (String key : functions.keySet()) {
+        for (String key : this.symbolTable.getInternalFunctions().keySet()) {
             stringBuilder.append(String.format("\n\n%s:\npush rbp\nmov rbp, rsp\n", key));
-            this.outputFunctionBody(stringBuilder, key);
+            this.outputFunctionBody(optimizer, stringBuilder, functionQuads.get(key) ,key);
         }
-        System.out.printf("Finished optimizing! went from %d -> %d, removed %d, %.2f%%", totalSize, totalSize - removed, removed, 100 * removed / (float) totalSize);
 
         Compiler.outputConstants(stringBuilder, this.symbolTable.getConstants());
 
@@ -145,9 +138,6 @@ public class Compiler {
 
     public Compiler(Map<String, Struct> structs, Map<String, Function> functions){
         this.functions                  = functions;
-        this.functionQuads              = new HashMap<>();
-        Map<String, Constant> constants = new HashMap<>();
-        this.symbolTable                = new SymbolTable(structs, constants, functions);
-        this.optimizer                  = new Optimizer(this.symbolTable);
+        this.symbolTable                = new SymbolTable(structs, functions);
     }
 }

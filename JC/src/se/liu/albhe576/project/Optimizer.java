@@ -11,6 +11,7 @@ public class Optimizer {
     private interface OptimizeFunction{
         boolean optimize(LinkedList<Instruction> instructions, int i) throws CompileException;
     }
+
     private final List<OptimizeFunction> optimizationFunctions = new ArrayList<>(
             List.of(this::optimizeStore,
                 this::optimizeAddImmediate,
@@ -40,13 +41,12 @@ public class Optimizer {
             )
     );
 
-    public SymbolTable symbolTable;
+    private final SymbolTable symbolTable;
     public Optimizer(SymbolTable symbolTable){
         this.symbolTable = symbolTable;
     }
 
-    public int optimize(LinkedList<Instruction> instructions, String functionName) throws CompileException {
-        final int priorSize = instructions.size();
+    public void optimize(LinkedList<Instruction> instructions) throws CompileException {
         int i = 0;
         while (i < instructions.size() - 1) {
             boolean found = false;
@@ -61,10 +61,6 @@ public class Optimizer {
                 i++;
             }
         }
-        final int newSize = instructions.size();
-        final int removed = priorSize - newSize;
-        System.out.printf("Finished optimizing %s, went from to %d -> %d, removed %d, %.2f%%\n", functionName, priorSize, newSize, removed, 100 * removed/ (float)priorSize);
-        return removed;
     }
 
     private boolean optimizeBinaryMove(LinkedList<Instruction> instructions, int i){
