@@ -11,7 +11,7 @@ public class ImmediateSymbol extends Symbol{
         return type.type == DataTypes.INT && value.equals("0");
     }
     public String getValue(){
-        return this.value;
+        return value;
     }
     public ImmediateSymbol(String name, DataType type, String value){
         super(name, type);

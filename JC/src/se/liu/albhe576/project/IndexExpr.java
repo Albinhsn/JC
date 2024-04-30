@@ -22,6 +22,7 @@ public class IndexExpr extends Expr{
         if(indexResult.type.isFloatingPoint()){
             indexResult = quads.createConvert(indexResult, DataType.getLong());
         }
+
         quads.createIndex(valResult, indexResult);
 
     }

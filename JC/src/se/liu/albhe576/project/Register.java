@@ -4,4 +4,53 @@ public enum Register {
     RAX, RBX, RCX, RDX, RSI, RDI, R8, R9, RBP,RSP,
     EAX, EBX, ECX,EDX, AX, BX, CX, DX, AL, BL, CL, DL,
     XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, MOVSB;
+    public static final Register PRIMARY_GENERAL_REGISTER = RAX;
+    public static final Register SECONDARY_GENERAL_REGISTER = RCX;
+    public static final Register PRIMARY_SSE_REGISTER = XMM0;
+    public static final Register SECONDARY_SSE_REGISTER = XMM1;
+    public static Register getPrimaryRegisterFromDataType(DataType type){
+        if(type.isFloatingPoint()){
+            return PRIMARY_SSE_REGISTER;
+        }
+        if(type.isPointer() || type.isLong()){
+            return RAX;
+        }
+        else if(type.isInt()){
+            return EAX;
+        }
+        else if(type.isShort()){
+            return AX;
+        }
+        return AL;
+    }
+    public static Register getSecondaryRegisterFromDataType(DataType type){
+        if(type.isFloatingPoint()){
+            return SECONDARY_SSE_REGISTER;
+        }
+        if(type.isPointer() || type.isLong()){
+            return RCX;
+        }
+        else if(type.isInt()){
+            return ECX;
+        }
+        else if(type.isShort()){
+            return CX;
+        }
+        return CL;
+    }
+    public static Register getThirdRegisterFromDataType(DataType type){
+        if(type.isFloatingPoint()){
+            return XMM2;
+        }
+        if(type.isPointer() || type.isLong()){
+            return RDX;
+        }
+        else if(type.isInt()){
+            return EDX;
+        }
+        else if(type.isShort()){
+            return DX;
+        }
+        return DL;
+    }
 }

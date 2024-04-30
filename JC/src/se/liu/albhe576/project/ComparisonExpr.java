@@ -24,9 +24,8 @@ public class ComparisonExpr extends Expr {
         left.compile(symbolTable, quads);
         Symbol lResult = quads.getLastResult();
 
-        QuadList rQuads = new QuadList();
-        right.compile(symbolTable, rQuads);
-        Symbol rResult = rQuads.getLastResult();
+        right.compile(symbolTable, quads);
+        Symbol rResult = quads.getLastResult();
 
         this.typeCheckComparison(lResult.type, rResult.type);
         quads.createComparison(this.op.type(), lResult, rResult);

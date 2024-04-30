@@ -45,7 +45,7 @@ public class DataType {
     public static DataType getPointerFromType(DataType type){
         if(type.type == DataTypes.ARRAY){
             ArrayDataType arrayDataType = (ArrayDataType) type;
-            return new DataType(arrayDataType.name, arrayDataType.itemType.type, arrayDataType.depth);
+            return new DataType(arrayDataType.itemType.name, arrayDataType.itemType.type, arrayDataType.depth + 1);
         }
         return new DataType(type.name, type.type, type.depth + 1);
     }

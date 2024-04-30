@@ -23,7 +23,7 @@ public class DotExpr extends Expr{
         }
 
         Struct struct           = symbolTable.getStructs().get(lastSymbol.type.name);
-        StructField field       = Struct.getMember(struct, this.member.literal());
-        quads.createMember(lastSymbol, new Symbol(this.member.literal(), field.type()));
+        int offset = Struct.getFieldOffset(symbolTable.getStructs(), struct, this.member.literal());
+        quads.createMember(lastSymbol, new ImmediateSymbol(this.member.literal(),Struct.getMember(struct, this.member.literal()).type(), String.valueOf(offset)));
     }
 }

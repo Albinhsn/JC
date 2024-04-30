@@ -2,6 +2,26 @@ package se.liu.albhe576.project;
 
 
 public class Address extends Operand{
+
+    @Override
+    public String toString() {
+        if(name != null){
+            if(effective){
+                return "[" + name + "]";
+            }
+            return name.toLowerCase();
+        }
+        if(effective){
+            String out = "[" + register;
+            if(offset != 0){
+                out += String.format(" %+d", offset);
+            }
+            out += "]";
+            return out.toLowerCase();
+        }
+        return register.toString().toLowerCase();
+    }
+
     String name;
     Register register;
     boolean effective;

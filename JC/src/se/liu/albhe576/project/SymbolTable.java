@@ -51,17 +51,18 @@ public class SymbolTable {
         }
     }
 
-    private Map<String, Function> getFunctions(boolean externals){
+    public Map<String, Function> getFunctions(){
+        return this.functions;
+    }
+    public Map<String, Function> getInternalFunctions(){
         Map<String, Function> out = new HashMap<>();
         for(Map.Entry<String, Function> entry : this.functions.entrySet()){
-            if(entry.getValue().external == externals){
+            if(!entry.getValue().external){
                 out.put(entry.getKey(), entry.getValue());
             }
         }
         return out;
     }
-    public Map<String, Function> getInternalFunctions(){return this.getFunctions(false);}
-    public Map<String, Function> getExternalFunctions(){return this.getFunctions(true);}
     public Map<String, Constant> getConstants(){
         return this.constants;
     }

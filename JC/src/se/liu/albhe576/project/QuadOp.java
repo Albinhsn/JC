@@ -3,15 +3,14 @@ package se.liu.albhe576.project;
 import java.util.Map;
 
 public enum QuadOp {
-    JMP, LOAD_POINTER,CONVERT, PARAM, MEMBER, INDEX, REFERENCE, DEREFERENCE, JMP_T, JMP_F,
-    INC_I,DEC_I, ADD_I,SUB_I, MUL_I, DIV_I, SHL, SHR,MOD,
+    JMP, LOAD_POINTER,CONVERT, PARAM, LOAD_MEMBER, INDEX, DEREFERENCE, JMP_T, JMP_F, ALLOCATE,DEALLOCATE, REFERENCE_INDEX, ASSIGN,
+    ADD_I,SUB_I, MUL_I, DIV_I, SHL, SHR,MOD,PRE_INC_I, PRE_INC_F, PRE_DEC_I, PRE_DEC_F,POST_INC_I, POST_INC_F, POST_DEC_I, POST_DEC_F,
     INC_F,DEC_F, ADD_F,SUB_F, MUL_F, DIV_F,
     NEGATE, AND, OR, XOR,
     LESS_I, LESS_EQUAL_I, GREATER_I, GREATER_EQUAL_I, EQUAL_I,NOT_EQUAL_I,NOT_I ,
     LESS_F, LESS_EQUAL_F, GREATER_F, GREATER_EQUAL_F, EQUAL_F,NOT_EQUAL_F, NOT_F,
-    LOGICAL_AND, LOGICAL_OR,
-    LABEL, CALL,
-    RET_I, RET_F, LOAD_IMM_I, LOAD_IMM_F, LOAD_I, STORE_I, LOAD_F, STORE_F;
+    LOGICAL_AND, LOGICAL_OR, LABEL, CALL,
+    RET_I, RET_F, LOAD_IMM_I, LOAD_IMM_F, LOAD_I, LOAD_F, STORE, STORE_ARRAY_ITEM;
 
     private static final Map<TokenType, QuadOp> TOKEN_TO_QUAD_OP_MAP = Map.ofEntries(
             Map.entry(TokenType.TOKEN_PLUS, ADD_I),
@@ -30,8 +29,6 @@ public enum QuadOp {
             Map.entry(TokenType.TOKEN_AND_BIT, AND),
             Map.entry(TokenType.TOKEN_SHIFT_LEFT, SHL),
             Map.entry(TokenType.TOKEN_SHIFT_RIGHT, SHR),
-            Map.entry(TokenType.TOKEN_INCREMENT, INC_I),
-            Map.entry(TokenType.TOKEN_DECREMENT, DEC_I),
             Map.entry(TokenType.TOKEN_BANG, NOT_I),
             Map.entry(TokenType.TOKEN_BANG_EQUAL, NOT_EQUAL_I),
             Map.entry(TokenType.TOKEN_LESS, LESS_I),
@@ -48,12 +45,14 @@ public enum QuadOp {
         return TOKEN_TO_QUAD_OP_MAP.get(type);
     }
     private static final Map<QuadOp, QuadOp> INT_QUAD_TO_FLOAT = Map.ofEntries(
+            Map.entry(PRE_INC_I, PRE_INC_F),
+            Map.entry(PRE_DEC_I, PRE_DEC_F),
+            Map.entry(POST_INC_I, POST_INC_F),
+            Map.entry(POST_DEC_I, POST_DEC_F),
             Map.entry(ADD_I, ADD_F),
             Map.entry(SUB_I, SUB_F),
             Map.entry(MUL_I, MUL_F),
             Map.entry(DIV_I, DIV_F),
-            Map.entry(INC_I, INC_F),
-            Map.entry(DEC_I, DEC_F),
             Map.entry(NOT_I, NOT_F),
             Map.entry(NOT_EQUAL_I, NOT_EQUAL_F),
             Map.entry(LESS_I, LESS_F),

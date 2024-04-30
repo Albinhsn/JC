@@ -13,14 +13,19 @@ public class PostfixExpr extends Expr{
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         this.target.compile(symbolTable, quads);
-        Quad lastQuad = quads.getLastQuad();
+        Quad lastQuad = quads.pop();
         Symbol target = lastQuad.result();
+        Symbol source = lastQuad.operand1();
 
         if(isInvalidPostfixTarget(target.type)){
             Compiler.error(String.format("Can't postfix type %s", target.type), line, file);
         }
 
-        quads.createPostfix(target, op.type());
 
+        if(lastQuad.op() == QuadOp.LOAD_I){
+            quads.createLoadPointer(source);
+        }
+
+        quads.createPostfix(target, op.type());
     }
 }

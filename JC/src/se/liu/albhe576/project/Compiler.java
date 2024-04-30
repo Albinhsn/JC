@@ -33,6 +33,7 @@ public class Compiler {
 
             symbolTable.compileFunction(functionEntry.getKey(), localSymbols);
             Stmt.compileBlock(symbolTable, quads, function.getBody());
+            System.out.printf("\n%s\n", functionEntry.getKey());
             for(Quad quad : quads){
                 System.out.println(quad);
             }
@@ -48,7 +49,7 @@ public class Compiler {
             new Instruction(Operation.MOV, new Address(Register.RSP), new Address(Register.RBP)),
             new Instruction(Operation.POP, new Address(Register.RBP), null)
     };
-    private static int getStackAlignment(int stackSize){
+    public static int getStackAlignment(int stackSize){
         final int alignmentInBytes = 16;
         // is essentially
         //   if stackSize % alignmentInBytes == 0 ? 0 : (alignmentInBytes - stackSize) % alignmentInBytes
@@ -56,37 +57,28 @@ public class Compiler {
         // works since alignment is a power of 2
         return (alignmentInBytes - (stackSize % alignmentInBytes)) & (alignmentInBytes - 1);
     }
-    private int allocateStackSpace(List<Integer> cache, String name) throws CompileException {
-        Function function = this.symbolTable.getFunction(name);
-        int stackSize = this.symbolTable.getLocalVariableStackSize(name);
-        stackSize += getStackAlignment(stackSize);
-        return stackSize;
-    }
-    private Map<String, List<Instruction>> generateAssembly(Map<String, QuadList> functionQuads) throws CompileException {
+    private Map<String, List<Instruction>> generateAssembly(Map<String, Constant> constants, Map<String, QuadList> functionQuads) throws CompileException {
         Map<String, List<Instruction>> generatedAssembly = new HashMap<>();
 
 
-        List<Integer> cache = new LinkedList<>();
         for(Map.Entry<String, QuadList> functions : functionQuads.entrySet()){
-            final String name       = functions.getKey();
-            final QuadList quads    = functions.getValue();
+            final String name                   = functions.getKey();
+            final QuadList quads                = functions.getValue();
+            int stackSize                       = this.symbolTable.getLocalVariableStackSize(name);
+            TemporaryVariableStack tempStack    = new TemporaryVariableStack(stackSize);
 
             // add prologue
             List<Instruction> instructions = new LinkedList<>(List.of(PROLOGUE_INSTRUCTIONS));
+            for(Quad quad : quads){
+                instructions.addAll(quad.emitInstructions(symbolTable, constants, tempStack));
+            }
+            // Check if we need to insert a return value or not
 
-            // create a cache for temporary variables
-            // store the maximum amount of space needed for temporary variables
-            // allocate that + padding in the end
-            // make it so that when we "push" we slot into that variable
-
-            // epilogue
-            instructions.addAll(List.of(EPILOGUE_INSTRUCTIONS));
 
             // calculate stack size and padding
-            int stackSize = this.allocateStackSpace(cache, name);
             final int stackAllocationInstructionIndex = PROLOGUE_INSTRUCTIONS.length;
-            instructions.add(stackAllocationInstructionIndex, new Instruction(Operation.SUB, new Address(Register.RSP), new Immediate(stackSize)));
-            //
+            final int stackAlignment                  = -tempStack.maxOffset + getStackAlignment(tempStack.maxOffset);
+            instructions.add(stackAllocationInstructionIndex, new Instruction(Operation.SUB, new Address(Register.RSP), new Immediate(stackAlignment)));
 
             generatedAssembly.put(name, instructions);
         }
@@ -100,14 +92,47 @@ public class Compiler {
         optimizer.optimizeIntermediates();
 
         // generate assembly
-        Map<String, List<Instruction>> instructions = this.generateAssembly(functionQuads);
+        Map<String, List<Instruction>> instructions = this.generateAssembly(this.symbolTable.getConstants(), functionQuads);
         optimizer.optimizeX86Assembly();
 
         // output assembly
         this.outputX86Assembly(fileName, instructions);
     }
 
-    public void outputX86Assembly(String fileName, Map<String, List<Instruction>> functions){
+    public void outputX86Assembly(String fileName, Map<String, List<Instruction>> functions) throws IOException {
+
+        FileWriter fileWriter = new FileWriter(fileName);
+
+        // To append -> one write?
+        fileWriter.write("global _start\n\nsection .data\n");
+
+        for(Map.Entry<String, Constant> entry : this.symbolTable.getConstants().entrySet()){
+            Constant value = entry.getValue();
+            if(value.type() == DataTypes.STRING){
+                fileWriter.write(String.format("%s db ", value.label()));
+
+                String formatted = entry.getKey().replace("\\n", "\n");
+                for (byte b : formatted.getBytes()) {
+                    fileWriter.write(String.format("%d, ", b));
+                }
+                fileWriter.write("0\n");
+            }else{
+                fileWriter.write(String.format("%s dd %s\n", value.label(), entry.getKey()));
+            }
+        }
+
+        fileWriter.write("\n\nsection .text\n_start:\ncall main\nmov rbx, rax\nmov rax, 1\nint 0x80\n\n");
+
+        for(Map.Entry<String, List<Instruction>> function : functions.entrySet()){
+            String functionName = function.getKey();
+            fileWriter.write(functionName + ":\n");
+            for(Instruction instruction : function.getValue()){
+                fileWriter.write(instruction + "\n");
+            }
+
+        }
+        fileWriter.flush();
+        fileWriter.close();
         // output static data
         // output token main function
 

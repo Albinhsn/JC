@@ -25,11 +25,18 @@ public class CallExpr extends Expr{
             Compiler.error(String.format("Function parameter mismatch expected %d got %d when calling %s", functionArguments.size(), args.size(), name.literal()), line, file);
        }
 
+       QuadList argumentQuads = new QuadList();
+       int stackSize = 0;
        for(Expr argument : args){
-           argument.compile(symbolTable, quads);
+           argument.compile(symbolTable, argumentQuads);
+           stackSize += symbolTable.getStructSize(argumentQuads.getLastResult().type);
            // Typecheck params
-           quads.createParam(quads.getLastResult());
+           argumentQuads.createParam(argumentQuads.getLastResult(), stackSize);
        }
+       stackSize += Compiler.getStackAlignment(stackSize);
+       quads.createAllocate(stackSize);
+       quads.addAll(argumentQuads);
+
 
        quads.createCall(function.getFunctionSymbol(functionName));
     }

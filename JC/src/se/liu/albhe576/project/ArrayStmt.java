@@ -26,7 +26,7 @@ public class ArrayStmt extends Stmt {
         VariableSymbol arraySymbol = new VariableSymbol(name, DataType.getArray(itemType), stackOffset);
         symbolTable.addVariable(arraySymbol);
 
-        for(int i = this.items.size() - 1; i >= 0; i--){
+        for(int i = 0; i < this.items.size(); i++){
             this.items.get(i).compile(symbolTable, quads);
             Symbol result   = quads.getLastResult();
 
@@ -37,6 +37,8 @@ public class ArrayStmt extends Stmt {
             if(!itemType.isSameType(result.type)){
                 Compiler.error(String.format("Can't have different type then declared in array declaration, expected %s got %s", itemType, result.type), line, file);
             }
+
+            quads.createStoreArray(arraySymbol, i * itemSize);
         }
     }
 }

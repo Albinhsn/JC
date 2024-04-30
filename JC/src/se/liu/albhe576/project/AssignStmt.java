@@ -21,6 +21,7 @@ public class AssignStmt extends Stmt{
 
         QuadList variableQuads = new QuadList();
         variable.compile(symbolTable, variableQuads);
+        Symbol variable = variableQuads.getLastOperand1();
         Symbol variableType = variableQuads.getLastResult();
 
         if(isInvalidAssignment(variableType, valueResult, valueQuads.getLastOperand1())){
@@ -29,8 +30,14 @@ public class AssignStmt extends Stmt{
         if(!valueResult.type.isSameType(variableType.type)){
             valueQuads.createConvert(valueResult, variableType.type);
         }
+
+        if(variableQuads.getLastOp() == QuadOp.LOAD_I){
+            Quad loaded = variableQuads.pop();
+            variableQuads.createLoadPointer(loaded.operand1());
+        }
+
         valueQuads.addAll(variableQuads);
-        valueQuads.createStore(valueResult, variableType);
+        valueQuads.createAssign(valueResult, variable);
 
     }
 }
