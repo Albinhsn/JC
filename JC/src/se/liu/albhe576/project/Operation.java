@@ -9,4 +9,5 @@ public enum Operation {
     JMP, JNZ, JE, JL, JLE, JG, JGE, JA, JAE, JB, JBE, JNE,
     SETLE, SETG, SETGE, SETL, SETE, SETA, SETNE, SETAE, SETB, SETBE,
     MOVSX, CALL, RET;
+
 }

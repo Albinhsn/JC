@@ -1,4 +1,3 @@
 ## ToDo
 
-* symbol -> value + result
-* docs
+* unify datatype get X from

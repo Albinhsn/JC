@@ -4,7 +4,7 @@ package se.liu.albhe576.project;
 public class Symbol {
     @Override
     public String toString() {
-        return type.toString();
+        return String.format("[%s:%s]", name, type.toString());
     }
     public boolean isNull(){
         return false;

@@ -52,7 +52,7 @@ float float_return(){
 
 void pointers_pointers_everywhere(){
     int a[4] = [1,2,3,4];
-    int * b= &a;
+    int * b= &a[0];
     int **c = &b;
 
     (*c)[2] = 10;

@@ -18,13 +18,13 @@ public class WhileStmt extends Stmt{
         condition.compile(symbolTable, quads);
 
         Symbol mergeLabel = Compiler.generateLabel();
-        quads.createJumpOnComparison(mergeLabel, true);
+        quads.createJumpCondition(mergeLabel, true);
 
         symbolTable.enterScope();
         for(Stmt stmt : body){
             stmt.compile(symbolTable, quads);
         }
-        quads.addQuad(QuadOp.JMP, condLabel, null, null);
+        quads.createJump(condLabel);
         quads.insertLabel(mergeLabel);
         symbolTable.exitScope();
     }

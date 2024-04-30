@@ -11,10 +11,10 @@ public class ArrayDataType extends DataType{
         return new ArrayDataType(type.name, DataTypes.ARRAY, type, 0);
     }
 
-    @Override public DataType getTypeFromPointer() {
-        if(depth == 0){
-            return itemType;
+    @Override public DataType getTypeFromPointer() throws CompileException {
+        if(depth != 0){
+            throw new CompileException("Should exist a pointer to an array?");
         }
-        return new ArrayDataType(name, DataTypes.ARRAY, itemType, depth - 1);
+        return itemType;
     }
 }

@@ -121,7 +121,7 @@ public class SymbolTable {
         return this.functions.get(name).external;
     }
     public boolean symbolExists(String name) {return findSymbol(name) != null;}
-    public Symbol findSymbol(String name){
+    public VariableSymbol findSymbol(String name){
         Scope scope = this.scopes.get(this.currentFunctionName);
         while(true){
             if(scope.variableExists(name)){

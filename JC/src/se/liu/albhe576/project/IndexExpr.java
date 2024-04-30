@@ -6,31 +6,24 @@ public class IndexExpr extends Expr{
     private static boolean isInvalidValueToIndex(DataType type){return !(type.isArray() || type.isPointer());}
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
-        QuadListPair quadPair = QuadList.compileBinary(symbolTable, quads, value, index);
+
+        value.compile(symbolTable, quads);
         Symbol valResult = quads.getLastResult();
 
-        if(valResult.type.isArray()){
-            ArrayDataType array = (ArrayDataType) valResult.type;
-            valResult = Compiler.generateSymbol(DataType.getPointerFromType(array.itemType));
-        }
-
-        Symbol idxResult = quadPair.right().getLastResult();
+        index.compile(symbolTable, quads);
+        Symbol indexResult = quads.getLastResult();
 
         if(isInvalidValueToIndex(valResult.type)){
             Compiler.error(String.format("Can't index type %s", valResult.type), line, file);
         }
-
-        idxResult = AssignStmt.convertValue(idxResult, Compiler.generateSymbol(DataType.getLong()), quadPair.right());
-        if(!idxResult.type.isInteger()){
-            Compiler.error(String.format("Can't use type %s as index", idxResult.type), line, file);
+        if(!indexResult.type.isDecimal()){
+            Compiler.error(String.format("Can only use integer as index not %s", indexResult.type), line, file);
         }
+        if(indexResult.type.isFloatingPoint()){
+            indexResult = quads.createConvert(indexResult, DataType.getLong());
+        }
+        quads.createIndex(valResult, indexResult);
 
-        int structSize = symbolTable.getStructSize(valResult.type.getTypeFromPointer());
-        quadPair.right().createIMUL(structSize);
-
-        quads.createSetupBinary(quadPair.right(), valResult, Compiler.generateSymbol(DataType.getLong()));
-        quads.createAdd(valResult, Compiler.generateSymbol(DataType.getLong()));
-        quads.createLoad(valResult);
     }
     public IndexExpr(Expr value, Expr index, int line, String file){
         super(line, file);

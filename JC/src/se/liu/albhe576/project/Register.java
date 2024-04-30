@@ -1,31 +1,7 @@
 package se.liu.albhe576.project;
 
-public class Register extends Address{
-
-    public RegisterType type;
-    @Override
-    public String toString() {
-        if(effective){
-            if(offset != 0){
-                return String.format("[%s %+d]", type.name(), offset).toLowerCase();
-            }
-            return String.format("[%s]", type.name()).toLowerCase();
-        }
-        return type.name().toLowerCase();
-    }
-
-    public Register(RegisterType type){
-        this.type = type;
-    }
-    public Register(RegisterType type, int offset){
-        this(type, offset, true);
-    }
-    public Register(RegisterType type, boolean effective){
-        this(type, 0, effective);
-    }
-    public Register(RegisterType type, int offset, boolean effective){
-        this.type = type;
-        this.offset = offset;
-        this.effective = effective;
-    }
+public enum Register {
+    RAX, RBX, RCX, RDX, RSI, RDI, R8, R9, RBP,RSP,
+    EAX, EBX, ECX,EDX, AX, BX, CX, DX, AL, BL, CL, DL,
+    XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, MOVSB;
 }

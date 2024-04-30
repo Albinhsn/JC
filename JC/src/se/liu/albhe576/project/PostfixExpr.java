@@ -20,9 +20,7 @@ public class PostfixExpr extends Expr{
             Compiler.error(String.format("Can't postfix type %s", target.type), line, file);
         }
 
-        Symbol loadedSymbol = Compiler.generateSymbol(target.type);
-        quads.createPush(loadedSymbol);
-        UnaryExpr.compileIncrementAndDecrement(symbolTable, quads, this.target, loadedSymbol, this.op);
-        quads.createPop(loadedSymbol);
+        quads.createPostfix(target, op.type());
+
     }
 }

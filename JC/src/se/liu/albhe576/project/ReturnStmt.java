@@ -14,15 +14,20 @@ public class ReturnStmt extends Stmt{
 
         if(expr != null){
             expr.compile(symbolTable, quads);
-            Symbol returnSymbol = AssignStmt.convertValue(quads.getLastResult(), Compiler.generateSymbol(returnType), quads);
+            Symbol returnSymbol = quads.getLastResult();
 
-            if(!returnSymbol.type.isSameType(returnType) && !returnSymbol.type.canBeConvertedTo(returnType)){
+            if(!returnSymbol.type.canBeConvertedTo(returnType)){
                 Compiler.error(String.format("Mismatch in return type in function %s, expected %s got %s", symbolTable.getCurrentFunctionName(), returnType.name, returnSymbol.type.name), line, file);
             }
+            if(!returnSymbol.type.isSameType(returnType)){
+                returnSymbol = quads.createConvert(returnSymbol, returnType);
+            }
+            quads.createReturn(returnSymbol);
         }
         else if(returnType.type != DataTypes.VOID){
             Compiler.error(String.format("Expected return value in function %s", symbolTable.getCurrentFunctionName()), line, file);
+        }else{
+            quads.createReturn(null);
         }
-        quads.addQuad(QuadOp.RET, null, null, null);
     }
 }

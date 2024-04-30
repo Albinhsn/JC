@@ -4,7 +4,7 @@ public class ImmediateSymbol extends Symbol{
     private final String value;
     @Override
     public String toString() {
-        return value;
+        return "[" + value + "]";
     }
     @Override
     public boolean isNull() {

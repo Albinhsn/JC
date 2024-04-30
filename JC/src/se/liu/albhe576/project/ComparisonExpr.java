@@ -11,15 +11,6 @@ public class ComparisonExpr extends Expr {
         this.op = op;
     }
 
-    private static QuadOp convertOpToFloat(QuadOp op) {
-        switch(op){
-            case SETLE -> {return QuadOp.SETBE ;}
-            case SETL -> {return QuadOp.SETB;}
-            case SETG -> {return QuadOp.SETA;}
-            case SETGE -> {return QuadOp.SETAE;}
-            default -> {return op;}
-        }
-    }
     private void typeCheckComparison(DataType left, DataType right) throws CompileException{
         boolean leftIsValid = left.isDecimal() || left.isPointer();
         boolean rightIsValid = right.isDecimal() || right.isPointer();
@@ -30,27 +21,14 @@ public class ComparisonExpr extends Expr {
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads)  throws CompileException{
-        QuadListPair quadPair = QuadList.compileBinary(symbolTable, quads, left, right);
+        left.compile(symbolTable, quads);
         Symbol lResult = quads.getLastResult();
 
-        QuadList rQuads = quadPair.right();
+        QuadList rQuads = new QuadList();
+        right.compile(symbolTable, rQuads);
         Symbol rResult = rQuads.getLastResult();
 
         this.typeCheckComparison(lResult.type, rResult.type);
-        QuadOp op = QuadOp.fromToken(this.op);
-        if(lResult.type.isFloat() || rResult.type.isFloat()){
-            op = convertOpToFloat(op);
-        }
-
-        DataType highestPrecedenceType = DataType.getHighestDataTypePrecedence(lResult.type, rResult.type);
-
-        Symbol resultType = Compiler.generateSymbol(highestPrecedenceType);
-        lResult = AssignStmt.convertValue(lResult, resultType, quads);
-        rResult = AssignStmt.convertValue(rResult, resultType, rQuads);
-
-        lResult = quads.createSetupBinary(rQuads, lResult, rResult);
-
-        quads.addQuad(QuadOp.CMP, lResult, rResult, null);
-        quads.addQuad(op, null, null, Compiler.generateSymbol(DataType.getInt()));
+        quads.createComparison(this.op.type(), lResult, rResult);
     }
 }

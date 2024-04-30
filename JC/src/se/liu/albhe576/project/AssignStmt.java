@@ -10,28 +10,6 @@ public class AssignStmt extends Stmt{
         this.value = value;
     }
 
-    public static Symbol convertValue(Symbol value, Symbol target, QuadList quads) throws CompileException {
-        if(value.type.isSameType(target.type)){
-            return value;
-        }
-
-        if(value.type.isPointer()){
-            Quad lastQuad = quads.pop();
-            quads.addQuad(lastQuad.op(), lastQuad.operand1(), lastQuad.operand2(), target);
-            return quads.getLastResult();
-        }
-
-        switch(value.type.type){
-            case DOUBLE -> {return  quads.createConvertDouble(value, target);}
-            case FLOAT-> {return  quads.createConvertFloat(value,target);}
-            case LONG -> {return  quads.createConvertLong(value,target);}
-            case INT-> {return  quads.createConvertInt(value,target);}
-            case SHORT-> {return  quads.createConvertShort(value,target);}
-            case BYTE-> {return  quads.createConvertByte(value, target);}
-        }
-        throw new CompileException(String.format("Can't convert %s to %s", value.type.name, target.type.name));
-    }
-
     public static boolean isInvalidAssignment(Symbol variableType, Symbol valueResult, Symbol lastOperand){
         return !(variableType.type.canBeConvertedTo(valueResult.type)  || lastOperand.isNull());
     }
@@ -44,15 +22,15 @@ public class AssignStmt extends Stmt{
         QuadList variableQuads = new QuadList();
         variable.compile(symbolTable, variableQuads);
         Symbol variableType = variableQuads.getLastResult();
-        Symbol variablePointer = variableQuads.getLastOperand1();
 
-        variableQuads.pop();
         if(isInvalidAssignment(variableType, valueResult, valueQuads.getLastOperand1())){
             Compiler.error(String.format("Trying to assign type %s to %s", valueResult.type, variableType.type), line, file);
         }
+        if(!valueResult.type.isSameType(variableType.type)){
+            valueQuads.createConvert(valueResult, variableType.type);
+        }
+        valueQuads.addAll(variableQuads);
+        valueQuads.createStore(valueResult, variableType);
 
-        valueResult = AssignStmt.convertValue(valueResult, variableType, valueQuads);
-        valueQuads.createSetupBinary(variableQuads, valueResult, variablePointer);
-        valueQuads.createStoreVariable(variableType);
     }
 }

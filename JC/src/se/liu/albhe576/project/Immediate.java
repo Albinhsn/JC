@@ -6,10 +6,11 @@ public class Immediate extends Operand{
         return immediate;
     }
 
-    public final String immediate;
-
-    public Immediate(String immediate){
-        this.immediate = immediate;
+    String immediate;
+    public Immediate(int imm) {
+        this.immediate = String.valueOf(imm);
     }
-
+    public Immediate(String imm) {
+        this.immediate = imm;
+    }
 }

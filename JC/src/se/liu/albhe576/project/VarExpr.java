@@ -9,19 +9,12 @@ public class VarExpr extends Expr {
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
-        Symbol symbol = symbolTable.findSymbol(token.literal());
+        VariableSymbol symbol = symbolTable.findSymbol(token.literal());
         if(symbol == null){
             Compiler.error(String.format("Can't find symbol %s", token.literal()), line, file);
         }
 
         assert symbol != null;
-        if(!symbol.type.isArray()){
-            Symbol loadedSymbol = Compiler.generateSymbol(DataType.getPointerFromType(symbol.type));
-            quads.addQuad(QuadOp.LOAD_VARIABLE_POINTER, symbol, null, loadedSymbol);
-            quads.createLoad(loadedSymbol);
-        }else{
-            quads.addQuad(QuadOp.LOAD_VARIABLE_POINTER, symbol, null, symbol);
-        }
-
+        quads.createLoad(symbol);
     }
 }

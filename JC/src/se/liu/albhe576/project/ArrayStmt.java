@@ -30,23 +30,13 @@ public class ArrayStmt extends Stmt {
             this.items.get(i).compile(symbolTable, quads);
             Symbol result   = quads.getLastResult();
 
-            if(itemType.canBeConvertedTo(result.type)){
-                result = AssignStmt.convertValue(result, Compiler.generateSymbol(itemType), quads);
+            if(result.type.canBeConvertedTo(itemType)){
+                result = quads.createConvert(result, itemType);
             }
 
             if(!itemType.isSameType(result.type)){
                 Compiler.error(String.format("Can't have different type then declared in array declaration, expected %s got %s", itemType, result.type), line, file);
             }
-
-            QuadList pointerQuads= new QuadList();
-
-            Symbol loadedImmediate  =  pointerQuads.createLoadImmediate(DataType.getLong(), String.valueOf(itemSize * i));
-            pointerQuads.createMovPrimaryToSecondaryRegister(loadedImmediate);
-            pointerQuads.createLoadVariablePointer(arraySymbol);
-            Symbol addResult        =  pointerQuads.createAdd(arraySymbol, Compiler.generateSymbol(DataType.getLong()));
-
-            quads.createSetupBinary(pointerQuads, result, addResult);
-            quads.createStore(result, addResult);
         }
     }
 }
