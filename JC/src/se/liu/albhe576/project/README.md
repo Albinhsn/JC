@@ -1,5 +1,4 @@
 ## ToDo
 
-* Cleanup optimizer
+* symbol -> value + result
 * docs
-

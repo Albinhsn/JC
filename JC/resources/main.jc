@@ -10,9 +10,6 @@
 
 int main(){
 
-    double d = 5.0;
-    printf("%lf\n", d);
-
     run_tests();
 }
 

@@ -29,8 +29,8 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
         return type.isDouble() ? Operation.MOVSD : Operation.MOV;
     }
     public static Operation getSignExtendOrMoveFromType(DataType type){
-        if(type.isInteger() || type.isPointer()){
-            if(type.isPointer() || type.isLong()){
+        if(type.isInteger() || type.isPointer() || type.isArray()){
+            if(type.isPointer() || type.isLong() || type.isArray()){
                 return Operation.MOV;
             }
             return Operation.MOVSX;
@@ -334,7 +334,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                         new Instruction(Operation.ADD, RegisterType.RSP, new Immediate("8")),
                 };
             }
-            case MOV_REG_CA -> {
+            case MOV_PRIMARY_TO_SECONDARY_REG -> {
                 if (operand1.type.isByte() || operand1.type.isShort()) {
                     return new Instruction[]{getSignExtend(RegisterType.RCX, operand1.type)};
                 }
@@ -386,9 +386,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                     Instruction [] movedStruct = moveStruct(structs, operand1);
                     Instruction[] out = new Instruction[1 + movedStruct.length];
                     out[0] = lea;
-                    for(int i = 0; i < movedStruct.length; i++){
-                        out[i + 1] = movedStruct[i];
-                    }
+                    System.arraycopy(movedStruct, 0, out, 1, movedStruct.length);
                     return out;
                 }
                 return new Instruction[]{new Instruction(getMovOpFromType(operand1.type), new Register(RegisterType.RSP, offset), getRegisterFromType(operand1.type, 0))};

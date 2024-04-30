@@ -9,18 +9,7 @@ public class Label extends Address{
         }
         return label;
     }
-
-    @Override
-    public boolean isEffective() {
-        return effective;
-    }
-    @Override
-    public boolean isImmediate() {
-        return effective;
-    }
-
-    public final String label;
-
+    private final String label;
     public Label(String label){
         this.effective = false;
         this.label = label;
@@ -30,13 +19,4 @@ public class Label extends Address{
         this.label = label;
     }
 
-    @Override
-    boolean isEqual(Register register) {
-        return false;
-    }
-
-    @Override
-    boolean isEqual(Label label) {
-        return label.label.equals(this.label) && this.effective == label.effective;
-    }
 }

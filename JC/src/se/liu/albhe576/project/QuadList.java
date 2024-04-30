@@ -25,11 +25,11 @@ public class QuadList extends ArrayList<Quad>{
     public Symbol createSetupBinary(QuadList right, Symbol lSymbol, Symbol rSymbol) {
         this.createPush(lSymbol);
         this.addAll(right);
-        this.createMovRegisterAToC(rSymbol);
+        this.createMovPrimaryToSecondaryRegister(rSymbol);
         return this.createPop(lSymbol);
     }
     public void createStoreVariable(Symbol symbol){this.addQuad(QuadOp.STORE, symbol, null, Compiler.generateSymbol(symbol.type));}
-    public void createMovRegisterAToC(Symbol firstOperand){this.addQuad(QuadOp.MOV_REG_CA, firstOperand, null, Compiler.generateSymbol(firstOperand.type));}
+    public void createMovPrimaryToSecondaryRegister(Symbol firstOperand){this.addQuad(QuadOp.MOV_PRIMARY_TO_SECONDARY_REG, firstOperand, null, Compiler.generateSymbol(firstOperand.type));}
     public Symbol createLoadImmediate(DataType type, String immediate){
         Symbol out = Compiler.generateImmediateSymbol(type, immediate);
         this.addQuad(QuadOp.LOAD_IMM, Compiler.generateImmediateSymbol(type, immediate), null,out);
@@ -198,7 +198,7 @@ public class QuadList extends ArrayList<Quad>{
         Symbol immLoadResult = Compiler.generateSymbol(DataType.getInt());
         this.createPush(immLoadResult);
         this.createLoadImmediate(DataType.getInt(), immediateLiteral);
-        this.createMovRegisterAToC(immLoadResult);
+        this.createMovPrimaryToSecondaryRegister(immLoadResult);
         Symbol popped = this.createPop(Compiler.generateSymbol(DataType.getInt()));
         this.addQuad(QuadOp.CMP, popped, null,null);
     }
@@ -208,6 +208,8 @@ public class QuadList extends ArrayList<Quad>{
         this.addQuad(QuadOp.JE, jmpLocation, null, null);
     }
     public void createStore(Symbol value, Symbol arr){this.addQuad(QuadOp.STORE, value, arr, value);}
+    public void createLoadVariablePointer(Symbol variable){this.addQuad(QuadOp.LOAD_VARIABLE_POINTER, variable, null, variable);}
+    public void createLoadField(Symbol structPointer, Symbol immediate, Symbol memberPointer){this.addQuad(QuadOp.LOAD_FIELD_POINTER, structPointer, immediate, memberPointer);}
     public void createLoad(Symbol pointer){this.addQuad(QuadOp.LOAD, pointer, null, Compiler.generateSymbol(pointer.type.getTypeFromPointer()));}
     public void createJmpOnCondition(QuadOp condition, Symbol label){this.addQuad(condition, label, null, null);}
     public void allocateArguments(int size){this.addQuad(QuadOp.ALLOCATE, new ImmediateSymbol("size", DataType.getInt(), String.valueOf(size)), null, null);}

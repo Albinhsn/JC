@@ -250,7 +250,7 @@ public class Scanner {
                     this.index += "define".length();
                     yield this.createToken(TokenType.TOKEN_DEFINE, "#define");
                 }
-                Compiler.error("tried to parse #smth but failed\n", line, filename);
+                Compiler.error("tried to parse '#' but didnt find include/exctern/define afterwards\n", line, filename);
                 // unreachable
                 yield null;
             }

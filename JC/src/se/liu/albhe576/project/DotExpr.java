@@ -27,12 +27,12 @@ public class DotExpr extends Expr{
             Compiler.error(String.format("Trying to access member %s of struct %s, doesn't exist!", lastSymbol.type.name, this.member.literal()), line, file);
         }
 
-        Struct struct = symbolTable.getStructs().get(lastSymbol.type.name);
-        int offset = Struct.getFieldOffset(symbolTable.getStructs(), struct, this.member.literal());
-        StructField field = Struct.getMember(struct, this.member.literal());
-        Symbol memberPointer = Compiler.generateSymbol(DataType.getPointerFromType(field.type()));
-        Symbol immediateSymbol = Compiler.generateImmediateSymbol(DataType.getLong(), String.valueOf(offset));
-        quads.addQuad(QuadOp.LOAD_FIELD_POINTER, lastSymbol, immediateSymbol, memberPointer);
-        quads.addQuad(QuadOp.LOAD, memberPointer, null, Compiler.generateSymbol(memberPointer.type.getTypeFromPointer()));
+        Struct struct           = symbolTable.getStructs().get(lastSymbol.type.name);
+        int offset              = Struct.getFieldOffset(symbolTable.getStructs(), struct, this.member.literal());
+        StructField field       = Struct.getMember(struct, this.member.literal());
+        Symbol memberPointer    = Compiler.generateSymbol(DataType.getPointerFromType(field.type()));
+        Symbol immediateSymbol  = Compiler.generateImmediateSymbol(DataType.getLong(), String.valueOf(offset));
+        quads.createLoadField(lastSymbol, immediateSymbol, memberPointer);
+        quads.createLoad(memberPointer);
     }
 }
