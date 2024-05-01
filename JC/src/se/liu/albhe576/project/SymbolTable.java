@@ -54,6 +54,15 @@ public class SymbolTable {
     public Map<String, Function> getFunctions(){
         return this.functions;
     }
+    public Map<String, Function> getExternalFunctions(){
+        Map<String, Function> out = new HashMap<>();
+        for(Map.Entry<String, Function> entry : this.functions.entrySet()){
+            if(entry.getValue().external){
+                out.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return out;
+    }
     public Map<String, Function> getInternalFunctions(){
         Map<String, Function> out = new HashMap<>();
         for(Map.Entry<String, Function> entry : this.functions.entrySet()){

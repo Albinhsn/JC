@@ -40,6 +40,7 @@ public class Struct {
     }
     public static int getFunctionArgumentsStackSize(String name, Map<String, Function> functions, Map<String, Struct> structs) {
         Function function = functions.get(name);
+        // ToDo support this
         if (function.external) {
             return 0;
         }

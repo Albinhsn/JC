@@ -18,7 +18,7 @@ public class WhileStmt extends Stmt{
         condition.compile(symbolTable, quads);
 
         Symbol mergeLabel = Compiler.generateLabel();
-        quads.createJumpCondition(mergeLabel, true);
+        quads.createJumpCondition(mergeLabel, false);
 
         symbolTable.enterScope();
         for(Stmt stmt : body){

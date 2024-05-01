@@ -14,7 +14,7 @@ public class DataType {
     public boolean isFloatingPoint(){return isDouble()|| isFloat();}
     public boolean isStruct(){return this.type == DataTypes.STRUCT && depth == 0;}
     public boolean isArray(){return this.type == DataTypes.ARRAY && depth == 0;}
-    public boolean isString(){return this.type == DataTypes.STRING && depth == 0;}
+    public boolean isString(){return this.type == DataTypes.STRING && depth == 1;}
     public boolean isByte(){return this.type == DataTypes.BYTE && depth == 0;}
     public boolean isPointer(){return this.depth > 0;}
     public int getSize(){
@@ -34,6 +34,7 @@ public class DataType {
     }
     public boolean isDecimal(){return this.isInteger() || this.isFloat() || this.isDouble();}
     public boolean isInteger(){return isInt() || isByte() || isShort() || isLong();}
+    public boolean isVoid(){return type == DataTypes.VOID && depth == 0;}
     public boolean canBeConvertedTo(DataType other){return (this.isDecimal() && other.isDecimal()) || this.isSameType(other);}
 
     public DataType getTypeFromPointer() throws CompileException {

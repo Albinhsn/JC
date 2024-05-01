@@ -29,7 +29,7 @@ public class IfStmt extends Stmt{
         Symbol mergeLabel = Compiler.generateLabel();
 
         Symbol ifJmpLabel = elseBody.isEmpty() ? mergeLabel : elseLabel;
-        quads.createJumpCondition(ifJmpLabel, true);
+        quads.createJumpCondition(ifJmpLabel, false);
 
         quads.addAll(ifQuad);
         if(!elseBody.isEmpty()){

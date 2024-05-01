@@ -8,11 +8,13 @@ public enum Register {
     public static final Register SECONDARY_GENERAL_REGISTER = RCX;
     public static final Register PRIMARY_SSE_REGISTER = XMM0;
     public static final Register SECONDARY_SSE_REGISTER = XMM1;
+
     public static Register getPrimaryRegisterFromDataType(DataType type){
+
         if(type.isFloatingPoint()){
             return PRIMARY_SSE_REGISTER;
         }
-        if(type.isPointer() || type.isLong()){
+        if(type.isStruct() || type.isPointer() || type.isLong()){
             return RAX;
         }
         else if(type.isInt()){
@@ -27,7 +29,7 @@ public enum Register {
         if(type.isFloatingPoint()){
             return SECONDARY_SSE_REGISTER;
         }
-        if(type.isPointer() || type.isLong()){
+        if(type.isStruct() || type.isPointer() || type.isLong()){
             return RCX;
         }
         else if(type.isInt()){

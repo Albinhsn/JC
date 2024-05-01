@@ -742,7 +742,7 @@ void test_postfix(){
     Foof foo2;
     foo2.a = 5.0;
     foo2.a++;
-    print_testf(foo2.a, 6.0, "foo2.a++");
+    print_testf(foo2.a, 6.0, "foof2.a++");
 
     Foof *foo3 = malloc(16);
     foo3[0].a = 0.0;

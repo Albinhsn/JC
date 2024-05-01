@@ -33,10 +33,6 @@ public class Compiler {
 
             symbolTable.compileFunction(functionEntry.getKey(), localSymbols);
             Stmt.compileBlock(symbolTable, quads, function.getBody());
-            System.out.printf("\n%s\n", functionEntry.getKey());
-            for(Quad quad : quads){
-                System.out.println(quad);
-            }
             functionIntermediates.put(functionEntry.getKey(), quads);
         }
         return functionIntermediates;
@@ -69,15 +65,22 @@ public class Compiler {
 
             // add prologue
             List<Instruction> instructions = new LinkedList<>(List.of(PROLOGUE_INSTRUCTIONS));
+            System.out.printf("\n\n%s\n", name);
             for(Quad quad : quads){
+                System.out.println(quad);
                 instructions.addAll(quad.emitInstructions(symbolTable, constants, tempStack));
             }
             // Check if we need to insert a return value or not
 
+            if(instructions.get(instructions.size() - 1).op != Operation.RET){
+                instructions.addAll(List.of(EPILOGUE_INSTRUCTIONS));
+                instructions.add(new Instruction(Operation.RET, null, null));
+            }
 
             // calculate stack size and padding
-            final int stackAllocationInstructionIndex = PROLOGUE_INSTRUCTIONS.length;
-            final int stackAlignment                  = -tempStack.maxOffset + getStackAlignment(tempStack.maxOffset);
+            final int stackAllocationInstructionIndex   = PROLOGUE_INSTRUCTIONS.length;
+            final int maxOffset                         = -tempStack.maxOffset;
+            final int stackAlignment                    = maxOffset + getStackAlignment(maxOffset);
             instructions.add(stackAllocationInstructionIndex, new Instruction(Operation.SUB, new Address(Register.RSP), new Immediate(stackAlignment)));
 
             generatedAssembly.put(name, instructions);
@@ -103,6 +106,10 @@ public class Compiler {
 
         FileWriter fileWriter = new FileWriter(fileName);
 
+
+        for(String externalFunction : symbolTable.getExternalFunctions().keySet()){
+            fileWriter.write(String.format("extern %s\n", externalFunction));
+        }
         // To append -> one write?
         fileWriter.write("global _start\n\nsection .data\n");
 
@@ -125,7 +132,7 @@ public class Compiler {
 
         for(Map.Entry<String, List<Instruction>> function : functions.entrySet()){
             String functionName = function.getKey();
-            fileWriter.write(functionName + ":\n");
+            fileWriter.write("\n\n" + functionName + ":\n");
             for(Instruction instruction : function.getValue()){
                 fileWriter.write(instruction + "\n");
             }
@@ -133,12 +140,6 @@ public class Compiler {
         }
         fileWriter.flush();
         fileWriter.close();
-        // output static data
-        // output token main function
-
-        // output functions
-
-        // write to file
     }
 
 

@@ -12,6 +12,10 @@ public class CastExpr extends Expr{
     void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
         expr.compile(symbolTable, quads);
         Symbol result = quads.getLastResult();
-        quads.createCast(result, type);
+        if(result.type.isPointer() && type.isPointer()){
+            quads.createCast(result, type);
+        }else{
+            quads.createConvert(result, type);
+        }
     }
 }

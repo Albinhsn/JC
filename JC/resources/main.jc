@@ -6,13 +6,14 @@
 
 
 #include "resources/foo.jc"
-// #include "resources/tests.jc"
+#include "resources/tests.jc"
+
 
 int main(){
-    long *p = malloc(8);
-    *p = 10;
-    return *p;
+    run_tests();
+    return 0;
 }
+
 
 
 

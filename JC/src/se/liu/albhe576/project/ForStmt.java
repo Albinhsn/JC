@@ -20,7 +20,7 @@ public class ForStmt extends Stmt{
         condition.compile(symbolTable, quads);
 
         // check if we jump
-        quads.createJumpCondition(mergeLabel, true);
+        quads.createJumpCondition(mergeLabel, false);
 
         // Compile body
         for(Stmt stmt : body){

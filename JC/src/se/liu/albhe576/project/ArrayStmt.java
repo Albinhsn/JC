@@ -30,13 +30,12 @@ public class ArrayStmt extends Stmt {
             this.items.get(i).compile(symbolTable, quads);
             Symbol result   = quads.getLastResult();
 
-            if(result.type.canBeConvertedTo(itemType)){
-                result = quads.createConvert(result, itemType);
+            if(!itemType.isSameType(result.type) && !result.type.canBeConvertedTo(itemType)){
+                Compiler.error(String.format("Can't have different type then declared in array declaration, expected %s got %s", itemType, result.type), line, file);
+            }else if(!itemType.isSameType(result.type)){
+                quads.createConvert(result, itemType);
             }
 
-            if(!itemType.isSameType(result.type)){
-                Compiler.error(String.format("Can't have different type then declared in array declaration, expected %s got %s", itemType, result.type), line, file);
-            }
 
             quads.createStoreArray(arraySymbol, i * itemSize);
         }

@@ -24,10 +24,28 @@ public class ComparisonExpr extends Expr {
         left.compile(symbolTable, quads);
         Symbol lResult = quads.getLastResult();
 
-        right.compile(symbolTable, quads);
-        Symbol rResult = quads.getLastResult();
+        QuadList rQuads = new QuadList();
+        right.compile(symbolTable, rQuads);
+        Symbol rResult = rQuads.getLastResult();
 
         this.typeCheckComparison(lResult.type, rResult.type);
-        quads.createComparison(this.op.type(), lResult, rResult);
+        DataType resultType = DataType.getHighestDataTypePrecedence(lResult.type, rResult.type);
+
+        if(!lResult.type.isSameType(resultType)){
+            lResult = quads.createConvert(lResult, resultType);
+        }
+
+        if(!rResult.type.isSameType(resultType)){
+            rResult = rQuads.createConvert(rResult, resultType);
+        }
+
+        QuadOp op = QuadOp.fromToken(this.op.type());
+        if(lResult.type.isFloatingPoint() || rResult.type.isFloatingPoint()){
+            op = op.convertToFloat();
+        }
+
+
+        quads.addAll(rQuads);
+        quads.createComparison(op, lResult, rResult);
     }
 }

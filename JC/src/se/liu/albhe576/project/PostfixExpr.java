@@ -22,8 +22,14 @@ public class PostfixExpr extends Expr{
         }
 
 
-        if(lastQuad.op() == QuadOp.LOAD_I){
+        if(lastQuad.op() == QuadOp.LOAD_I || lastQuad.op() == QuadOp.LOAD_F){
             quads.createLoadPointer(source);
+        }else if(lastQuad.op() == QuadOp.LOAD_MEMBER){
+            quads.createLoadMemberPointer(source, lastQuad.operand2(), target.type);
+
+        }else if(lastQuad.op() == QuadOp.INDEX){
+            quads.createReferenceIndex(source, lastQuad.operand2());
+            target = Compiler.generateSymbol(source.type.getTypeFromPointer());
         }
 
         quads.createPostfix(target, op.type());

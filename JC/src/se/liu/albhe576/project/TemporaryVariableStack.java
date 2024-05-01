@@ -7,7 +7,11 @@ public class TemporaryVariableStack {
     int maxOffset;
     int initialOffset;
 
-    public int addVariable(String name, DataType type) throws CompileException{
+    public VariableSymbol peek(){
+        return this.variables.peek();
+    }
+
+    public int pushVariable(String name, DataType type) throws CompileException{
         if(type.isStruct() || type.isArray()){
             throw new CompileException("Can't push a struct/array a temporary?");
         }
@@ -23,9 +27,6 @@ public class TemporaryVariableStack {
         return offset;
     }
     public VariableSymbol popVariable(){
-        if(variables.isEmpty()){
-            System.out.println("");
-        }
         return variables.pop();
     }
 

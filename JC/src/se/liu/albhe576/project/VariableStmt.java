@@ -37,12 +37,9 @@ public class VariableStmt extends Stmt{
             if(!type.isSameType(lastSymbol.type)){
                 lastSymbol = quads.createConvert(lastSymbol, type);
             }
-            if(quads.getLastOp() == QuadOp.LOAD_I){
-                Quad loaded = quadsvariableQuads.pop();
-                quads.createLoadPointer(loaded.operand1());
-            }
 
-            quads.createStore(lastSymbol, variable);
+            quads.createLoadPointer(variable);
+            quads.createAssign(lastSymbol, variable);
         }
     }
 }

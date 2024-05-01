@@ -14,11 +14,12 @@ public class LogicalExpr extends Expr{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException {
-
         left.compile(symbolTable, quads);
         Symbol leftResult = quads.getLastResult();
         right.compile(symbolTable, quads);
         Symbol rightResult = quads.getLastResult();
+
         quads.createLogical(leftResult, rightResult, this.op.type());
+
     }
 }

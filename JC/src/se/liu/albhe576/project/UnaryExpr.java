@@ -12,7 +12,10 @@ public class UnaryExpr extends Expr{
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
         expr.compile(symbolTable, quads);
+        Symbol source = quads.getLastOperand1();
         Symbol lastResult = quads.getLastResult();
+        Symbol lastOperand2 = quads.getLastOperand2();
+        QuadOp lastOp = quads.getLastOp();
          switch(this.op.type()){
             case TOKEN_AND_BIT -> {
                 Quad loaded = quads.pop();
@@ -26,8 +29,16 @@ public class UnaryExpr extends Expr{
             case TOKEN_STAR -> quads.createDereference(lastResult);
             case TOKEN_MINUS -> quads.createNegate(lastResult);
             case TOKEN_INCREMENT, TOKEN_DECREMENT -> {
+                quads.pop();
+                if(lastOp == QuadOp.LOAD_I || lastOp == QuadOp.LOAD_F){
+                    quads.createLoadPointer(source);
+                }else if(lastOp == QuadOp.LOAD_MEMBER){
+                    quads.createLoadMemberPointer(source, lastOperand2, lastResult.type);
+                }else if(lastOp == QuadOp.INDEX){
+                    quads.createReferenceIndex(source, lastOperand2);
+                    lastResult = Compiler.generateSymbol(source.type.getTypeFromPointer());
+                }
                 quads.createPrefix(lastResult, this.op.type());
-                quads.createStore(lastResult, quads.getLastResult());
             }
             default -> Compiler.error(String.format("Invalid unary op? %s", this.op.literal()), this.line, this.file);
          }
