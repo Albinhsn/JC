@@ -32,11 +32,11 @@ public class ComparisonExpr extends Expr {
         DataType resultType = DataType.getHighestDataTypePrecedence(lResult.type, rResult.type);
 
         if(!lResult.type.isSameType(resultType)){
-            lResult = quads.createConvert(lResult, resultType);
+            lResult = quads.createConvert(symbolTable, lResult, resultType);
         }
 
         if(!rResult.type.isSameType(resultType)){
-            rResult = rQuads.createConvert(rResult, resultType);
+            rResult = rQuads.createConvert(symbolTable, rResult, resultType);
         }
 
         QuadOp op = QuadOp.fromToken(this.op.type());
@@ -44,8 +44,7 @@ public class ComparisonExpr extends Expr {
             op = op.convertToFloat();
         }
 
-
         quads.addAll(rQuads);
-        quads.createComparison(op, lResult, rResult);
+        quads.createComparison(symbolTable, op, lResult, rResult);
     }
 }

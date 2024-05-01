@@ -6,17 +6,10 @@ import java.util.*;
 
 public class Compiler {
     private final SymbolTable symbolTable;
-    private static int resultCount;
-    private static int labelCount;
     public static void error(String msg, int line, String filename) throws CompileException{
         System.out.printf("%s:%d[%s]", filename,line,msg);
         System.exit(1);
     }
-    public static Symbol generateSymbol(DataType type){
-        return new Symbol("T" + resultCount++, type);
-    }
-    public static ImmediateSymbol generateImmediateSymbol(DataType type, String literal){return new ImmediateSymbol("T" + resultCount++, type, literal);}
-    public static Symbol generateLabel(){return new Symbol( String.format("label%d", labelCount++), new DataType("label", DataTypes.VOID, 0));}
     public Map<String, QuadList> generateIntermediate() throws CompileException {
         final Map<String, QuadList> functionIntermediates = new HashMap<>();
         for(Map.Entry<String, Function> functionEntry: this.symbolTable.getInternalFunctions().entrySet()){
@@ -47,10 +40,6 @@ public class Compiler {
     };
     public static int getStackAlignment(int stackSize){
         final int alignmentInBytes = 16;
-        // is essentially
-        //   if stackSize % alignmentInBytes == 0 ? 0 : (alignmentInBytes - stackSize) % alignmentInBytes
-        // just done to avoid a branch :)
-        // works since alignment is a power of 2
         return (alignmentInBytes - (stackSize % alignmentInBytes)) & (alignmentInBytes - 1);
     }
     private Map<String, List<Instruction>> generateAssembly(Map<String, Constant> constants, Map<String, QuadList> functionQuads) throws CompileException {

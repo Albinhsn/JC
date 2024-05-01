@@ -21,7 +21,8 @@ public class ArrayStmt extends Stmt {
         DataType itemType = type.itemType;
 
         int itemSize = symbolTable.getStructSize(itemType);
-        int stackOffset = -(itemSize * this.size + symbolTable.getLocalVariableStackSize(symbolTable.getCurrentFunctionName()));
+        int arraySize = itemSize * this.size;
+        int stackOffset = -(arraySize + symbolTable.getLocalVariableStackSize());
 
         VariableSymbol arraySymbol = new VariableSymbol(name, DataType.getArray(itemType), stackOffset);
         symbolTable.addVariable(arraySymbol);
@@ -33,10 +34,8 @@ public class ArrayStmt extends Stmt {
             if(!itemType.isSameType(result.type) && !result.type.canBeConvertedTo(itemType)){
                 Compiler.error(String.format("Can't have different type then declared in array declaration, expected %s got %s", itemType, result.type), line, file);
             }else if(!itemType.isSameType(result.type)){
-                quads.createConvert(result, itemType);
+                quads.createConvert(symbolTable, result, itemType);
             }
-
-
             quads.createStoreArray(arraySymbol, i * itemSize);
         }
     }

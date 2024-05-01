@@ -12,8 +12,8 @@ public class ForStmt extends Stmt{
         symbolTable.enterScope();
         init.compile(symbolTable, quads);
 
-        Symbol conditionLabel = Compiler.generateLabel();
-        Symbol mergeLabel = Compiler.generateLabel();
+        Symbol conditionLabel = symbolTable.generateLabel();
+        Symbol mergeLabel = symbolTable.generateLabel();
 
         // Compile condition
         quads.insertLabel(conditionLabel);

@@ -21,11 +21,13 @@ public class BinaryExpr extends Expr{
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
         left.compile(symbolTable, quads);
         Symbol leftResult = quads.getLastResult();
+
         QuadList rightQuads = new QuadList();
         right.compile(symbolTable, rightQuads);
         Symbol rightResult = rightQuads.getLastResult();
 
         DataType resultType = DataType.getHighestDataTypePrecedence(leftResult.type, rightResult.type);
+
         QuadOp op = QuadOp.fromToken(this.op.type());
         if(leftResult.type.isFloatingPoint() || rightResult.type.isFloatingPoint()){
             op = op.convertToFloat();
@@ -37,28 +39,20 @@ public class BinaryExpr extends Expr{
             Compiler.error(String.format("Can't do arithmetic op with %s and %s", leftResult.type, rightResult.type), line, file);
         }
 
+        if(!leftResult.type.isSameType(resultType)){
+            leftResult = quads.createConvert(symbolTable, leftResult, resultType);
+        }
+        else if(!rightResult.type.isSameType(resultType)){
+            rightResult = rightQuads.createConvert(symbolTable, rightResult, resultType);
+        }
+
         if(leftResult.type.isPointer()){
-            if(rightResult.type.isFloatingPoint()){
-                rightResult = rightQuads.createConvert(rightResult, DataType.getLong());
-            }
-            rightQuads.createIMul(rightResult, symbolTable.getStructSize(leftResult.type.getTypeFromPointer()));
-
-        }else if(rightResult.type.isPointer()){
-            if(leftResult.type.isFloatingPoint()){
-                leftResult = quads.createConvert(leftResult, DataType.getLong());
-            }
-            quads.createIMul(leftResult, symbolTable.getStructSize(rightResult.type.getTypeFromPointer()));
-
-        }else{
-            if(!leftResult.type.isSameType(resultType)){
-                leftResult = quads.createConvert(leftResult, resultType);
-            }
-            if(!rightResult.type.isSameType(resultType)){
-                rightResult = rightQuads.createConvert(rightResult, resultType);
-            }
+            rightQuads.createIMul(symbolTable, rightResult, symbolTable.getStructSize(leftResult.type.getTypeFromPointer()));
+        }else if(rightResult.type.isPointer()) {
+            quads.createIMul(symbolTable, leftResult, symbolTable.getStructSize(rightResult.type.getTypeFromPointer()));
         }
 
         quads.addAll(rightQuads);
-        quads.createBinaryOp(op, leftResult, rightResult, resultType);
+        quads.createBinaryOp(symbolTable, op, leftResult, rightResult, resultType);
     }
 }

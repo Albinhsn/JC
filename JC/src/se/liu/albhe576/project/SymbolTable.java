@@ -10,6 +10,13 @@ public class SymbolTable {
     private final Map<String, Constant> constants;
     private final Map<String, Scope> scopes;
     private String currentFunctionName;
+    private int resultCount;
+    private int labelCount;
+    public Symbol generateSymbol(DataType type){
+        return new Symbol("T" + resultCount++, type);
+    }
+    public ImmediateSymbol generateImmediateSymbol(DataType type, String literal){return new ImmediateSymbol("T" + resultCount++, type, literal);}
+    public Symbol generateLabel(){return new Symbol( String.format("label%d", labelCount++), new DataType("label", DataTypes.VOID, 0));}
     private static final String[] internalStructs = new String[]{"int", "float", "byte", "string", "short", "double", "long"};
     public void compileFunction(String name, Map<String, VariableSymbol> arguments){
         this.scopes.put(name, new Scope(arguments));
@@ -50,10 +57,6 @@ public class SymbolTable {
             curr = children.get(children.size() - 1);
         }
     }
-
-    public Map<String, Function> getFunctions(){
-        return this.functions;
-    }
     public Map<String, Function> getExternalFunctions(){
         Map<String, Function> out = new HashMap<>();
         for(Map.Entry<String, Function> entry : this.functions.entrySet()){
@@ -82,7 +85,7 @@ public class SymbolTable {
     public void exitScope(){this.getCurrentScope().closeScope();}
 
     public VariableSymbol addVariable(String name, DataType type){
-        int offset = -SymbolTable.getStructSize(structs, type) - this.getLocalVariableStackSize(this.currentFunctionName);
+        int offset = -1 * (SymbolTable.getStructSize(structs, type) + this.getLocalVariableStackSize());
         VariableSymbol variableSymbol = new VariableSymbol(name, type, offset);
         getCurrentScope().addVariable(name, variableSymbol);
         return variableSymbol;
@@ -90,7 +93,7 @@ public class SymbolTable {
     public void addVariable(VariableSymbol symbol){
         getCurrentScope().addVariable(symbol.name, symbol);
     }
-
+    public int getLocalVariableStackSize(){return getLocalVariableStackSize(this.currentFunctionName);}
     public int getLocalVariableStackSize(String name){
         int size = 0;
         Scope outerScope = this.scopes.get(name);
@@ -123,12 +126,8 @@ public class SymbolTable {
         if(constants.containsKey(constant)){
             return;
         }
-        String constName = "const" + constants.size();
+        final String constName = "const" + constants.size();
         constants.put(constant, new Constant(constName, type));
-    }
-
-    public boolean isExternFunction(String name){
-        return this.functions.get(name).external;
     }
     public boolean symbolExists(String name) {return findSymbol(name) != null;}
     public VariableSymbol findSymbol(String name){
@@ -157,6 +156,10 @@ public class SymbolTable {
             }
         }
         return false;
+    }
+    public int getFunctionStackSizeAlignment(String name){
+        int size = Struct.getFunctionArgumentsStackSize(name, this.functions, this.structs);
+        return size + Compiler.getStackAlignment(size);
     }
     public SymbolTable(Map<String, Struct> structs, Map<String, Function> extern){
         this.structs = structs;

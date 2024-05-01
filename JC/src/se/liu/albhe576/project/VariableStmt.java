@@ -27,18 +27,14 @@ public class VariableStmt extends Stmt{
             Symbol lastOperand      = quads.getLastOperand1();
             Symbol lastSymbol       = quads.getLastResult();
 
-
             if(AssignStmt.isInvalidAssignment(variable, lastSymbol, lastOperand)){
-                for(Quad quad : quads){
-                    System.out.println(quad);
-                }
                 Compiler.error(String.format("Trying to assign type %s to type %s", lastSymbol.type, type), line, file);
             }
             if(!type.isSameType(lastSymbol.type)){
-                lastSymbol = quads.createConvert(lastSymbol, type);
+                lastSymbol = quads.createConvert(symbolTable, lastSymbol, type);
             }
 
-            quads.createLoadPointer(variable);
+            quads.createLoadPointer(symbolTable, variable);
             quads.createAssign(lastSymbol, variable);
         }
     }

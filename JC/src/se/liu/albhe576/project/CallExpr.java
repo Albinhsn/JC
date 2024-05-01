@@ -11,16 +11,15 @@ public class CallExpr extends Expr{
        this.args = args;
    }
 
-   private int callExternalFunction(SymbolTable symbolTable, QuadList argumentQuads, Function function) throws CompileException {
+   private int callExternalFunction(SymbolTable symbolTable, QuadList argumentQuads) throws CompileException {
        int floatCount = 0, generalCount = 0;
-       final int maxCount = 6;
-       int argumentStackSize = 0;
-       final int rcx_location = 4;
+       final int maxCount       = 6;
+       int argumentStackSize    = 0;
+       final int rcx_location   = 4;
 
        QuadList floatQuads = new QuadList();
        QuadList generalQuads = new QuadList();
-       for (int i = 0; i < this.args.size(); i++) {
-           Expr argument = this.args.get(i);
+       for (Expr argument : this.args) {
            QuadList currentArgument = new QuadList();
 
            argument.compile(symbolTable, currentArgument);
@@ -28,15 +27,14 @@ public class CallExpr extends Expr{
            int argumentSize = symbolTable.getStructSize(result.type);
 
            if (result.type.isFloatingPoint()) {
-               if(result.type.isFloat()){
-                    currentArgument.createConvert(result, DataType.getDouble());
+               if (result.type.isFloat()) {
+                   currentArgument.createConvert(symbolTable, result, DataType.getDouble());
                }
                currentArgument.createParam(currentArgument.getLastResult(), argumentStackSize, floatCount, true);
                if (floatCount >= maxCount) {
                    argumentStackSize += argumentSize;
-               } else {
-                   floatCount++;
                }
+               floatCount++;
 
                currentArgument.addAll(floatQuads);
                floatQuads = currentArgument;
@@ -45,13 +43,11 @@ public class CallExpr extends Expr{
                currentArgument.createParam(currentArgument.getLastResult(), argumentStackSize, generalCount, true);
                if (generalCount >= maxCount) {
                    argumentStackSize += argumentSize;
-               } else {
-                   generalCount++;
                }
-
-               if(generalCount == rcx_location){
+               generalCount++;
+               if (generalCount >= rcx_location) {
                    generalQuads.addAll(currentArgument);
-               }else{
+               } else {
                    currentArgument.addAll(generalQuads);
                    generalQuads = currentArgument;
                }
@@ -79,7 +75,7 @@ public class CallExpr extends Expr{
            if(!paramType.isSameType(result.type) && !paramType.canBeConvertedTo(result.type)){
                 Compiler.error(String.format("Parameter mismatch expected %s got %s", paramType, result.type), line, file);
            }else if(!paramType.isSameType(result.type)){
-                result = argumentQuads.createConvert(result, paramType);
+                result = argumentQuads.createConvert(symbolTable, result, paramType);
            }
 
            argumentQuads.createParam(result, argumentStackSize, 0, false);
@@ -95,8 +91,8 @@ public class CallExpr extends Expr{
            Compiler.error(String.format("Trying to call undeclared function %s", functionName), line, file);
        }
 
-       Function function = symbolTable.getFunction(functionName);
-       List<StructField> functionArguments = function.getArguments();
+       Function function                    = symbolTable.getFunction(functionName);
+       List<StructField> functionArguments  = function.getArguments();
 
        if(functionArguments != null && args.size() > functionArguments.size()){
             Compiler.error(String.format("Function parameter mismatch expected %d got %d when calling %s", functionArguments.size(), args.size(), name.literal()), line, file);
@@ -105,16 +101,17 @@ public class CallExpr extends Expr{
        QuadList argumentQuads = new QuadList();
        int argumentStackSize;
         if(function.external){
-            argumentStackSize = this.callExternalFunction(symbolTable, argumentQuads, function);
+            argumentStackSize = this.callExternalFunction(symbolTable, argumentQuads);
         }else{
             argumentStackSize = this.callInternalFunction(symbolTable, argumentQuads, function);
         }
+
 
        if(argumentStackSize != 0){
            argumentStackSize += Compiler.getStackAlignment(argumentStackSize);
            quads.createAllocate(argumentStackSize);
        }
        quads.addAll(argumentQuads);
-       quads.createCall(function.getFunctionSymbol(functionName));
+       quads.createCall(symbolTable, function.getFunctionSymbol(functionName));
     }
 }

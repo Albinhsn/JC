@@ -19,7 +19,7 @@ public class LogicalExpr extends Expr{
         right.compile(symbolTable, quads);
         Symbol rightResult = quads.getLastResult();
 
-        quads.createLogical(leftResult, rightResult, this.op.type());
+        quads.createLogical(symbolTable, leftResult, rightResult, this.op.type());
 
     }
 }

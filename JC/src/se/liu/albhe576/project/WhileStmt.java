@@ -13,11 +13,11 @@ public class WhileStmt extends Stmt{
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException {
-        Symbol condLabel = Compiler.generateLabel();
+        Symbol condLabel = symbolTable.generateLabel();
         quads.insertLabel(condLabel);
         condition.compile(symbolTable, quads);
 
-        Symbol mergeLabel = Compiler.generateLabel();
+        Symbol mergeLabel = symbolTable.generateLabel();
         quads.createJumpCondition(mergeLabel, false);
 
         symbolTable.enterScope();

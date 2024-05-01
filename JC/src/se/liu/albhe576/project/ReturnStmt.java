@@ -20,7 +20,7 @@ public class ReturnStmt extends Stmt{
                 Compiler.error(String.format("Mismatch in return type in function %s, expected %s got %s", symbolTable.getCurrentFunctionName(), returnType, returnSymbol.type), line, file);
             }
             if(!returnSymbol.type.isSameType(returnType)){
-                returnSymbol = quads.createConvert(returnSymbol, returnType);
+                returnSymbol = quads.createConvert(symbolTable, returnSymbol, returnType);
             }
             quads.createReturn(returnSymbol);
         }

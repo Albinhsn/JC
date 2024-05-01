@@ -15,6 +15,6 @@ public class VarExpr extends Expr {
         }
 
         assert symbol != null;
-        quads.createLoad(symbol);
+        quads.createLoad(symbolTable, symbol);
     }
 }

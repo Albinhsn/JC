@@ -76,7 +76,6 @@ int draw_grid(x11_window * window, Grid * grid){
   x11_change_color(window.fd, window.gc_id, window.window_root_id, window.font_id, GREEN);
   int window_x = grid.item_x * block_width;
   int window_y = block_height * grid.item_y;
-  printf("%d, %d\n", window_x, window_y);
   x11_draw_rect(window, window_x, window_y, block_width, block_height);
 
 }
@@ -94,6 +93,9 @@ void init_grid(Grid * grid, int current_timestamp, int width, int height){
     int item_pos = random(current_timestamp);
     grid.item_x = (item_pos & 0xFF) % width;
     grid.item_y = ((item_pos >> 8) & 0xFF) % height;
+    printf("Item: %d %d\n", grid.item_x, grid.item_y);
+    printf("%d %d\n", (item_pos & 0xFF), (item_pos & 0xFF) % grid.width);
+    printf("%d %d\n", (item_pos & 0xFF), (item_pos & 0xFF) % grid.height);
 }
 
 
@@ -152,6 +154,7 @@ byte update(Grid * grid, int current_timestamp){
         grid.length++;
 
         int item_pos = random(current_timestamp);
+        printf("%d %d\n", (item_pos & 0xFF), (item_pos & 0xFF) % grid.width);
         grid.item_x = (item_pos & 0xFF) % grid.width;
         grid.item_y = ((item_pos >> 8) & 0xFF) % grid.height;
     }
@@ -203,6 +206,7 @@ int main(){
   x11_window window;
   int result = create_x11_window(&window, 200, 200, 400, 400);
   x11_change_color(window.fd, window.gc_id, window.window_root_id, window.font_id, WHITE);
+
 
   if(result != 0){
     printf("Failed to create x11 window!\n");

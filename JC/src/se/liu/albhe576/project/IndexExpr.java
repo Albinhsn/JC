@@ -20,10 +20,10 @@ public class IndexExpr extends Expr{
             Compiler.error(String.format("Can only use integer as index not %s", indexResult.type), line, file);
         }
         if(indexResult.type.isFloatingPoint()){
-            indexResult = quads.createConvert(indexResult, DataType.getLong());
+            indexResult = quads.createConvert(symbolTable, indexResult, DataType.getLong());
         }
 
-        quads.createIndex(valResult, indexResult);
+        quads.createIndex(symbolTable, valResult, indexResult);
 
     }
     public IndexExpr(Expr value, Expr index, int line, String file){

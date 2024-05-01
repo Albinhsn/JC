@@ -134,7 +134,6 @@ void init_data(x11_data * data, byte * res, int server_read){
     data.id_base = 0;
     place_int(&data.id_base, &res[4]);
 
-
     // id_mask is offset 8, int
     data.id_mask = 0;
     place_int(&data.id_mask, &res[8]);

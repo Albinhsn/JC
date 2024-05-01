@@ -13,9 +13,9 @@ public class CastExpr extends Expr{
         expr.compile(symbolTable, quads);
         Symbol result = quads.getLastResult();
         if(result.type.isPointer() && type.isPointer()){
-            quads.createCast(result, type);
+            quads.createCast(symbolTable, result, type);
         }else{
-            quads.createConvert(result, type);
+            quads.createConvert(symbolTable, result, type);
         }
     }
 }

@@ -15,7 +15,7 @@ public class LiteralExpr extends Expr{
             symbolTable.addConstant(token.literal(), type.type);
         }
 
-        quads.createLoadImmediate(Compiler.generateImmediateSymbol(type, token.literal()));
+        quads.createLoadImmediate(symbolTable, symbolTable.generateImmediateSymbol(type, token.literal()));
     }
 }
 

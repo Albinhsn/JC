@@ -25,8 +25,8 @@ public class IfStmt extends Stmt{
         QuadList elseQuad = new QuadList();
         Stmt.compileBlock(symbolTable, elseQuad, elseBody);
 
-        Symbol elseLabel = Compiler.generateLabel();
-        Symbol mergeLabel = Compiler.generateLabel();
+        Symbol elseLabel = symbolTable.generateLabel();
+        Symbol mergeLabel = symbolTable.generateLabel();
 
         Symbol ifJmpLabel = elseBody.isEmpty() ? mergeLabel : elseLabel;
         quads.createJumpCondition(ifJmpLabel, false);

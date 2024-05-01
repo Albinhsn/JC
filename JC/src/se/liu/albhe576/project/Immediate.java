@@ -5,7 +5,6 @@ public class Immediate extends Operand{
     public String toString() {
         return immediate;
     }
-
     String immediate;
     public Immediate(int imm) {
         this.immediate = String.valueOf(imm);
