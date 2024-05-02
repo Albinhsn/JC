@@ -421,10 +421,10 @@ public class Parser {
         String funcName = this.previous.literal();
         consume(TokenType.TOKEN_LEFT_PAREN, "Expected ( for function args after function name in extern");
         if(matchType(TokenType.TOKEN_ELLIPSIS)){
-            this.functions.put(funcName, new Function(null, type, null, this.fileName, this.previous.line(), true));
+            this.functions.put(funcName, new ExternalFunction(null, type, null, this.fileName, this.previous.line()));
             consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ) after function args in extern");
         }else{
-            this.functions.put(funcName, new Function(this.parseArguments(), type, null, this.fileName, this.previous.line(), true));
+            this.functions.put(funcName, new ExternalFunction(this.parseArguments(), type, null, this.fileName, this.previous.line()));
         }
     }
     private void parseFunction() throws CompileException {
@@ -443,7 +443,7 @@ public class Parser {
         consume(TokenType.TOKEN_LEFT_BRACE, String.format("Expected { to start function body but got %s", this.current.type()));
 
         List<Stmt> body = this.parseBody();
-        this.functions.put(name, new Function(args, type, body, this.fileName, line, false));
+        this.functions.put(name, new Function(args, type, body, this.fileName, line));
 
     }
 

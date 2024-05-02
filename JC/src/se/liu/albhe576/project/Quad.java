@@ -180,17 +180,17 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
         instructions.add(new Instruction(moveOp, new Address(Register.RBP, true, offset), new Address(Register.getPrimaryRegisterFromDataType(result.type))));
     }
 
-    private static final Register[] LINUX_FLOAT_PARAM_LOCATIONS = new Register[]{Register.XMM0, Register.XMM1, Register.XMM2, Register.XMM3, Register.XMM4, Register.XMM5};
-    private static final Register[] LINUX_GENERAL_PARAM_LOCATIONS = new Register[]{Register.RDI, Register.RSI, Register.RDX, Register.RCX, Register.R8, Register.R9};
+    public static final Register[] LINUX_FLOAT_PARAM_LOCATIONS = new Register[]{Register.XMM0, Register.XMM1, Register.XMM2, Register.XMM3, Register.XMM4, Register.XMM5, Register.XMM6, Register.XMM7};
+    public static final Register[] LINUX_GENERAL_PARAM_LOCATIONS = new Register[]{Register.RDI, Register.RSI, Register.RDX, Register.RCX, Register.R8, Register.R9};
 
-    private void addExternalParameter(List<Instruction> instructions, TemporaryVariableStack tempStack, ArgumentSymbol argumentSymbol) throws CompileException {
+    private void addExternalParameter(List<Instruction> instructions, TemporaryVariableStack tempStack, ArgumentSymbol argumentSymbol) {
 
         VariableSymbol param = tempStack.peek();
         popTemporaryIntoPrimary(instructions, tempStack);
         Register[] registers = operand1.type.isFloatingPoint() ? LINUX_FLOAT_PARAM_LOCATIONS : LINUX_GENERAL_PARAM_LOCATIONS;
         if(argumentSymbol.getCount() >= registers.length){
             // Push it onto the stack
-            throw new CompileException("Pls fix :)");
+            instructions.add(new Instruction(getMoveOpFromType(operand1.type), new Address(Register.RSP, true, argumentSymbol.getOffset()), new Address(Register.getPrimaryRegisterFromDataType(operand1.type))));
         }else{
             Address target = new Address(registers[argumentSymbol.getCount()]);
             Register source = param.type.isFloatingPoint() ? Register.PRIMARY_SSE_REGISTER : Register.PRIMARY_GENERAL_REGISTER;
@@ -198,9 +198,11 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             // move it into the register
         }
     }
-    private void createLogical(SymbolTable symbolTable, List<Instruction> instructions, TemporaryVariableStack tempStack, int firstImmediate) throws CompileException {
+    private void createLogical(SymbolTable symbolTable, List<Instruction> instructions, TemporaryVariableStack tempStack) throws CompileException {
         Address right = popTemporaryIntoSecondary(instructions, tempStack);
         Address left = popTemporaryIntoPrimary(instructions, tempStack);
+        int firstImmediate = this.op == QuadOp.LOGICAL_OR ? 1 : 0;
+
         instructions.add(new Instruction(Operation.CMP, left, new Immediate(firstImmediate)));
         String mergeLabel        = symbolTable.generateLabel().name;
 
@@ -230,12 +232,36 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
     public List<Instruction> emitInstructions(SymbolTable symbolTable, Map<String, Constant> constants,TemporaryVariableStack tempStack) throws CompileException{
         List<Instruction> instructions = new ArrayList<>();
         switch(op){
+            case ADD_I:{
+                this.createBinary(instructions, tempStack, Operation.ADD);
+                break;
+            }
+            case SUB_I:{
+                this.createBinary(instructions, tempStack, Operation.SUB);
+                break;
+            }
+            case ADD_F:{
+                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.ADDSS : Operation.ADDSD);
+                break;
+            }
+            case SUB_F:{
+                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.SUBSS : Operation.SUBSD);
+                break;
+            }
+            case MUL_F:{
+                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.MULSS : Operation.MULSD);
+                break;
+            }
+            case DIV_F:{
+                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.DIVSS : Operation.DIVSD);
+                break;
+            }
             case ALLOCATE:{
                 instructions.add(new Instruction(Operation.SUB, new Address(Register.RSP), new Immediate(operand1.name)));
                 break;
             }
             case LOGICAL_AND, LOGICAL_OR:{
-                this.createLogical(symbolTable, instructions, tempStack, this.op == QuadOp.LOGICAL_OR ? 1 : 0);
+                this.createLogical(symbolTable, instructions, tempStack);
                 break;
             }
             case PARAM:{
@@ -254,10 +280,12 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             }
             case CALL:{
                 instructions.add(new Instruction(Operation.CALL, new Immediate(operand1.name), null));
-                // Hoist
-                int size = symbolTable.getFunctionStackSizeAlignment(operand1.name);
-                if(size != 0){
-                    instructions.add(new Instruction(Operation.ADD, new Address(Register.RSP), new Immediate(size)));
+
+                ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand2;
+                int stackSize = Integer.parseInt(immediateSymbol.getValue());
+                stackSize += Compiler.getStackAlignment(stackSize);
+                if(stackSize != 0){
+                    instructions.add(new Instruction(Operation.ADD, new Address(Register.RSP), new Immediate(stackSize)));
                 }
                 if(!result.type.isVoid()){
                    addTemporary(instructions, tempStack);
@@ -364,14 +392,6 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 this.createPostfixInteger(instructions, tempStack, Operation.DEC, Operation.SUB, true);
                 break;
             }
-            case ADD_I:{
-                this.createBinary(instructions, tempStack, Operation.ADD);
-                break;
-            }
-            case SUB_I:{
-                this.createBinary(instructions, tempStack, Operation.SUB);
-                break;
-            }
             case MUL_I:{
                 this.popTemporaryIntoPrimary(instructions, tempStack);
                 Address secondary = this.popTemporaryIntoSecondary(instructions, tempStack);
@@ -389,22 +409,6 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             }
             case SHL, SHR:{
                 this.createShift(instructions, tempStack, this.op == QuadOp.SHL ? Operation.SHL : Operation.SHR);
-                break;
-            }
-            case ADD_F:{
-                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.ADDSS : Operation.ADDSD);
-                break;
-            }
-            case SUB_F:{
-                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.SUBSS : Operation.SUBSD);
-                break;
-            }
-            case MUL_F:{
-                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.MULSS : Operation.MULSD);
-                break;
-            }
-            case DIV_F:{
-                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.DIVSS : Operation.DIVSD);
                 break;
             }
             case NEGATE:{

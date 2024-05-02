@@ -38,22 +38,6 @@ public class Struct {
         }
         throw new CompileException(String.format("Couldn't find member %s?\n", memberName));
     }
-    public static int getFunctionArgumentsStackSize(String name, Map<String, Function> functions, Map<String, Struct> structs) {
-        Function function = functions.get(name);
-        // ToDo support this
-        if (function.external) {
-            return 0;
-        }
-
-        int argSize = 0;
-        if (function.getArguments() != null) {
-            for (StructField field : function.getArguments()) {
-                argSize += SymbolTable.getStructSize(structs, field.type());
-            }
-        }
-        return argSize;
-    }
-
     public Struct(List<StructField> fields, String fileName){
         this.fields = fields;
         this.fileName = fileName;

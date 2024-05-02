@@ -2,7 +2,15 @@ package se.liu.albhe576.project;
 
 import java.util.*;
 
-public class Scope {
+public class Scope implements Iterator<Scope>{
+
+    @Override
+    public boolean hasNext() {
+        return !(this.children.isEmpty() || this.getLastChild().isClosed());
+    }
+    @Override
+    public Scope next() {return getLastChild();}
+
     private final List<Scope> children;
     private final Map<String, VariableSymbol> variables;
     private boolean closed;

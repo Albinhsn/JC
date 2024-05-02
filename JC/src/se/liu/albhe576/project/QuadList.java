@@ -25,8 +25,9 @@ public class QuadList extends ArrayList<Quad>{
         QuadOp op = toBeReturned != null && toBeReturned.type.isFloat() ? QuadOp.RET_F : QuadOp.RET_I;
         this.add(new Quad(op, null, null, toBeReturned));
     }
-    public void createCall(SymbolTable symbolTable, Symbol function){
-        this.add(new Quad(QuadOp.CALL, function, null, symbolTable.generateSymbol(function.type)));
+    public void createCall(SymbolTable symbolTable, Symbol function, int argumentSize){
+        String argumentSizeString = String.valueOf(argumentSize);
+        this.add(new Quad(QuadOp.CALL, function, new ImmediateSymbol(argumentSizeString, DataType.getInt(), argumentSizeString), symbolTable.generateSymbol(function.type)));
     }
     public void createDereference(SymbolTable symbolTable, Symbol source) throws CompileException {
         this.add(new Quad(QuadOp.DEREFERENCE, source, null, symbolTable.generateSymbol(source.type.getTypeFromPointer())));

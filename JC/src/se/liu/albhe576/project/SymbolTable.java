@@ -48,19 +48,16 @@ public class SymbolTable {
         return this.currentFunctionName;
     }
     private Scope getCurrentScope(){
-        Scope curr = this.scopes.get(this.currentFunctionName);
-        while(true){
-            List<Scope> children = curr.getChildren();
-            if(children.isEmpty() || children.get(children.size() - 1).isClosed()){
-                return curr;
-            }
-            curr = children.get(children.size() - 1);
+        Scope scope = this.scopes.get(this.currentFunctionName);
+        while(scope.hasNext()){
+            scope = scope.next();
         }
+        return scope;
     }
     public Map<String, Function> getExternalFunctions(){
         Map<String, Function> out = new HashMap<>();
         for(Map.Entry<String, Function> entry : this.functions.entrySet()){
-            if(entry.getValue().external){
+            if(entry.getValue().isExternal()){
                 out.put(entry.getKey(), entry.getValue());
             }
         }
@@ -69,7 +66,7 @@ public class SymbolTable {
     public Map<String, Function> getInternalFunctions(){
         Map<String, Function> out = new HashMap<>();
         for(Map.Entry<String, Function> entry : this.functions.entrySet()){
-            if(!entry.getValue().external){
+            if(!entry.getValue().isExternal()){
                 out.put(entry.getKey(), entry.getValue());
             }
         }
@@ -95,9 +92,9 @@ public class SymbolTable {
     }
     public int getLocalVariableStackSize(){return getLocalVariableStackSize(this.currentFunctionName);}
     public int getLocalVariableStackSize(String name){
-        int size = 0;
-        Scope outerScope = this.scopes.get(name);
-        java.util.Stack<Scope> scopes = new Stack<>();
+        int size                        = 0;
+        Scope outerScope                = this.scopes.get(name);
+        java.util.Stack<Scope> scopes   = new Stack<>();
         scopes.add(outerScope);
 
         while(!scopes.empty()){
@@ -136,13 +133,10 @@ public class SymbolTable {
             if(scope.variableExists(name)){
                 return scope.getVariable(name);
             }
-            if(scope.getChildren().isEmpty()){
+            if(!scope.hasNext()){
                 return null;
             }
-            scope = scope.getLastChild();
-            if(scope.isClosed()){
-                return null;
-            }
+            scope = scope.next();
         }
     }
     public boolean isMemberOfStruct(DataType type, String member) throws CompileException {
@@ -156,10 +150,6 @@ public class SymbolTable {
             }
         }
         return false;
-    }
-    public int getFunctionStackSizeAlignment(String name){
-        int size = Struct.getFunctionArgumentsStackSize(name, this.functions, this.structs);
-        return size + Compiler.getStackAlignment(size);
     }
     public SymbolTable(Map<String, Struct> structs, Map<String, Function> extern){
         this.structs = structs;
