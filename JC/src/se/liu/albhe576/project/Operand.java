@@ -5,28 +5,32 @@ public class Operand<T> {
     @Override
     public String toString() {
         if(effective){
-            String out = "[" + address.toString();
+            String out = "[" + operand.toString();
             if(offset != 0){
                 out += String.format(" %+d", offset);
             }
             out += "]";
             return out.toLowerCase();
         }
-        return address.toString();
+        // ToDo hoist?
+        if(this.operand == null){
+            return "";
+        }
+        return operand.toString();
     }
-    private final T address;
+    private final T operand;
     private final boolean effective;
     private final int offset;
-    public T getAddress(){
-        return this.address;
+    public T getOperand(){
+        return this.operand;
     }
 
-    public Operand(T address, boolean effective, int offset){
+    public Operand(T operand, boolean effective, int offset){
         this.effective  = effective;
         this.offset     = offset;
-        this.address = address;
+        this.operand = operand;
     }
 
-    public Operand(T address, boolean effective){this(address, effective, 0);}
-    public Operand(T address){this(address, false, 0);}
+    public Operand(T operand, boolean effective){this(operand, effective, 0);}
+    public Operand(T operand){this(operand, false, 0);}
 }

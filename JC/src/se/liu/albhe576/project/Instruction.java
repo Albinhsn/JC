@@ -32,4 +32,14 @@ public class Instruction <O, D, S>{
         this.dest = operand1;
         this.source = source;
     }
+    public Instruction(O op, D operand1, S source){
+        this.op = op;
+        this.dest = new Operand<>(operand1);
+        this.source = new Operand<>(source);
+    }
+    public Instruction(O op, D operand1){
+        this.op = op;
+        this.dest = new Operand<>(operand1);
+        this.source = null;
+    }
 }
