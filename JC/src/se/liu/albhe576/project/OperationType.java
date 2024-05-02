@@ -9,4 +9,5 @@ public enum OperationType {
     public String toString() {
         return this.name().toLowerCase();
     }
+    public boolean isMove(){return this == MOV || this == MOVSS || this == MOVSD;}
 }

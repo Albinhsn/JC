@@ -36,9 +36,8 @@ public class Compiler {
         return (alignmentInBytes - (stackSize % alignmentInBytes)) & (alignmentInBytes - 1);
     }
     private void addReturn(InstructionList instructions){
-        Operand lastOp = instructions.get(instructions.size() - 1).getOp();
-        OperationType operationType = lastOp.getOp();
-        if(operationType != OperationType.RET){
+        Instruction lastInstruction = instructions.getLast();
+        if(lastInstruction.op == null || lastInstruction.op.getOp() != OperationType.RET){
             instructions.addEpilogue();
             instructions.addReturn();
         }
@@ -57,9 +56,9 @@ public class Compiler {
             InstructionList instructions = new InstructionList();
             instructions.addPrologue();
             final int stackAllocationInstructionIndex = instructions.size();
-            // System.out.printf("\n\n%s\n", name);
+            System.out.printf("\n\n%s\n", name);
             for(Quad quad : quads){
-                // System.out.println(quad);
+                System.out.println(quad);
                 instructions.addAll(quad.emitInstructions(symbolTable, constants, tempStack));
             }
             // Check if we need to insert a return value or not
@@ -75,14 +74,11 @@ public class Compiler {
         return generatedAssembly;
     }
     public void compile(String fileName) throws CompileException, IOException{
-        Optimizer optimizer = new Optimizer();
-
         // Intermediate code generation
         final Map<String, QuadList> functionQuads = this.generateIntermediate();
 
         // generate assembly
         Map<String, InstructionList> instructions = this.generateAssembly(this.symbolTable.getConstants(), functionQuads);
-        optimizer.optimizeX86Assembly();
 
         // output assembly
         this.outputX86Assembly(fileName, instructions);

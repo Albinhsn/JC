@@ -60,15 +60,12 @@ public class Optimizer {
             leftQuads.createLoadImmediate(symbolTable, new ImmediateSymbol(constant, DataType.getInt(), constant));
 
         }else{
-            int left = Integer.parseInt(leftImm.getValue());
-            int right = Integer.parseInt(rightImm.getValue());
+            int left = Integer.decode(leftImm.getValue());
+            int right = Integer.decode(rightImm.getValue());
             constant = String.valueOf(intBinary(left, right, op));
 
             leftQuads.createLoadImmediate(symbolTable, new ImmediateSymbol(constant, DataType.getInt(), constant));
         }
         System.out.printf("%s %s %s -> %s\n", leftImm.getValue(), op, rightImm.getValue(), constant);
     }
-    public void optimizeX86Assembly(){}
-
-    public Optimizer(){}
 }

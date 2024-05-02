@@ -1,36 +1,31 @@
 package se.liu.albhe576.project;
 
-public class Address extends Operand {
-
+public class Address<T> {
+    protected final boolean effective;
+    protected final int offset;
+    public final T address;
     @Override
     public String toString() {
         if(this.effective){
            if(this.offset != 0){
-               return String.format("[%s %+d]", register.name().toLowerCase(), this.offset);
+               return String.format("[%s %+d]", address, this.offset);
            }
-           return String.format("[%s]", register.name().toLowerCase());
+           return String.format("[%s]", address);
         }
-        return register.name().toLowerCase();
+        return address.toString();
     }
 
-    private final Register register;
-    public Address(Register operand, boolean effective, int offset) {
-        super(effective, offset);
-        this.register = operand;
+    public Address(T address, boolean effective, int offset) {
+        this.effective = effective;
+        this.offset = offset;
+        this.address = address;
+    }
+    public Address(T address, boolean effective) {
+        this(address, effective, 0);
     }
 
-    public Address(Register  register, boolean effective) {
-        super(effective, 0);
-        this.register = register;
+    public Address(T address) {
+        this(address, false, 0);
     }
 
-    public Address(Register register) {
-        super(false, 0);
-        this.register = register;
-    }
-
-    @Override
-    OperationType getOp() {
-        return null;
-    }
 }

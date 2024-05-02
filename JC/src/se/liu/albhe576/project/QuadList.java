@@ -120,4 +120,7 @@ public class QuadList extends ArrayList<Quad>{
     public void createAssign(Symbol value, Symbol variable){
         this.add(new Quad(QuadOp.ASSIGN, value, null, variable));
     }
+    public void createAssignImmediate(VariableSymbol variable, ImmediateSymbol immediate){
+        this.add(new Quad(QuadOp.ASSIGN_IMMEDIATE, variable, immediate, variable));
+    }
 }

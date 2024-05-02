@@ -1,22 +1,22 @@
 package se.liu.albhe576.project;
 
-public class Operation extends Operand{
+public class Operation {
     @Override
     public String toString() {
+        if(size != null){
+            return op.name().toLowerCase() + " " + size.name();
+        }
         return op.name().toLowerCase();
     }
     private final OperationType op;
-    @Override
-    OperationType getOp() {
-        return op;
+    private final OperationSize size;
+    OperationType getOp() {return op;}
+    public Operation(OperationType op, OperationSize size) {
+        this.op     = op;
+        this.size   = size;
     }
-    public Operation(OperationType op, boolean effective, int offset) {
-        super(effective, offset);
-        this.op = op;
-    }
-    public Operation(OperationType op) {
-        this(op, false, 0);
-    }
+    public Operation(OperationType op) {this(op, null);}
+    public boolean isMove(){return this.op.isMove();}
     public static OperationType getCmpOpFromType(DataType type){
         if(!type.isFloatingPoint()){
             return OperationType.CMP;

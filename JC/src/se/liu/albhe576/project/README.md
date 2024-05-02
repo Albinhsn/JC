@@ -1,9 +1,14 @@
 ## ToDo
 
-* do a walkthrough of everything to find things to do :)
-* actually short circuit logicals
+
+* what would we need in order to optimize
+* better understanding of what is temporary and what is store
+
+* cleanup instructionlist/quads
 
 ## Optimizations
-* assign immediate
-* constant folding
 * remove redundant expressions;
+* store immediates
+
+## Maybe?
+* actually short circuit logicals

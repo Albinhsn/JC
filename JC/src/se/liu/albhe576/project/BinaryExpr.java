@@ -33,8 +33,6 @@ public class BinaryExpr extends Expr{
         right.compile(symbolTable, rightQuads);
         Symbol rightResult = rightQuads.getLastResult();
 
-
-
         DataType resultType = DataType.getHighestDataTypePrecedence(leftResult.type, rightResult.type);
         QuadOp op = QuadOp.getBinaryOp(this.op.type(), leftResult, rightResult);
         if(op.isBitwise() && isInvalidBitwise(leftResult.type, rightResult.type)){

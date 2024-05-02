@@ -4,6 +4,15 @@ struct Foo{
     int b;
 }
 
+struct Foof{
+    float a;
+    float b;
+}
+struct Foob{
+    byte a;
+    byte b;
+}
+
 struct Bar{
     int c;
     Foo foo;

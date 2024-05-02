@@ -704,15 +704,6 @@ void test_byte(){
 
 
 }
-
-struct Foof{
-    float a;
-    float b;
-}
-struct Foob{
-    byte a;
-    byte b;
-}
 void test_postfix(){
     int a = 5;
     a++;
