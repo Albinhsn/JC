@@ -19,6 +19,7 @@ public class Compiler {
 
             // IP and RBP
             int offset = 16;
+            System.out.println(functionEntry.getKey());
             for(StructField arg : function.getArguments()){
                 localSymbols.put(arg.name(), new VariableSymbol(arg.name(), arg.type(), offset));
                 offset += symbolTable.getStructSize(arg.type());
@@ -30,26 +31,20 @@ public class Compiler {
         }
         return functionIntermediates;
     }
-    private static final Instruction<?, ?, ?>[] PROLOGUE_INSTRUCTIONS = new Instruction[]{
-            new Instruction<>(Operation.PUSH, new Operand<>(Register.RBP), null),
-            new Instruction<>(Operation.MOV, new Operand<>(Register.RBP), new Operand<>(Register.RSP))
-    };
-    private static final Instruction<?, ?, ?>[] EPILOGUE_INSTRUCTIONS = new Instruction[]{
-            new Instruction<>(Operation.MOV, new Operand<>(Register.RSP), new Operand<>(Register.RBP)),
-            new Instruction<>(Operation.POP, new Operand<>(Register.RBP), null)
-    };
     public static int getStackAlignment(int stackSize){
         final int alignmentInBytes = 16;
         return (alignmentInBytes - (stackSize % alignmentInBytes)) & (alignmentInBytes - 1);
     }
-    private void addReturn(List<Instruction<?, ?, ?>> instructions){
-        if(instructions.get(instructions.size() - 1).getOp() != Operation.RET){
-            instructions.addAll(List.of(EPILOGUE_INSTRUCTIONS));
-            instructions.add(new Instruction<>(Operation.RET, null, null));
+    private void addReturn(InstructionList instructions){
+        Operand lastOp = instructions.get(instructions.size() - 1).getOp();
+        OperationType operationType = lastOp.getOp();
+        if(operationType != OperationType.RET){
+            instructions.addEpilogue();
+            instructions.addReturn();
         }
     }
-    private Map<String, List<Instruction<?, ?, ?>>> generateAssembly(Map<String, Constant> constants, Map<String, QuadList> functionQuads) throws CompileException {
-        Map<String, List<Instruction<?, ?, ?>>> generatedAssembly = new HashMap<>();
+    private Map<String, InstructionList> generateAssembly(Map<String, Constant> constants, Map<String, QuadList> functionQuads) throws CompileException {
+        Map<String, InstructionList> generatedAssembly = new HashMap<>();
 
 
         for(Map.Entry<String, QuadList> functions : functionQuads.entrySet()){
@@ -59,20 +54,21 @@ public class Compiler {
             TemporaryVariableStack tempStack    = new TemporaryVariableStack(stackSize);
 
             // add prologue
-            List<Instruction<?, ?, ?>> instructions = new LinkedList<>(List.of(PROLOGUE_INSTRUCTIONS));
-            System.out.printf("\n\n%s\n", name);
+            InstructionList instructions = new InstructionList();
+            instructions.addPrologue();
+            final int stackAllocationInstructionIndex = instructions.size();
+            // System.out.printf("\n\n%s\n", name);
             for(Quad quad : quads){
-                System.out.println(quad);
+                // System.out.println(quad);
                 instructions.addAll(quad.emitInstructions(symbolTable, constants, tempStack));
             }
             // Check if we need to insert a return value or not
             this.addReturn(instructions);
 
             // calculate stack size and padding
-            final int stackAllocationInstructionIndex   = PROLOGUE_INSTRUCTIONS.length;
             final int maxOffset                         = -tempStack.maxOffset;
             final int stackAlignment                    = maxOffset + getStackAlignment(maxOffset);
-            instructions.add(stackAllocationInstructionIndex, new Instruction<>(Operation.SUB, new Operand<>(Register.RSP), new Operand<>(stackAlignment)));
+            instructions.allocateStackSpace(stackAlignment, stackAllocationInstructionIndex);
 
             generatedAssembly.put(name, instructions);
         }
@@ -83,10 +79,9 @@ public class Compiler {
 
         // Intermediate code generation
         final Map<String, QuadList> functionQuads = this.generateIntermediate();
-        optimizer.optimizeIntermediates();
 
         // generate assembly
-        Map<String, List<Instruction<?, ?, ?>>> instructions = this.generateAssembly(this.symbolTable.getConstants(), functionQuads);
+        Map<String, InstructionList> instructions = this.generateAssembly(this.symbolTable.getConstants(), functionQuads);
         optimizer.optimizeX86Assembly();
 
         // output assembly
@@ -109,7 +104,7 @@ public class Compiler {
         return stringBuilder.toString();
     }
 
-    public void outputX86Assembly(String fileName, Map<String, List<Instruction<?, ?, ?>>> functions) throws IOException {
+    public void outputX86Assembly(String fileName, Map<String, InstructionList> functions) throws IOException {
 
         FileWriter fileWriter = new FileWriter(fileName);
         for(String externalFunction : symbolTable.getExternalFunctions().keySet()){
@@ -119,10 +114,10 @@ public class Compiler {
         fileWriter.write(this.addConstants());
         fileWriter.write("\n\nsection .text\n_start:\ncall main\nmov rbx, rax\nmov rax, 1\nint 0x80\n\n");
 
-        for(Map.Entry<String, List<Instruction<?, ?, ?>>> function : functions.entrySet()){
+        for(Map.Entry<String, InstructionList> function : functions.entrySet()){
             String functionName = function.getKey();
             fileWriter.write("\n\n" + functionName + ":\n");
-            for(Instruction<?, ?, ?> instruction : function.getValue()){
+            for(Instruction instruction : function.getValue()){
                 fileWriter.write(instruction + "\n");
             }
 

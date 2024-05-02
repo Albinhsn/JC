@@ -22,7 +22,8 @@ public class BinaryExpr extends Expr{
         if((left.isPointer() && !right.isInt()) || (right.isPointer() && !left.isInt())){
             return true;
         }
-        return left.isArray() || left.isStruct() || right.isArray() || right.isStruct();    }
+        return left.isArray() || left.isStruct() || right.isArray() || right.isStruct();
+    }
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
         left.compile(symbolTable, quads);
@@ -32,13 +33,19 @@ public class BinaryExpr extends Expr{
         right.compile(symbolTable, rightQuads);
         Symbol rightResult = rightQuads.getLastResult();
 
-        DataType resultType = DataType.getHighestDataTypePrecedence(leftResult.type, rightResult.type);
 
+
+        DataType resultType = DataType.getHighestDataTypePrecedence(leftResult.type, rightResult.type);
         QuadOp op = QuadOp.getBinaryOp(this.op.type(), leftResult, rightResult);
         if(op.isBitwise() && isInvalidBitwise(leftResult.type, rightResult.type)){
             Compiler.error(String.format("Can't do bitwise op with %s and %s", leftResult.type, rightResult.type), line, file);
         }else if(isInvalidArithmetic(op, leftResult.type, rightResult.type)){
             Compiler.error(String.format("Can't do arithmetic op with %s and %s", leftResult.type, rightResult.type), line, file);
+        }
+
+        if(quads.getLastQuad().op().isLoadedImmediate() && rightQuads.getLastQuad().op().isLoadedImmediate()){
+            Optimizer.optimizeConstantFolding(symbolTable, quads, rightQuads, op);
+            return;
         }
 
         leftResult = Quad.convertType(symbolTable, quads, leftResult, resultType);

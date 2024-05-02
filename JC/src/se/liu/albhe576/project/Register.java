@@ -58,4 +58,36 @@ public enum Register {
         }
         return DL;
     }
+
+    public static Register getMinimumConvertSource(OperationType op, DataType source) throws CompileException {
+        switch(op){
+            case MOVSX, CVTSS2SI, CVTTSD2SI -> {return Register.getPrimaryRegisterFromDataType(source);}
+            case CVTSS2SD, CVTSD2SS -> {
+                return Register.XMM0;
+            }
+            case CVTSI2SS -> {
+                if(source.isLong()){
+                    return Register.RAX;
+                }
+                return Register.EAX;
+            }
+            case CVTSI2SD -> {
+                return Register.RAX;
+            }
+        }
+        throw new CompileException(String.format("Can't get convert target from %s", op.name()));
+    }
+    public static Register getMinimumConvertTarget(OperationType op, DataType target) throws CompileException {
+        switch(op){
+            case MOVSX -> {return Register.RAX;}
+            case CVTSD2SS, CVTSI2SD, CVTSS2SD, CVTSI2SS -> {return Register.XMM0;}
+            case CVTSS2SI, CVTTSD2SI -> {
+                if(target.isLong()){
+                    return Register.RAX;
+                }
+                return Register.EAX;
+            }
+        }
+        throw new CompileException(String.format("Can't get convert target from %s", op.name()));
+    }
 }

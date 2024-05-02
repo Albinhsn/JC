@@ -1,8 +1,6 @@
 package se.liu.albhe576.project;
 
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
@@ -18,328 +16,113 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
         return symbol;
     }
 
-    private Register getMinimumConvertSource(Operation op, DataType source) throws CompileException {
-        switch(op){
-            case MOVSX, CVTSS2SI, CVTTSD2SI -> {return Register.getPrimaryRegisterFromDataType(source);}
-            case CVTSS2SD, CVTSD2SS -> {
-                return Register.XMM0;
-            }
-            case CVTSI2SS -> {
-                if(source.isLong()){
-                    return Register.RAX;
-                }
-                return Register.EAX;
-            }
-            case CVTSI2SD -> {
-                return Register.RAX;
-            }
-        }
-        throw new CompileException(String.format("Can't get convert target from %s", op.name()));
-    }
-    private Register getMinimumConvertTarget(Operation op, DataType target) throws CompileException {
-        switch(op){
-            case MOVSX -> {return Register.RAX;}
-            case CVTSD2SS, CVTSI2SD, CVTSS2SD, CVTSI2SS -> {return Register.XMM0;}
-            case CVTSS2SI, CVTTSD2SI -> {
-                if(target.isLong()){
-                    return Register.RAX;
-                }
-                return Register.EAX;
-            }
-        }
-        throw new CompileException(String.format("Can't get convert target from %s", op.name()));
-    }
-
-    public void convertAddress(List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack) throws CompileException {
-        if(operand1.type.isInteger() && result.type.isInteger() && operand1.type.isSameType(DataType.getHighestDataTypePrecedence(operand1.type, result.type))){
-            return;
-        }
-        Operand<Register> primary = popTemporaryIntoPrimary(instructions, tempStack);
-        if(!(operand1.type.isLong() || operand1.type.isInt()) && operand1.type.isInteger()){
-            instructions.add(new Instruction<>(Operation.MOVSX, Register.RAX, primary));
-        }
-
-        Operation convert = getConvertOpFromType(operand1.type, result.type);
-        Register target = getMinimumConvertTarget(convert, result.type);
-        Register source = getMinimumConvertSource(convert, operand1.type);
-        instructions.add(new Instruction<>(convert, target, source));
-        addTemporary(instructions, tempStack);
-    }
-    private void createMovSB(List<Instruction<?, ?, ?>> instructions, int immediate){
-        instructions.add(new Instruction<>(Operation.MOV, Register.RCX, immediate));
-        instructions.add(new Instruction<>(Operation.REP, Operation.MOVSB));
-
-    }
-    private void assignStruct(List<Instruction<?, ?, ?>> instructions, SymbolTable symbolTable,TemporaryVariableStack tempStack){
-        popIntoRegister(instructions, tempStack, new Operand<>(Register.RDI));
-        popIntoRegister(instructions, tempStack, new Operand<>(Register.RSI));
-        int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), result.type);
-        this.createMovSB(instructions, structSize);
-    }
-
-    private void moveStruct(List<Instruction<?, ?, ?>> instructions, SymbolTable symbolTable,TemporaryVariableStack tempStack){
-        popIntoRegister(instructions, tempStack, new Operand<>(Register.RSI));
-        ArgumentSymbol argumentSymbol = (ArgumentSymbol) operand2;
-        instructions.add(new Instruction<>(Operation.LEA, Register.RDI, new Operand<>(Register.RSP, true, argumentSymbol.getOffset())));
-
-        int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), operand1.type);
-        this.createMovSB(instructions, structSize);
-    }
-    private static final Instruction<?, ?, ?>[] EPILOGUE_INSTRUCTIONS = new Instruction[]{
-            new Instruction<>(Operation.MOV, Register.RSP, Register.RBP),
-            new Instruction<>(Operation.POP, Register.RBP)
-    };
-    private Operation getConvertOpFromType(DataType source, DataType type){
-        if(type.isFloat() && source.isInteger()){
-            return Operation.CVTSI2SS;
-        }
-        if(type.isDouble() && source.isInteger()){
-            return Operation.CVTSI2SD;
-        }
-        if((type.isInteger() || type.isPointer()) && source.isFloat()){
-            return Operation.CVTSS2SI;
-        }
-        if(type.isInteger() && source.isDouble()){
-            return Operation.CVTTSD2SI;
-        }
-        if(type.isFloat() && source.isDouble()){
-            return Operation.CVTSD2SS;
-        }
-        if(type.isDouble() && source.isFloat()){
-            return Operation.CVTSS2SD;
-        }
-        return Operation.MOVSX;
-    }
-    private Operation getCmpOpFromType(DataType type){
-        if(!type.isFloatingPoint()){
-            return Operation.CMP;
-        }else if(type.isFloat()) {
-            return Operation.COMISS;
-        }
-        return Operation.COMISD;
-    }
-    private Operation getMoveOpFromType(DataType type){
-        if(!type.isFloatingPoint()){
-            return Operation.MOV;
-        }else if(type.isFloat()) {
-            return Operation.MOVSS;
-        }
-        return Operation.MOVSD;
-    }
-    private void createShift(List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack, Operation op) throws CompileException {
-        this.popTemporaryIntoSecondary(instructions, tempStack);
-        Operand<Register> primary     = this.popTemporaryIntoPrimary(instructions, tempStack);
-        instructions.add(new Instruction<>(op, primary, Register.CL));
-        this.addTemporary(instructions, tempStack);
-    }
-
-    private void createBinary(List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack, Operation op) throws CompileException {
-        Operand<Register> secondary   = this.popTemporaryIntoSecondary(instructions, tempStack);
-        Operand<Register> primary     = this.popTemporaryIntoPrimary(instructions, tempStack);
-        instructions.add(new Instruction<>(op, primary, secondary));
-        this.addTemporary(instructions, tempStack);
-    }
-    private static <L, R> void  createCompare(List<Instruction<?, ?, ?>> instructions, Operation compareOp, Operation setOp, Operand<L> left, Operand<R> right){
-        instructions.add(new Instruction<>(compareOp, left, right));
-        instructions.add(new Instruction<>(setOp, Register.AL));
-        instructions.add(new Instruction<>(Operation.MOVSX, Register.RAX, Register.AL));
-    }
-    private void createComparison(List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack, Operation op) throws CompileException {
-        Operand<Register> right = popTemporaryIntoSecondary(instructions, tempStack);
-        Operand<Register> left = popTemporaryIntoPrimary(instructions, tempStack);
-        createCompare(instructions, getCmpOpFromType(operand1.type), op, left, right);
-        this.addTemporary(instructions, tempStack);
-    }
-
-    private Operand<Register> popIntoRegister(List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack, Operand<Register> primary){
-        VariableSymbol value            = tempStack.popVariable();
-        Operation moveOp                = getMoveOpFromType(value.type);
-        instructions.add(new Instruction<>(moveOp, primary, new Operand<>(Register.RBP, true, value.offset)));
-        return primary;
-
-    }
-    private Operand<Register> popTemporaryIntoSecondary(List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack){
-        VariableSymbol value            = tempStack.peek();
-        Operand<Register> primary                 = new Operand<>(Register.getSecondaryRegisterFromDataType(value.type));
-        Operand<Register> out = popIntoRegister(instructions, tempStack, new Operand<>(primary.getOperand()));
-        if(value.type.isInteger() && !value.type.isLong()){
-            instructions.add(new Instruction<>(Operation.MOVSX, Register.RCX, primary));
-        }
-        return out;
-    }
-    private Operand<Register> popTemporaryIntoPrimary(List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack){
-        VariableSymbol value            = tempStack.peek();
-        Operand<Register> primary                 = new Operand<>(Register.getPrimaryRegisterFromDataType(value.type));
-        Operand<Register> out = popIntoRegister(instructions, tempStack, new Operand<>(primary.getOperand()));
-        if(value.type.isInteger() && !value.type.isLong()){
-            instructions.add(new Instruction<>(Operation.MOVSX, Register.RAX, primary));
-        }
-        return out;
-    }
-    private void addTemporary(List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack) throws CompileException {
-        int offset;
-        if(result.type.isStruct()){
-            offset = tempStack.pushVariable(result.name, result.type.getPointerFromType());
-        }else{
-            offset = tempStack.pushVariable(result.name, result.type);
-        }
-        Operation moveOp = getMoveOpFromType(result.type);
-        instructions.add(new Instruction<>(moveOp, new Operand<>(Register.RBP, true, offset), Register.getPrimaryRegisterFromDataType(result.type)));
-    }
-
-    public static final Register[] LINUX_FLOAT_PARAM_LOCATIONS = new Register[]{Register.XMM0, Register.XMM1, Register.XMM2, Register.XMM3, Register.XMM4, Register.XMM5, Register.XMM6, Register.XMM7};
-    public static final Register[] LINUX_GENERAL_PARAM_LOCATIONS = new Register[]{Register.RDI, Register.RSI, Register.RDX, Register.RCX, Register.R8, Register.R9};
-
-    private void addExternalParameter(List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack, ArgumentSymbol argumentSymbol) {
-
-        VariableSymbol param = tempStack.peek();
-        popTemporaryIntoPrimary(instructions, tempStack);
-        Register[] registers = operand1.type.isFloatingPoint() ? LINUX_FLOAT_PARAM_LOCATIONS : LINUX_GENERAL_PARAM_LOCATIONS;
-        if(argumentSymbol.getCount() >= registers.length){
-            // Push it onto the stack
-            instructions.add(new Instruction<>(getMoveOpFromType(operand1.type), new Operand<>(Register.RSP, true, argumentSymbol.getOffset()), Register.getPrimaryRegisterFromDataType(operand1.type)));
-        }else{
-            Register source = param.type.isFloatingPoint() ? Register.PRIMARY_SSE_REGISTER : Register.PRIMARY_GENERAL_REGISTER;
-            instructions.add(new Instruction<>(getMoveOpFromType(param.type), registers[argumentSymbol.getCount()], source));
-            // move it into the register
-        }
-    }
-    private void createLogical(SymbolTable symbolTable, List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack) throws CompileException {
-        Operand<Register> right = popTemporaryIntoSecondary(instructions, tempStack);
-        Operand<Register> left = popTemporaryIntoPrimary(instructions, tempStack);
-        int firstRegister = this.op == QuadOp.LOGICAL_OR ? 1 : 0;
-
-        instructions.add(new Instruction<>(Operation.CMP, left, firstRegister));
-        String mergeLabel        = symbolTable.generateLabel().name;
-
-        instructions.add(new Instruction<>(Operation.JE, mergeLabel));
-        createCompare(instructions, Operation.CMP, Operation.SETE, right, new Operand<>(1));
-        instructions.add(new Instruction<>(new Label(mergeLabel)));
-        addTemporary(instructions, tempStack);
-    }
-    private void calculateIndex(SymbolTable symbolTable, List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack) throws CompileException {
-        popTemporaryIntoPrimary(instructions, tempStack);
-        popTemporaryIntoSecondary(instructions, tempStack);
-
-        int size = symbolTable.getStructSize(operand1.type.getTypeFromPointer());
-        instructions.add(new Instruction<>(Operation.IMUL, Register.PRIMARY_GENERAL_REGISTER, size));
-        instructions.add(new Instruction<>(Operation.ADD, Register.PRIMARY_GENERAL_REGISTER, Register.SECONDARY_GENERAL_REGISTER));
-    }
-
-    private void createJumpOnCondition(List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack){
-        Operand<Integer> immediate = new Operand<>(this.op == QuadOp.JMP_F ? 0 : 1);
-        popTemporaryIntoPrimary(instructions, tempStack);
-        instructions.add(new Instruction<>(getCmpOpFromType(operand1.type), Register.PRIMARY_GENERAL_REGISTER, immediate));
-        instructions.add(new Instruction<>(Operation.JE, operand1.name));
-    }
-
-    private static final Map<QuadOp, Operation> GENERAL_QUAD_OP_TO_BINARY_OP_MAP = Map.ofEntries(
-            Map.entry(QuadOp.ADD_I, Operation.ADD),
-            Map.entry(QuadOp.AND, Operation.AND),
-            Map.entry(QuadOp.OR, Operation.OR),
-            Map.entry(QuadOp.XOR, Operation.XOR),
-            Map.entry(QuadOp.SUB_I, Operation.SUB)
+    private static final Map<QuadOp, OperationType> GENERAL_QUAD_OP_TO_BINARY_OP_MAP = Map.ofEntries(
+            Map.entry(QuadOp.ADD_I, OperationType.ADD),
+            Map.entry(QuadOp.AND, OperationType.AND),
+            Map.entry(QuadOp.OR, OperationType.OR),
+            Map.entry(QuadOp.XOR, OperationType.XOR),
+            Map.entry(QuadOp.SUB_I, OperationType.SUB)
     );
-    private static final Map<QuadOp, Operation> GENERAL_QUAD_OP_TO_COMPARISON_OP_MAP = Map.ofEntries(
-            Map.entry(QuadOp.LESS_I, Operation.SETL),
-            Map.entry(QuadOp.LESS_EQUAL_I, Operation.SETLE),
-            Map.entry(QuadOp.GREATER_I, Operation.SETG),
-            Map.entry(QuadOp.GREATER_EQUAL_I, Operation.SETGE),
-            Map.entry(QuadOp.EQUAL_I, Operation.SETE),
-            Map.entry(QuadOp.EQUAL_F, Operation.SETE),
-            Map.entry(QuadOp.NOT_EQUAL_F, Operation.SETNE),
-            Map.entry(QuadOp.NOT_EQUAL_I, Operation.SETNE),
-            Map.entry(QuadOp.LESS_F, Operation.SETB),
-            Map.entry(QuadOp.LESS_EQUAL_F, Operation.SETBE),
-            Map.entry(QuadOp.GREATER_F, Operation.SETA),
-            Map.entry(QuadOp.GREATER_EQUAL_F, Operation.SETAE)
+    private static final Map<QuadOp, OperationType> GENERAL_QUAD_OP_TO_COMPARISON_OP_MAP = Map.ofEntries(
+            Map.entry(QuadOp.LESS_I, OperationType.SETL),
+            Map.entry(QuadOp.LESS_EQUAL_I, OperationType.SETLE),
+            Map.entry(QuadOp.GREATER_I, OperationType.SETG),
+            Map.entry(QuadOp.GREATER_EQUAL_I, OperationType.SETGE),
+            Map.entry(QuadOp.EQUAL_I, OperationType.SETE),
+            Map.entry(QuadOp.EQUAL_F, OperationType.SETE),
+            Map.entry(QuadOp.NOT_EQUAL_F, OperationType.SETNE),
+            Map.entry(QuadOp.NOT_EQUAL_I, OperationType.SETNE),
+            Map.entry(QuadOp.LESS_F, OperationType.SETB),
+            Map.entry(QuadOp.LESS_EQUAL_F, OperationType.SETBE),
+            Map.entry(QuadOp.GREATER_F, OperationType.SETA),
+            Map.entry(QuadOp.GREATER_EQUAL_F, OperationType.SETAE)
     );
 
-    public List<Instruction<?, ?, ?>> emitInstructions(SymbolTable symbolTable, Map<String, Constant> constants,TemporaryVariableStack tempStack) throws CompileException{
-        List<Instruction<?, ?, ?>> instructions = new ArrayList<>();
+    public InstructionList emitInstructions(SymbolTable symbolTable, Map<String, Constant> constants,TemporaryVariableStack tempStack) throws CompileException{
+        InstructionList instructions = new InstructionList();
         switch(op){
             case ADD_I, SUB_I, AND, OR, XOR:{
-                this.createBinary(instructions, tempStack, GENERAL_QUAD_OP_TO_BINARY_OP_MAP.get(this.op));
+                instructions.createBinary(tempStack, GENERAL_QUAD_OP_TO_BINARY_OP_MAP.get(this.op), result);
                 break;
             }
             case LESS_I, LESS_EQUAL_I, GREATER_I, GREATER_EQUAL_I, EQUAL_I, EQUAL_F,
                  NOT_EQUAL_I, NOT_EQUAL_F, LESS_F, LESS_EQUAL_F, GREATER_F, GREATER_EQUAL_F:{
-                this.createComparison(instructions, tempStack, GENERAL_QUAD_OP_TO_COMPARISON_OP_MAP.get(this.op));
+                instructions.createComparison(tempStack, GENERAL_QUAD_OP_TO_COMPARISON_OP_MAP.get(this.op), operand1.type, result);
                 break;
             }
             case ADD_F:{
-                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.ADDSS : Operation.ADDSD);
+                instructions.createBinary(tempStack, result.type.isFloat() ? OperationType.ADDSS : OperationType.ADDSD, result);
                 break;
             }
             case SUB_F:{
-                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.SUBSS : Operation.SUBSD);
+                instructions.createBinary(tempStack, result.type.isFloat() ? OperationType.SUBSS : OperationType.SUBSD, result);
                 break;
             }
             case MUL_F:{
-                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.MULSS : Operation.MULSD);
+                instructions.createBinary(tempStack, result.type.isFloat() ? OperationType.MULSS : OperationType.MULSD, result);
                 break;
             }
             case DIV_F:{
-                this.createBinary(instructions, tempStack, result.type.isFloat() ? Operation.DIVSS : Operation.DIVSD);
+                instructions.createBinary(tempStack, result.type.isFloat() ? OperationType.DIVSS : OperationType.DIVSD, result);
                 break;
             }
             case ALLOCATE:{
-                instructions.add(new Instruction<>(Operation.SUB, Register.RSP, operand1.name));
+                instructions.allocateStackSpace(Integer.parseInt(operand1.name));
                 break;
             }
             case LOGICAL_AND, LOGICAL_OR:{
-                this.createLogical(symbolTable, instructions, tempStack);
+                instructions.createLogical(symbolTable, tempStack, this.op(), this.result);
                 break;
             }
             case PARAM:{
+                ArgumentSymbol argumentSymbol = (ArgumentSymbol) operand2;
                 if(operand1.type.isStruct()){
-                    this.moveStruct(instructions, symbolTable, tempStack);
+                    instructions.moveStruct(symbolTable, tempStack, argumentSymbol, operand1.type);
                 }else {
-                    ArgumentSymbol argumentSymbol = (ArgumentSymbol) operand2;
                     if(!argumentSymbol.getExternal()){
-                        popTemporaryIntoPrimary(instructions, tempStack);
-                        instructions.add(new Instruction<>(getMoveOpFromType(operand1.type), new Operand<>(Register.RSP, true, argumentSymbol.getOffset()), Register.getPrimaryRegisterFromDataType(operand1.type)));
+                        instructions.popTemporaryIntoPrimary(tempStack);
+                        instructions.add(new Instruction(InstructionList.getMoveOpFromType(operand1.type), new Address(Register.RSP, true, argumentSymbol.getOffset()), Register.getPrimaryRegisterFromDataType(operand1.type)));
                     }else{
-                        this.addExternalParameter(instructions, tempStack, argumentSymbol);
+                        instructions.addExternalParameter(tempStack, argumentSymbol, operand1.type);
                     }
                 }
                 break;
             }
             case CALL:{
-                instructions.add(new Instruction<>(Operation.CALL, operand1.name));
+                instructions.add(new Instruction(OperationType.CALL, new Immediate(operand1.name)));
 
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand2;
                 int stackSize = Integer.parseInt(immediateSymbol.getValue());
                 stackSize += Compiler.getStackAlignment(stackSize);
                 if(stackSize != 0){
-                    instructions.add(new Instruction<>(Operation.ADD, Register.RSP, stackSize));
+                    instructions.add(new Instruction(OperationType.ADD, Register.RSP, new Immediate(stackSize)));
                 }
                 if(!result.type.isVoid()){
-                   addTemporary(instructions, tempStack);
+                   instructions.addTemporary(tempStack, result);
                 }
                 break;
             }
             case JMP :{
-                instructions.add(new Instruction<>(Operation.JMP, operand1.name));
+                instructions.add(new Instruction(OperationType.JMP, new Immediate(operand1.name)));
                 break;
             }
             case LOAD, LOAD_POINTER:{
                 VariableSymbol variable = (VariableSymbol) operand1;
-                Operation op = (operand1.type.isStruct() || this.op == QuadOp.LOAD_POINTER) ? Operation.LEA : getMoveOpFromType(operand1.type);
-                instructions.add(new Instruction<>(op, Register.getPrimaryRegisterFromDataType(result.type), new Operand<>(Register.RBP, true, variable.offset)));
-                addTemporary(instructions, tempStack);
+                OperationType op = (operand1.type.isStruct() || this.op == QuadOp.LOAD_POINTER) ? OperationType.LEA : InstructionList.getMoveOpFromType(operand1.type);
+                instructions.add(new Instruction(op, Register.getPrimaryRegisterFromDataType(result.type), new Address(Register.RBP, true, variable.offset)));
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case CONVERT:{
-                this.convertAddress(instructions,tempStack);
+                instructions.convertAddress(tempStack, result, operand1);
                 break;
             }
             case LOAD_MEMBER, LOAD_MEMBER_POINTER:{
                 ImmediateSymbol memberSymbol    = (ImmediateSymbol) operand2;
-                popTemporaryIntoPrimary(instructions, tempStack);
-                Operation operation = (result.type.isStruct() || this.op == QuadOp.LOAD_MEMBER_POINTER) ? Operation.LEA : getMoveOpFromType(result.type);
-                instructions.add(new Instruction<>(operation, Register.getPrimaryRegisterFromDataType(result.type), new Operand<>(Register.RAX, true, Integer.parseInt(memberSymbol.getValue()))));
-                addTemporary(instructions, tempStack);
+                instructions.popTemporaryIntoPrimary(tempStack);
+                OperationType operationType = (result.type.isStruct() || this.op == QuadOp.LOAD_MEMBER_POINTER) ? OperationType.LEA : InstructionList.getMoveOpFromType(result.type);
+                instructions.add(new Instruction(operationType, Register.getPrimaryRegisterFromDataType(result.type), new Address(Register.RAX, true, Integer.parseInt(memberSymbol.getValue()))));
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case STORE_ARRAY_ITEM:{
@@ -348,148 +131,149 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 String index = ((ImmediateSymbol)operand2).getValue();
                 int offset = arraySymbol.offset + Integer.parseInt(index);
                 if(arrayDataType.itemType.isStruct()){
-                    popIntoRegister(instructions, tempStack, new Operand<>(Register.RSI));
-                    instructions.add(new Instruction<>(Operation.LEA, Register.RDI, new Operand<>(Register.RBP, true, offset)));
+                    instructions.popIntoRegister(tempStack, Register.RSI);
+                    instructions.add(new Instruction(OperationType.LEA, Register.RDI, new Address(Register.RBP, true, offset)));
 
-                    this.createMovSB(instructions, SymbolTable.getStructSize(symbolTable.getStructs(), arrayDataType.itemType));
+                    instructions.createMovSB(SymbolTable.getStructSize(symbolTable.getStructs(), arrayDataType.itemType));
                     break;
                 }
 
-                popTemporaryIntoPrimary(instructions, tempStack);
-                Operation moveOp = getMoveOpFromType(arrayDataType.itemType);
-                instructions.add(new Instruction<>(moveOp, new Operand<>(Register.RBP, true, offset), Register.getPrimaryRegisterFromDataType(arrayDataType.itemType)));
+                instructions.popTemporaryIntoPrimary(tempStack);
+                OperationType moveOp = InstructionList.getMoveOpFromType(arrayDataType.itemType);
+                instructions.add(new Instruction(moveOp, new Address(Register.RBP, true, offset), Register.getPrimaryRegisterFromDataType(arrayDataType.itemType)));
                 break;
             }
             case REFERENCE_INDEX, INDEX:{
-                this.calculateIndex(symbolTable, instructions, tempStack);
+                instructions.calculateIndex(symbolTable, tempStack, operand1.type);
                 if(this.op == QuadOp.INDEX){
-                    Operation operation = result.type.isStruct() ? Operation.LEA : getMoveOpFromType(result.type);
-                    instructions.add(new Instruction<>(operation, Register.getPrimaryRegisterFromDataType(result.type), new Operand<>(Register.PRIMARY_GENERAL_REGISTER, true)));
+                    OperationType operationType = result.type.isStruct() ? OperationType.LEA : InstructionList.getMoveOpFromType(result.type);
+                    instructions.add(new Instruction(operationType, Register.getPrimaryRegisterFromDataType(result.type), new Address(Register.PRIMARY_GENERAL_REGISTER, true)));
                 }
-                addTemporary(instructions, tempStack);
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case DEREFERENCE:{
-                Operand<Register> primary = popTemporaryIntoPrimary(instructions, tempStack);
-                instructions.add(new Instruction<>(getMoveOpFromType(result.type), Register.getPrimaryRegisterFromDataType(result.type), new Operand<>(primary.getOperand(), true)));
-                this.addTemporary(instructions, tempStack);
+                Register primary = instructions.popTemporaryIntoPrimary(tempStack);
+                instructions.add(new Instruction(InstructionList.getMoveOpFromType(result.type), Register.getPrimaryRegisterFromDataType(result.type), new Address(primary, true)));
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case JMP_T, JMP_F: {
-                this.createJumpOnCondition(instructions, tempStack);
+                instructions.createJumpOnCondition(tempStack, this.op() == QuadOp.JMP_T, operand1);
                 break;
             }
             case PRE_INC_F:{
                 setupPostfixFloat(tempStack, instructions);
-                this.immediateArithmeticFloat(instructions, result.type.isDouble() ? Operation.ADDSD : Operation.ADDSS);
-                addTemporary(instructions, tempStack);
+                this.immediateArithmeticFloat(instructions, result.type.isDouble() ? OperationType.ADDSD : OperationType.ADDSS);
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case PRE_DEC_F:{
                 setupPostfixFloat(tempStack, instructions);
-                this.immediateArithmeticFloat(instructions, result.type.isDouble() ? Operation.SUBSD : Operation.SUBSS);
-                addTemporary(instructions, tempStack);
+                this.immediateArithmeticFloat(instructions, result.type.isDouble() ? OperationType.SUBSD : OperationType.SUBSS);
+                instructions.addTemporary( tempStack, result);
                 break;
             }
             case POST_INC_F:{
                 setupPostfixFloat(tempStack, instructions);
-                addTemporary(instructions, tempStack);
-                this.immediateArithmeticFloat(instructions, result.type.isDouble() ? Operation.ADDSD : Operation.ADDSS);
+                instructions.addTemporary(tempStack, result);
+                this.immediateArithmeticFloat(instructions, result.type.isDouble() ? OperationType.ADDSD : OperationType.ADDSS);
                 break;
             }
             case POST_DEC_F:{
                 setupPostfixFloat(tempStack, instructions);
-                addTemporary(instructions, tempStack);
-                this.immediateArithmeticFloat(instructions, result.type.isDouble() ? Operation.SUBSD : Operation.SUBSS);
+                instructions.addTemporary(tempStack, result);
+                this.immediateArithmeticFloat(instructions, result.type.isDouble() ? OperationType.SUBSD : OperationType.SUBSS);
                 break;
             }
             case PRE_INC_I, POST_INC_I:{
-                this.createPostfixInteger(instructions, tempStack, Operation.INC, Operation.ADD, this.op == QuadOp.POST_INC_I);
+                this.createPostfixInteger(instructions, tempStack, OperationType.INC, OperationType.ADD, this.op == QuadOp.POST_INC_I);
                 break;
             }
             case PRE_DEC_I, POST_DEC_I:{
-                this.createPostfixInteger(instructions, tempStack, Operation.DEC, Operation.SUB, this.op == QuadOp.POST_DEC_I);
+                this.createPostfixInteger(instructions, tempStack, OperationType.DEC, OperationType.SUB, this.op == QuadOp.POST_DEC_I);
                 break;
             }
             case MUL_I:{
-                this.popTemporaryIntoPrimary(instructions, tempStack);
-                Operand<Register> secondary = this.popTemporaryIntoSecondary(instructions, tempStack);
-                instructions.add(new Instruction<>(Operation.MUL, secondary));
-                this.addTemporary(instructions, tempStack);
+                instructions.popTemporaryIntoPrimary(tempStack);
+                Register secondary = instructions.popTemporaryIntoSecondary(tempStack);
+                instructions.add(new Instruction(OperationType.MUL, new Address(secondary)));
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case DIV_I:{
-                Operand<Register> secondary = this.popTemporaryIntoSecondary(instructions, tempStack);
-                this.popTemporaryIntoPrimary(instructions, tempStack);
-                instructions.add(new Instruction<>(Operation.XOR, Register.RDX, Register.RDX));
-                instructions.add(new Instruction<>(Operation.IDIV, secondary));
-                this.addTemporary(instructions, tempStack);
+                Register secondary = instructions.popTemporaryIntoSecondary(tempStack);
+                instructions.popTemporaryIntoPrimary(tempStack);
+                instructions.add(new Instruction(OperationType.XOR, Register.RDX, Register.RDX));
+                instructions.add(new Instruction(OperationType.IDIV, new Address(secondary)));
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case SHL, SHR:{
-                this.createShift(instructions, tempStack, this.op == QuadOp.SHL ? Operation.SHL : Operation.SHR);
+                instructions.createShift(tempStack, this.op == QuadOp.SHL ? OperationType.SHL : OperationType.SHR, result);
                 break;
             }
             case NEGATE:{
-                Operand<Register> primary = popTemporaryIntoPrimary(instructions, tempStack);
-                instructions.add(new Instruction<>(Operation.NOT, primary));
-                instructions.add(new Instruction<>(Operation.INC, primary));
-                addTemporary(instructions, tempStack);
+                Register primary = instructions.popTemporaryIntoPrimary(tempStack);
+                instructions.add(new Instruction(OperationType.NOT, new Address(primary)));
+                instructions.add(new Instruction(OperationType.INC, new Address(primary)));
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case NOT_I :{
-                Operand<Register> primary = popTemporaryIntoPrimary(instructions, tempStack);
-                createCompare(instructions, Operation.CMP, Operation.SETE, primary, new Operand<>(0));
-                addTemporary(instructions, tempStack);
+                Register primary = instructions.popTemporaryIntoPrimary(tempStack);
+                instructions.createCompare(OperationType.CMP, OperationType.SETE, primary, new Immediate(0));
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case NOT_F :{
-                Operand<Register> primary = popTemporaryIntoPrimary(instructions, tempStack);
-                instructions.add(new Instruction<>(Operation.MOV, Register.RAX, 0));
-                Operation op = getCmpOpFromType(operand1.type);
-                Operation moveOp = getConvertOpFromType(DataType.getInt(), operand1.type);
-                instructions.add(new Instruction<>(moveOp, Register.SECONDARY_SSE_REGISTER, Register.RAX));
-                createCompare(instructions, op, Operation.SETE, primary, new Operand<>(Register.SECONDARY_SSE_REGISTER));
-                addTemporary(instructions, tempStack);
+                Register primary = instructions.popTemporaryIntoPrimary(tempStack);
+                instructions.add(new Instruction(OperationType.MOV, Register.RAX, new Immediate(0)));
+                OperationType op = Operation.getCmpOpFromType(operand1.type);
+                OperationType moveOp = Operation.getConvertOpFromType(DataType.getInt(), operand1.type);
+                instructions.add(new Instruction(moveOp, Register.SECONDARY_SSE_REGISTER, Register.RAX));
+                instructions.createCompare(op, OperationType.SETE, primary, new Address(Register.SECONDARY_SSE_REGISTER));
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case MOD:{
-                instructions.add(new Instruction<>(Operation.XOR, Register.RDX, Register.RDX));
-                Operand<Register> secondary = popIntoRegister(instructions,  tempStack, new Operand<>(Register.getSecondaryRegisterFromDataType(operand2.type)));
-                popTemporaryIntoPrimary(instructions, tempStack);
-                instructions.add(new Instruction<>(Operation.IDIV, secondary));
-                instructions.add(new Instruction<>(getMoveOpFromType(result.type), Register.getPrimaryRegisterFromDataType(result.type), Register.getThirdRegisterFromDataType(result.type)));
-                addTemporary(instructions, tempStack);
+                instructions.add(new Instruction(OperationType.XOR, Register.RDX, Register.RDX));
+                Register secondary = Register.getSecondaryRegisterFromDataType(operand2.type);
+                instructions.popIntoRegister(tempStack, secondary);
+                instructions.popTemporaryIntoPrimary(tempStack);
+                instructions.add(new Instruction(OperationType.IDIV, new Address(secondary)));
+                instructions.add(new Instruction(InstructionList.getMoveOpFromType(result.type), Register.getPrimaryRegisterFromDataType(result.type), Register.getThirdRegisterFromDataType(result.type)));
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case LABEL:{
-                instructions.add(new Instruction<>(new Label(operand1.name)));
+                instructions.add(new Instruction(new Label(operand1.name)));
                 break;
             }
             case RET_I, RET_F:{
                 if(result != null){
-                    this.popTemporaryIntoPrimary(instructions, tempStack);
+                    instructions.popTemporaryIntoPrimary(tempStack);
                 }
-                instructions.addAll(List.of(EPILOGUE_INSTRUCTIONS));
-                instructions.add(new Instruction<>(Operation.RET));
+                instructions.addEpilogue();
+                instructions.add(new Instruction(new Operation(OperationType.RET)));
                 break;
             }
             case LOAD_IMM_I, LOAD_IMM_F:{
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand1;
                 if(result.type.isString() || result.type.isFloatingPoint()) {
                     Constant constant = constants.get(immediateSymbol.getValue());
-                    instructions.add(new Instruction<>(getMoveOpFromType(result.type), Register.getPrimaryRegisterFromDataType(result.type), new Operand<>(constant.label(), !result.type.isString())));
+                    instructions.add(new Instruction(InstructionList.getMoveOpFromType(result.type), Register.getPrimaryRegisterFromDataType(result.type), new Immediate(constant.label(), !result.type.isString())));
                 }else{
-                    instructions.add(new Instruction<>(getMoveOpFromType(result.type), Register.getPrimaryRegisterFromDataType(result.type), immediateSymbol.getValue()));
+                    instructions.add(new Instruction(InstructionList.getMoveOpFromType(result.type), Register.getPrimaryRegisterFromDataType(result.type), new Immediate(immediateSymbol.getValue())));
                 }
-                this.addTemporary(instructions, tempStack);
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case IMUL:{
-                Operand<Register> primary = popTemporaryIntoPrimary(instructions, tempStack);
+                Register primary = instructions.popTemporaryIntoPrimary(tempStack);
                 ImmediateSymbol immediateSymbol = (ImmediateSymbol) operand2;
-                instructions.add(new Instruction<>(Operation.IMUL, primary, immediateSymbol.getValue()));
-                addTemporary(instructions, tempStack);
+                instructions.add(new Instruction(OperationType.IMUL, primary, new Immediate(immediateSymbol.getValue())));
+                instructions.addTemporary(tempStack, result);
                 break;
             }
             case CAST:{
@@ -497,13 +281,13 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
             }
             case ASSIGN:{
                 if(operand1.type.isStruct()){
-                    assignStruct(instructions, symbolTable, tempStack);
+                    instructions.assignStruct(symbolTable, tempStack, operand1.type);
                 }else{
                     VariableSymbol pointer  = tempStack.popVariable();
                     VariableSymbol value    = tempStack.popVariable();
-                    instructions.add(new Instruction<>(getMoveOpFromType(value.type), Register.getPrimaryRegisterFromDataType(value.type), new Operand<>(Register.RBP, true, value.offset)));
-                    instructions.add(new Instruction<>(getMoveOpFromType(pointer.type), Register.getSecondaryRegisterFromDataType(pointer.type), new Operand<>(Register.RBP, true, pointer.offset)));
-                    instructions.add(new Instruction<>(getMoveOpFromType(operand1.type), new Operand<>(Register.RCX, true), Register.getPrimaryRegisterFromDataType(operand1.type)));
+                    instructions.add(new Instruction(InstructionList.getMoveOpFromType(value.type), Register.getPrimaryRegisterFromDataType(value.type), new Address(Register.RBP, true, value.offset)));
+                    instructions.add(new Instruction(InstructionList.getMoveOpFromType(pointer.type), Register.getSecondaryRegisterFromDataType(pointer.type), new Address(Register.RBP, true, pointer.offset)));
+                    instructions.add(new Instruction(InstructionList.getMoveOpFromType(operand1.type), new Address(Register.RCX, true), Register.getPrimaryRegisterFromDataType(operand1.type)));
                 }
 
                 break;
@@ -513,36 +297,36 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
         return instructions;
     }
 
-    private void setupPostfixFloat(TemporaryVariableStack tempStack, List<Instruction<?, ?, ?>> instructions) {
-        popTemporaryIntoPrimary(instructions, tempStack);
-        instructions.add(new Instruction<>(getMoveOpFromType(result.type), Register.getPrimaryRegisterFromDataType(operand1.type), new Operand<>(Register.RAX, true)));
+    private void setupPostfixFloat(TemporaryVariableStack tempStack, InstructionList instructions) {
+        instructions.popTemporaryIntoPrimary(tempStack);
+        instructions.add(new Instruction(InstructionList.getMoveOpFromType(result.type), Register.getPrimaryRegisterFromDataType(operand1.type), new Address(Register.RAX, true)));
 
-        instructions.add(new Instruction<>(Operation.MOV, Register.SECONDARY_GENERAL_REGISTER, 1));
-        Operation convertOp = result.type.isDouble() ? Operation.CVTSI2SD : Operation.CVTSI2SS;
-        instructions.add(new Instruction<>(convertOp, Register.SECONDARY_SSE_REGISTER, Register.SECONDARY_GENERAL_REGISTER));
+        instructions.add(new Instruction(OperationType.MOV, Register.SECONDARY_GENERAL_REGISTER, new Immediate(1)));
+        OperationType convertOp = result.type.isDouble() ? OperationType.CVTSI2SD : OperationType.CVTSI2SS;
+        instructions.add(new Instruction(convertOp, Register.SECONDARY_SSE_REGISTER, Register.SECONDARY_GENERAL_REGISTER));
     }
-    private void immediateArithmeticFloat(List<Instruction<?, ?, ?>> instructions,  Operation arithmeticOp){
-        Operation moveOp = getMoveOpFromType(result.type);
-        instructions.add(new Instruction<>(arithmeticOp, Register.PRIMARY_SSE_REGISTER, Register.SECONDARY_SSE_REGISTER));
-        instructions.add(new Instruction<>(moveOp, new Operand<>(Register.RAX, true), Register.PRIMARY_SSE_REGISTER));
+    private void immediateArithmeticFloat(InstructionList instructions,  OperationType arithmeticOp){
+        OperationType moveOp = InstructionList.getMoveOpFromType(result.type);
+        instructions.add(new Instruction(arithmeticOp, Register.PRIMARY_SSE_REGISTER, Register.SECONDARY_SSE_REGISTER));
+        instructions.add(new Instruction(moveOp, new Address(Register.RAX, true), Register.PRIMARY_SSE_REGISTER));
     }
-    private void createPostfixInteger(List<Instruction<?, ?, ?>> instructions, TemporaryVariableStack tempStack, Operation op,Operation pointerOp, boolean post) throws CompileException {
-        this.popTemporaryIntoSecondary(instructions, tempStack);
-        Operand<Register> primary = new Operand<>(Register.getPrimaryRegisterFromDataType(operand1.type));
-        instructions.add(new Instruction<>(Operation.MOV, primary, new Operand<>(Register.RCX, true)));
+    private void createPostfixInteger(InstructionList instructions, TemporaryVariableStack tempStack, OperationType op, OperationType pointerOp, boolean post) throws CompileException {
+        instructions.popTemporaryIntoSecondary( tempStack);
+        Address primary = new Address(Register.getPrimaryRegisterFromDataType(operand1.type));
+        instructions.add(new Instruction(OperationType.MOV, primary, new Address(Register.RCX, true)));
         if(post){
-            this.addTemporary(instructions, tempStack);
+            instructions.addTemporary(tempStack, result);
         }
         if(operand1.type.isPointer()){
             int pointerSize = operand1.type.getTypeFromPointer().getSize();
-            instructions.add(new Instruction<>(pointerOp, primary, pointerSize));
+            instructions.add(new Instruction(pointerOp, primary, new Immediate(pointerSize)));
         }else{
-            instructions.add(new Instruction<>(op, primary));
+            instructions.add(new Instruction(op, primary));
         }
-        instructions.add(new Instruction<>(Operation.MOV, new Operand<>(Register.RCX, true), primary));
+        instructions.add(new Instruction(OperationType.MOV, new Address(Register.RCX, true), primary));
 
         if(!post){
-            this.addTemporary(instructions, tempStack);
+            instructions.addTemporary(tempStack, result);
         }
     }
 }

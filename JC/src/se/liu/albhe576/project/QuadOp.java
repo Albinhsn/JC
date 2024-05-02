@@ -80,4 +80,8 @@ public enum QuadOp {
     public boolean isBitwise(){
         return this == AND || this == OR || this == XOR || this == SHL || this == SHR;
     }
+    public boolean isBinary(){
+        return this == ADD_I || this == ADD_F || this == SUB_F || this == SUB_I || this == MUL_I || this == MUL_F || this == DIV_I || this == DIV_F || this.isBitwise();
+    }
+    public boolean isLoadedImmediate(){return this == LOAD_IMM_I || this == LOAD_IMM_F;}
 }

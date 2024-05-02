@@ -1,8 +1,6 @@
 ## ToDo
 
-* address, instruction, operand etc
-* better conversion scheme?
-* do a walkthrough of everything
+* do a walkthrough of everything to find things to do :)
 * actually short circuit logicals
 
 ## Optimizations
