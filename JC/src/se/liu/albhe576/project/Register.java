@@ -10,9 +10,7 @@ public enum Register {
     public static final Register SECONDARY_SSE_REGISTER = XMM1;
 
     @Override
-    public String toString() {
-        return this.name().toLowerCase();
-    }
+    public String toString() {return this.name().toLowerCase();}
 
     public static Register getPrimaryRegisterFromDataType(DataType type){
 

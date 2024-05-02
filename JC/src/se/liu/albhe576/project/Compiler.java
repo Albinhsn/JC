@@ -30,11 +30,11 @@ public class Compiler {
         }
         return functionIntermediates;
     }
-    private static final Instruction<?, ?>[] PROLOGUE_INSTRUCTIONS = new Instruction[]{
+    private static final Instruction<?, ?, ?>[] PROLOGUE_INSTRUCTIONS = new Instruction[]{
             new Instruction<>(Operation.PUSH, new Operand<>(Register.RBP), null),
             new Instruction<>(Operation.MOV, new Operand<>(Register.RBP), new Operand<>(Register.RSP))
     };
-    private static final Instruction<?, ?>[] EPILOGUE_INSTRUCTIONS = new Instruction[]{
+    private static final Instruction<?, ?, ?>[] EPILOGUE_INSTRUCTIONS = new Instruction[]{
             new Instruction<>(Operation.MOV, new Operand<>(Register.RSP), new Operand<>(Register.RBP)),
             new Instruction<>(Operation.POP, new Operand<>(Register.RBP), null)
     };
@@ -42,14 +42,14 @@ public class Compiler {
         final int alignmentInBytes = 16;
         return (alignmentInBytes - (stackSize % alignmentInBytes)) & (alignmentInBytes - 1);
     }
-    private void addReturn(List<Instruction<?, ?>> instructions){
+    private void addReturn(List<Instruction<?, ?, ?>> instructions){
         if(instructions.get(instructions.size() - 1).getOp() != Operation.RET){
             instructions.addAll(List.of(EPILOGUE_INSTRUCTIONS));
             instructions.add(new Instruction<>(Operation.RET, null, null));
         }
     }
-    private Map<String, List<Instruction<?, ?>>> generateAssembly(Map<String, Constant> constants, Map<String, QuadList> functionQuads) throws CompileException {
-        Map<String, List<Instruction<?, ?>>> generatedAssembly = new HashMap<>();
+    private Map<String, List<Instruction<?, ?, ?>>> generateAssembly(Map<String, Constant> constants, Map<String, QuadList> functionQuads) throws CompileException {
+        Map<String, List<Instruction<?, ?, ?>>> generatedAssembly = new HashMap<>();
 
 
         for(Map.Entry<String, QuadList> functions : functionQuads.entrySet()){
@@ -59,7 +59,7 @@ public class Compiler {
             TemporaryVariableStack tempStack    = new TemporaryVariableStack(stackSize);
 
             // add prologue
-            List<Instruction<?, ?>> instructions = new LinkedList<>(List.of(PROLOGUE_INSTRUCTIONS));
+            List<Instruction<?, ?, ?>> instructions = new LinkedList<>(List.of(PROLOGUE_INSTRUCTIONS));
             System.out.printf("\n\n%s\n", name);
             for(Quad quad : quads){
                 System.out.println(quad);
@@ -86,7 +86,7 @@ public class Compiler {
         optimizer.optimizeIntermediates();
 
         // generate assembly
-        Map<String, List<Instruction<?, ?>>> instructions = this.generateAssembly(this.symbolTable.getConstants(), functionQuads);
+        Map<String, List<Instruction<?, ?, ?>>> instructions = this.generateAssembly(this.symbolTable.getConstants(), functionQuads);
         optimizer.optimizeX86Assembly();
 
         // output assembly
@@ -109,7 +109,7 @@ public class Compiler {
         return stringBuilder.toString();
     }
 
-    public void outputX86Assembly(String fileName, Map<String, List<Instruction<?, ?>>> functions) throws IOException {
+    public void outputX86Assembly(String fileName, Map<String, List<Instruction<?, ?, ?>>> functions) throws IOException {
 
         FileWriter fileWriter = new FileWriter(fileName);
         for(String externalFunction : symbolTable.getExternalFunctions().keySet()){
@@ -119,10 +119,10 @@ public class Compiler {
         fileWriter.write(this.addConstants());
         fileWriter.write("\n\nsection .text\n_start:\ncall main\nmov rbx, rax\nmov rax, 1\nint 0x80\n\n");
 
-        for(Map.Entry<String, List<Instruction<?, ?>>> function : functions.entrySet()){
+        for(Map.Entry<String, List<Instruction<?, ?, ?>>> function : functions.entrySet()){
             String functionName = function.getKey();
             fileWriter.write("\n\n" + functionName + ":\n");
-            for(Instruction<?, ?> instruction : function.getValue()){
+            for(Instruction<?, ?, ?> instruction : function.getValue()){
                 fileWriter.write(instruction + "\n");
             }
 
