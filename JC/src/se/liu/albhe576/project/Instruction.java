@@ -1,14 +1,14 @@
 package se.liu.albhe576.project;
 
-public class Instruction {
+public class Instruction <D, S>{
     @Override
     public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
         if(label != null){
             return label + ":";
         }
-        StringBuilder stringBuilder = new StringBuilder();
         if(op != null){
-            stringBuilder.append("\t").append(op.name().toLowerCase());
+            stringBuilder.append("\t").append(op);
         }
         if(dest != null){
             stringBuilder.append(" ").append(dest);
@@ -19,20 +19,23 @@ public class Instruction {
         return stringBuilder.toString();
     }
 
-    String label;
-    Operation op;
-    Operand dest;
-    Operand source;
+    private final String label;
+    private final Operation op;
+    private final Operand<D> dest;
+    private final Operand<S> source;
+    public Operation getOp(){
+        return op;
+    }
     public Instruction(String label){
         this.label = label;
         this.op = null;
         this.dest = null;
         this.source = null;
     }
-    public Instruction(Operation op, Operand operand1, Operand source){
+    public Instruction(Operation op, Operand<D>operand1, Operand<S>source){
+        this.label = null;
         this.op = op;
         this.dest = operand1;
         this.source = source;
-        this.label = null;
     }
 }

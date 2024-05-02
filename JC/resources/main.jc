@@ -16,15 +16,7 @@ struct B{
 }
 
 int main(){
-    if(1 > 2){
-        printf("First!\n");
-    }else if(1 < 2){
-        printf("Second!\n");
-    }else{
-        printf("Else!\n");
-    }
-
-    // run_tests();
+    run_tests();
 }
 
 
