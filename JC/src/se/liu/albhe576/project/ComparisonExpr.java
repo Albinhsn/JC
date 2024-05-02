@@ -31,19 +31,10 @@ public class ComparisonExpr extends Expr {
         this.typeCheckComparison(lResult.type, rResult.type);
         DataType resultType = DataType.getHighestDataTypePrecedence(lResult.type, rResult.type);
 
-        if(!lResult.type.isSameType(resultType)){
-            lResult = quads.createConvert(symbolTable, lResult, resultType);
-        }
+        lResult             = Quad.convertType(symbolTable, quads, lResult, resultType);
+        rResult             = Quad.convertType(symbolTable, rQuads, rResult, resultType);
 
-        if(!rResult.type.isSameType(resultType)){
-            rResult = rQuads.createConvert(symbolTable, rResult, resultType);
-        }
-
-        QuadOp op = QuadOp.fromToken(this.op.type());
-        if(lResult.type.isFloatingPoint() || rResult.type.isFloatingPoint()){
-            op = op.convertToFloat();
-        }
-
+        QuadOp op = QuadOp.getBinaryOp(this.op.type(), lResult, rResult);
         quads.addAll(rQuads);
         quads.createComparison(symbolTable, op, lResult, rResult);
     }

@@ -11,10 +11,10 @@ public class ExternalFunction extends Function{
     @Override
     public int call(SymbolTable symbolTable, QuadList argumentQuads, List<Expr> args) throws CompileException {
         int floatCount = 0, generalCount = 0;
-        final int maxFloatCount = Quad.LINUX_FLOAT_PARAM_LOCATIONS.length;
-        final int maxGeneralCount = Quad.LINUX_GENERAL_PARAM_LOCATIONS.length;
-        int argumentStackSize    = 0;
-        final int rcxLocation   = 4;
+        final int maxFloatCount     = Quad.LINUX_FLOAT_PARAM_LOCATIONS.length;
+        final int maxGeneralCount   = Quad.LINUX_GENERAL_PARAM_LOCATIONS.length;
+        int argumentStackSize       = 0;
+        final int rcxLocation       = 4;
 
         QuadList floatQuads = new QuadList();
         QuadList generalQuads = new QuadList();

@@ -3,7 +3,7 @@ package se.liu.albhe576.project;
 import java.util.Map;
 
 public enum QuadOp {
-    JMP, LOAD_MEMBER_POINTER, LOAD_POINTER, CONVERT, PARAM, LOAD_MEMBER, INDEX, DEREFERENCE, JMP_T, JMP_F, ALLOCATE, REFERENCE_INDEX, ASSIGN, IMUL, CAST,
+    JMP, LOAD_MEMBER_POINTER, LOAD_POINTER, CONVERT, PARAM, LOAD_MEMBER, INDEX, DEREFERENCE, JMP_T, JMP_F, ALLOCATE, REFERENCE_INDEX, ASSIGN, IMUL, CAST, GC,
     ADD_I,SUB_I, MUL_I, DIV_I, SHL, SHR,MOD,PRE_INC_I, PRE_INC_F, PRE_DEC_I, PRE_DEC_F,POST_INC_I, POST_INC_F, POST_DEC_I, POST_DEC_F,
     ADD_F,SUB_F, MUL_F, DIV_F,
     NEGATE, AND, OR, XOR, LOGICAL_OR, LOGICAL_AND,
@@ -63,6 +63,14 @@ public enum QuadOp {
             Map.entry(EQUAL_I, EQUAL_F),
             Map.entry(GREATER_EQUAL_I, GREATER_EQUAL_F)
     );
+
+    public static QuadOp getBinaryOp(TokenType tokenType, Symbol left, Symbol right) throws CompileException {
+        QuadOp op = QuadOp.fromToken(tokenType);
+        if(left.type.isFloatingPoint() || right.type.isFloatingPoint()){
+            return op.convertToFloat();
+        }
+        return op;
+    }
     public QuadOp convertToFloat() throws CompileException {
         if(!INT_QUAD_TO_FLOAT.containsKey(this)){
             throw new CompileException(String.format("Can't convert %s to float op", this.name()));

@@ -6,7 +6,7 @@
 
 
 // #include "resources/foo.jc"
-// #include "resources/tests.jc"
+#include "resources/tests.jc"
 
 // grid.grid[0].x = 0
 // and and mod tests
@@ -16,9 +16,14 @@ struct B{
 }
 
 int main(){
-    int a = 5;
+    if(1 > 2){
+        printf("First!\n");
+    }else if(1 < 2){
+        printf("Second!\n");
+    }else{
+        printf("Else!\n");
+    }
 
-    printf("%f %f %f %lf %lf |||| %f %f %f %f %f\n", 0.0,1.0,2.0,3.0,4.0,5.0,6.0,7.0, 8.0, 9.0);
     // run_tests();
 }
 

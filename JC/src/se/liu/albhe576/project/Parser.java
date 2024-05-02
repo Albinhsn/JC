@@ -113,7 +113,7 @@ public class Parser {
 
     private DataType parsePointerType(DataType type) throws CompileException{
         while(matchType(TokenType.TOKEN_STAR)){
-            type = DataType.getPointerFromType(type);
+            type = type.getPointerFromType();
         }
         return type;
     }
@@ -328,24 +328,31 @@ public class Parser {
             }
         }
     }
-    private Stmt ifStatement() throws CompileException {
-        this.advance();
-        int line = this.previous.line();
+    private IfBlock parseIfBlock() throws CompileException {
         consume(TokenType.TOKEN_LEFT_PAREN, "Expected '(' after if");
-        Expr condition = parseExpr(this.getEmptyExpr(line), Precedence.ASSIGNMENT);
+        Expr condition = parseExpr(this.getEmptyExpr(this.scanner.getLine()), Precedence.ASSIGNMENT);
 
         consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ')' after if condition");
         consume(TokenType.TOKEN_LEFT_BRACE, "Expected '{' after if condition");
 
-        List<Stmt> ifBody = parseBody();
-        List<Stmt> elseBody = new ArrayList<>();
-
-        if(matchType(TokenType.TOKEN_ELSE)){
-            consume(TokenType.TOKEN_LEFT_BRACE, "Expected '{' after if condition");
-            elseBody = parseBody();
+        return new IfBlock(condition, parseBody());
+    }
+    private Stmt ifStatement() throws CompileException {
+        this.advance();
+        int line                = this.scanner.getLine();
+        List<IfBlock> ifBlocks  = new ArrayList<>();
+        List<Stmt> elseBody     = new ArrayList<>();
+        ifBlocks.add(this.parseIfBlock());
+        while(matchType(TokenType.TOKEN_ELSE)){
+            if(matchType(TokenType.TOKEN_IF)){
+               ifBlocks.add(this.parseIfBlock());
+            }else{
+                consume(TokenType.TOKEN_LEFT_BRACE, "Expected '{' after if condition");
+                elseBody = parseBody();
+            }
         }
 
-        return new IfStmt(condition, ifBody, elseBody, line, this.fileName);
+        return new IfStmt(ifBlocks, elseBody, line, this.fileName);
     }
     private Stmt parseStmt() throws CompileException {
         switch(this.current.type()){

@@ -14,9 +14,15 @@ public class BinaryExpr extends Expr{
     private boolean isInvalidBitwise(DataType left, DataType right){
         return !(left.isInteger() && right.isInteger());
     }
-    private boolean isInvalidArithmetic(DataType left, DataType right){
-        return false;
-    }
+    private boolean isInvalidArithmetic(QuadOp op, DataType left, DataType right)
+    {
+        if(op == QuadOp.MOD && !(left.isInteger() && right.isInteger())){
+            return true;
+        }
+        if((left.isPointer() && !right.isInt()) || (right.isPointer() && !left.isInt())){
+            return true;
+        }
+        return left.isArray() || left.isStruct() || right.isArray() || right.isStruct();    }
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws CompileException{
         left.compile(symbolTable, quads);
@@ -28,23 +34,15 @@ public class BinaryExpr extends Expr{
 
         DataType resultType = DataType.getHighestDataTypePrecedence(leftResult.type, rightResult.type);
 
-        QuadOp op = QuadOp.fromToken(this.op.type());
-        if(leftResult.type.isFloatingPoint() || rightResult.type.isFloatingPoint()){
-            op = op.convertToFloat();
-        }
-
+        QuadOp op = QuadOp.getBinaryOp(this.op.type(), leftResult, rightResult);
         if(op.isBitwise() && isInvalidBitwise(leftResult.type, rightResult.type)){
             Compiler.error(String.format("Can't do bitwise op with %s and %s", leftResult.type, rightResult.type), line, file);
-        }else if(isInvalidArithmetic(leftResult.type, rightResult.type)){
+        }else if(isInvalidArithmetic(op, leftResult.type, rightResult.type)){
             Compiler.error(String.format("Can't do arithmetic op with %s and %s", leftResult.type, rightResult.type), line, file);
         }
 
-        if(!leftResult.type.isSameType(resultType)){
-            leftResult = quads.createConvert(symbolTable, leftResult, resultType);
-        }
-        else if(!rightResult.type.isSameType(resultType)){
-            rightResult = rightQuads.createConvert(symbolTable, rightResult, resultType);
-        }
+        leftResult = Quad.convertType(symbolTable, quads, leftResult, resultType);
+        rightResult = Quad.convertType(symbolTable, rightQuads, rightResult, resultType);
 
         if(leftResult.type.isPointer()){
             rightQuads.createIMul(symbolTable, rightResult, symbolTable.getStructSize(leftResult.type.getTypeFromPointer()));

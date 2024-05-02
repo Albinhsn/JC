@@ -25,6 +25,8 @@ public class CallExpr extends Expr{
             Compiler.error(String.format("Function parameter mismatch expected %d got %d when calling %s", functionArguments.size(), args.size(), name.literal()), line, file);
        }
 
+       // Since we need to allocate space on the stack prior to pushing arguments
+       // We send a token quad list
        QuadList argumentQuads = new QuadList();
        int argumentStackSize = function.call(symbolTable, argumentQuads, args);
 

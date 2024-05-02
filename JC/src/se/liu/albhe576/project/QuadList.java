@@ -35,6 +35,9 @@ public class QuadList extends ArrayList<Quad>{
     public void createNegate(SymbolTable symbolTable, Symbol source){
         this.add(new Quad(QuadOp.NEGATE, source, null, symbolTable.generateSymbol(source.type)));
     }
+    public void createLogicalNot(SymbolTable symbolTable, Symbol source, QuadOp op){
+        this.add(new Quad(op, source, null, symbolTable.generateSymbol(DataType.getByte())));
+    }
     public Symbol createConvert(SymbolTable symbolTable, Symbol source, DataType target){
         Symbol converted = symbolTable.generateSymbol(target);
         this.add(new Quad(QuadOp.CONVERT, source, null, converted));
@@ -97,10 +100,10 @@ public class QuadList extends ArrayList<Quad>{
     }
 
     public void createLoadPointer(SymbolTable symbolTable, Symbol pointer) {
-       this.add(new Quad(QuadOp.LOAD_POINTER, pointer, null, symbolTable.generateSymbol(DataType.getPointerFromType(pointer.type))));
+       this.add(new Quad(QuadOp.LOAD_POINTER, pointer, null, symbolTable.generateSymbol(pointer.type.getPointerFromType())));
     }
     public void createLoadMemberPointer(SymbolTable symbolTable, Symbol pointer, Symbol member, DataType memberType) {
-        this.add(new Quad(QuadOp.LOAD_MEMBER_POINTER, pointer, member, symbolTable.generateSymbol(DataType.getPointerFromType(memberType))));
+        this.add(new Quad(QuadOp.LOAD_MEMBER_POINTER, pointer, member, symbolTable.generateSymbol(memberType.getPointerFromType())));
     }
     public void createReferenceIndex(SymbolTable symbolTable, Symbol value, Symbol index) {
         this.add(new Quad(QuadOp.REFERENCE_INDEX, value, index, symbolTable.generateSymbol(value.type)));

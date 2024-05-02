@@ -42,6 +42,12 @@ public class Compiler {
         final int alignmentInBytes = 16;
         return (alignmentInBytes - (stackSize % alignmentInBytes)) & (alignmentInBytes - 1);
     }
+    private void addReturn(List<Instruction> instructions){
+        if(instructions.get(instructions.size() - 1).op != Operation.RET){
+            instructions.addAll(List.of(EPILOGUE_INSTRUCTIONS));
+            instructions.add(new Instruction(Operation.RET, null, null));
+        }
+    }
     private Map<String, List<Instruction>> generateAssembly(Map<String, Constant> constants, Map<String, QuadList> functionQuads) throws CompileException {
         Map<String, List<Instruction>> generatedAssembly = new HashMap<>();
 
@@ -60,11 +66,7 @@ public class Compiler {
                 instructions.addAll(quad.emitInstructions(symbolTable, constants, tempStack));
             }
             // Check if we need to insert a return value or not
-
-            if(instructions.get(instructions.size() - 1).op != Operation.RET){
-                instructions.addAll(List.of(EPILOGUE_INSTRUCTIONS));
-                instructions.add(new Instruction(Operation.RET, null, null));
-            }
+            this.addReturn(instructions);
 
             // calculate stack size and padding
             final int stackAllocationInstructionIndex   = PROLOGUE_INSTRUCTIONS.length;
@@ -91,32 +93,30 @@ public class Compiler {
         this.outputX86Assembly(fileName, instructions);
     }
 
-    public void outputX86Assembly(String fileName, Map<String, List<Instruction>> functions) throws IOException {
-
-        FileWriter fileWriter = new FileWriter(fileName);
-
-
-        for(String externalFunction : symbolTable.getExternalFunctions().keySet()){
-            fileWriter.write(String.format("extern %s\n", externalFunction));
-        }
-        // To append -> one write?
-        fileWriter.write("global _start\n\nsection .data\n");
-
+    public String addConstants(){
+        StringBuilder stringBuilder = new StringBuilder();
         for(Map.Entry<String, Constant> entry : this.symbolTable.getConstants().entrySet()){
             Constant value = entry.getValue();
             if(value.type() == DataTypes.STRING){
-                fileWriter.write(String.format("%s db ", value.label()));
-
-                String formatted = entry.getKey().replace("\\n", "\n");
-                for (byte b : formatted.getBytes()) {
-                    fileWriter.write(String.format("%d, ", b));
-                }
-                fileWriter.write("0\n");
+                // Need to replace \n with 10 which is ASCII for new line
+                // Should be done for other escape characters as well
+                String formatted = entry.getKey().replace("\\n", "\", 10, \"");
+                stringBuilder.append(String.format("%s db \"%s\", 0\n", value.label(), formatted));
             }else{
-                fileWriter.write(String.format("%s dd %s\n", value.label(), entry.getKey()));
+                stringBuilder.append(String.format("%s dd %s\n", value.label(), entry.getKey()));
             }
         }
+        return stringBuilder.toString();
+    }
 
+    public void outputX86Assembly(String fileName, Map<String, List<Instruction>> functions) throws IOException {
+
+        FileWriter fileWriter = new FileWriter(fileName);
+        for(String externalFunction : symbolTable.getExternalFunctions().keySet()){
+            fileWriter.write(String.format("extern %s\n", externalFunction));
+        }
+        fileWriter.write("global _start\n\nsection .data\n");
+        fileWriter.write(this.addConstants());
         fileWriter.write("\n\nsection .text\n_start:\ncall main\nmov rbx, rax\nmov rax, 1\nint 0x80\n\n");
 
         for(Map.Entry<String, List<Instruction>> function : functions.entrySet()){
@@ -131,8 +131,6 @@ public class Compiler {
         fileWriter.close();
     }
 
-
-    // ToDo Hoist out
     public Compiler(Map<String, Struct> structs, Map<String, Function> functions){
         this.symbolTable                = new SymbolTable(structs, functions);
     }

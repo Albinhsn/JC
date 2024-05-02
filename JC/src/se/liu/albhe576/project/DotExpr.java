@@ -18,12 +18,15 @@ public class DotExpr extends Expr{
         if(!(lastSymbol.type.type == DataTypes.STRUCT && lastSymbol.type.depth <= 2)){
             Compiler.error(String.format("Trying to access member of none struct '%s'", lastSymbol.type.name), line, file);
         }
+
         if(!symbolTable.isMemberOfStruct(lastSymbol.type, this.member.literal())){
             Compiler.error(String.format("Trying to access member %s of struct %s, doesn't exist!", lastSymbol.type.name, this.member.literal()), line, file);
         }
 
         Struct struct           = symbolTable.getStructs().get(lastSymbol.type.name);
+        StructField member      = Struct.getMember(struct, this.member.literal());
         int offset              = Struct.getFieldOffset(symbolTable.getStructs(), struct, this.member.literal());
-        quads.createMember(symbolTable, lastSymbol, new ImmediateSymbol(this.member.literal(),Struct.getMember(struct, this.member.literal()).type(), String.valueOf(offset)));
+
+        quads.createMember(symbolTable, lastSymbol, new ImmediateSymbol(this.member.literal(),member.type(), String.valueOf(offset)));
     }
 }

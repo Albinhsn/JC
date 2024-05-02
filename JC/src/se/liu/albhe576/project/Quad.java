@@ -11,6 +11,13 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
         return String.format("%s %s %s %s",op.name(),operand1,operand2,result);
     }
 
+    public static Symbol convertType(SymbolTable symbolTable, QuadList quads, Symbol symbol, DataType target){
+        if(!symbol.type.isSameType(target)){
+            symbol = quads.createConvert(symbolTable, symbol, target);
+        }
+        return symbol;
+    }
+
     private Register getMinimumConvertSource(Operation op, DataType source) throws CompileException {
         switch(op){
             case MOVSX, CVTSS2SI, CVTTSD2SI -> {return Register.getPrimaryRegisterFromDataType(source);}
@@ -135,12 +142,15 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
         instructions.add(new Instruction(op, primary, secondary));
         this.addTemporary(instructions, tempStack);
     }
-    private void createCompare(List<Instruction> instructions, TemporaryVariableStack tempStack, Operation op) throws CompileException {
+    private void createCompare(List<Instruction> instructions, Operation compareOp, Operation setOp, Operand left, Operand right){
+        instructions.add(new Instruction(compareOp, left, right));
+        instructions.add(new Instruction(setOp, new Address(Register.AL), null));
+        instructions.add(new Instruction(Operation.MOVSX, new Address(Register.RAX), new Address(Register.AL)));
+    }
+    private void createComparison(List<Instruction> instructions, TemporaryVariableStack tempStack, Operation op) throws CompileException {
         Address right = popTemporaryIntoSecondary(instructions, tempStack);
         Address left = popTemporaryIntoPrimary(instructions, tempStack);
-        instructions.add(new Instruction(getCmpOpFromType(operand1.type), left, right));
-        instructions.add(new Instruction(op, new Address(Register.AL), null));
-        instructions.add(new Instruction(Operation.MOVSX, new Address(Register.RAX), new Address(Register.AL)));
+        this.createCompare(instructions, getCmpOpFromType(operand1.type), op, left, right);
         this.addTemporary(instructions, tempStack);
     }
 
@@ -172,7 +182,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
     private void addTemporary(List<Instruction> instructions, TemporaryVariableStack tempStack) throws CompileException {
         int offset;
         if(result.type.isStruct()){
-            offset = tempStack.pushVariable(result.name, DataType.getPointerFromType(result.type));
+            offset = tempStack.pushVariable(result.name, result.type.getPointerFromType());
         }else{
             offset = tempStack.pushVariable(result.name, result.type);
         }
@@ -207,9 +217,7 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
         String mergeLabel        = symbolTable.generateLabel().name;
 
         instructions.add(new Instruction(Operation.JE, new Address(mergeLabel, false), null));
-        instructions.add(new Instruction(Operation.CMP, right, new Immediate(1)));
-        instructions.add(new Instruction(Operation.SETE, new Address(Register.AL), null));
-        instructions.add(new Instruction(Operation.MOVSX, new Address(Register.RAX), new Address(Register.AL)));
+        this.createCompare(instructions, Operation.CMP, Operation.SETE, right, new Immediate(1));
         instructions.add(new Instruction(mergeLabel));
         addTemporary(instructions, tempStack);
     }
@@ -229,15 +237,38 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
         instructions.add(new Instruction(Operation.JE, new Address(operand1.name, false), null));
     }
 
+    private static final Map<QuadOp, Operation> GENERAL_QUAD_OP_TO_BINARY_OP_MAP = Map.ofEntries(
+            Map.entry(QuadOp.ADD_I, Operation.ADD),
+            Map.entry(QuadOp.AND, Operation.AND),
+            Map.entry(QuadOp.OR, Operation.OR),
+            Map.entry(QuadOp.XOR, Operation.XOR),
+            Map.entry(QuadOp.SUB_I, Operation.SUB)
+    );
+    private static final Map<QuadOp, Operation> GENERAL_QUAD_OP_TO_COMPARISON_OP_MAP = Map.ofEntries(
+            Map.entry(QuadOp.LESS_I, Operation.SETL),
+            Map.entry(QuadOp.LESS_EQUAL_I, Operation.SETLE),
+            Map.entry(QuadOp.GREATER_I, Operation.SETG),
+            Map.entry(QuadOp.GREATER_EQUAL_I, Operation.SETGE),
+            Map.entry(QuadOp.EQUAL_I, Operation.SETE),
+            Map.entry(QuadOp.EQUAL_F, Operation.SETE),
+            Map.entry(QuadOp.NOT_EQUAL_F, Operation.SETNE),
+            Map.entry(QuadOp.NOT_EQUAL_I, Operation.SETNE),
+            Map.entry(QuadOp.LESS_F, Operation.SETB),
+            Map.entry(QuadOp.LESS_EQUAL_F, Operation.SETBE),
+            Map.entry(QuadOp.GREATER_F, Operation.SETA),
+            Map.entry(QuadOp.GREATER_EQUAL_F, Operation.SETAE)
+    );
+
     public List<Instruction> emitInstructions(SymbolTable symbolTable, Map<String, Constant> constants,TemporaryVariableStack tempStack) throws CompileException{
         List<Instruction> instructions = new ArrayList<>();
         switch(op){
-            case ADD_I:{
-                this.createBinary(instructions, tempStack, Operation.ADD);
+            case ADD_I, SUB_I, AND, OR, XOR:{
+                this.createBinary(instructions, tempStack, GENERAL_QUAD_OP_TO_BINARY_OP_MAP.get(this.op));
                 break;
             }
-            case SUB_I:{
-                this.createBinary(instructions, tempStack, Operation.SUB);
+            case LESS_I, LESS_EQUAL_I, GREATER_I, GREATER_EQUAL_I, EQUAL_I, EQUAL_F,
+                 NOT_EQUAL_I, NOT_EQUAL_F, LESS_F, LESS_EQUAL_F, GREATER_F, GREATER_EQUAL_F:{
+                this.createComparison(instructions, tempStack, GENERAL_QUAD_OP_TO_COMPARISON_OP_MAP.get(this.op));
                 break;
             }
             case ADD_F:{
@@ -301,6 +332,10 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 Operation op = (operand1.type.isStruct() || this.op == QuadOp.LOAD_POINTER) ? Operation.LEA : getMoveOpFromType(operand1.type);
                 instructions.add(new Instruction(op, new Address(Register.getPrimaryRegisterFromDataType(result.type)), new Address(Register.RBP, true, variable.offset)));
                 addTemporary(instructions, tempStack);
+                break;
+            }
+            case GC:{
+                tempStack.popVariable();
                 break;
             }
             case CONVERT:{
@@ -376,20 +411,12 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 this.immediateArithmeticFloat(instructions, result.type.isDouble() ? Operation.SUBSD : Operation.SUBSS);
                 break;
             }
-            case PRE_INC_I:{
-                this.createPostfixInteger(instructions, tempStack, Operation.INC, Operation.ADD, false);
+            case PRE_INC_I, POST_INC_I:{
+                this.createPostfixInteger(instructions, tempStack, Operation.INC, Operation.ADD, this.op == QuadOp.POST_INC_I);
                 break;
             }
-            case PRE_DEC_I:{
-                this.createPostfixInteger(instructions, tempStack, Operation.DEC, Operation.SUB, false);
-                break;
-            }
-            case POST_INC_I:{
-                this.createPostfixInteger(instructions, tempStack, Operation.INC, Operation.ADD, true);
-                break;
-            }
-            case POST_DEC_I:{
-                this.createPostfixInteger(instructions, tempStack, Operation.DEC, Operation.SUB, true);
+            case PRE_DEC_I, POST_DEC_I:{
+                this.createPostfixInteger(instructions, tempStack, Operation.DEC, Operation.SUB, this.op == QuadOp.POST_DEC_I);
                 break;
             }
             case MUL_I:{
@@ -418,45 +445,19 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 addTemporary(instructions, tempStack);
                 break;
             }
-            case AND:{
-                this.createBinary(instructions, tempStack, Operation.AND);
-                break;
-            }
-            case OR:{
-                this.createBinary(instructions, tempStack, Operation.OR);
-                break;
-            }
-            case XOR:{
-                this.createBinary(instructions, tempStack, Operation.XOR);
-                break;
-            }
-            case LESS_I:{
-                this.createCompare(instructions, tempStack, Operation.SETL);
-                break;
-            }
-            case LESS_EQUAL_I:{
-                this.createCompare(instructions, tempStack, Operation.SETLE);
-                break;
-            }
-            case GREATER_I:{
-                this.createCompare(instructions, tempStack, Operation.SETG);
-                break;
-            }
-            case GREATER_EQUAL_I:{
-                this.createCompare(instructions, tempStack, Operation.SETGE);
-                break;
-            }
-            case EQUAL_I, EQUAL_F:{
-                this.createCompare(instructions, tempStack, Operation.SETE);
-                break;
-            }
-            case NOT_EQUAL_I, NOT_EQUAL_F:{
-                this.createCompare(instructions, tempStack, Operation.SETNE);
-                break;
-            }
             case NOT_I :{
                 Address primary = popTemporaryIntoPrimary(instructions, tempStack);
-                instructions.add(new Instruction(Operation.NOT, primary, new Immediate(1)));
+                this.createCompare(instructions, Operation.CMP, Operation.SETE, primary, new Immediate(0));
+                addTemporary(instructions, tempStack);
+                break;
+            }
+            case NOT_F :{
+                Address primary = popTemporaryIntoPrimary(instructions, tempStack);
+                instructions.add(new Instruction(Operation.MOV, new Address(Register.RAX), new Immediate(0)));
+                Operation op = getCmpOpFromType(operand1.type);
+                Operation moveOp = getConvertOpFromType(DataType.getInt(), operand1.type);
+                instructions.add(new Instruction(moveOp, new Address(Register.SECONDARY_SSE_REGISTER), new Address(Register.RAX)));
+                this.createCompare(instructions, op, Operation.SETE, primary, new Address(Register.SECONDARY_SSE_REGISTER));
                 addTemporary(instructions, tempStack);
                 break;
             }
@@ -467,22 +468,6 @@ public record Quad(QuadOp op, Symbol operand1, Symbol operand2, Symbol result) {
                 instructions.add(new Instruction(Operation.IDIV, secondary, null));
                 instructions.add(new Instruction(getMoveOpFromType(result.type), new Address(Register.getPrimaryRegisterFromDataType(result.type)), new Address(Register.getThirdRegisterFromDataType(result.type))));
                 addTemporary(instructions, tempStack);
-                break;
-            }
-            case LESS_F:{
-                this.createCompare(instructions, tempStack, Operation.SETB);
-                break;
-            }
-            case LESS_EQUAL_F:{
-                this.createCompare(instructions, tempStack, Operation.SETBE);
-                break;
-            }
-            case GREATER_F:{
-                this.createCompare(instructions, tempStack, Operation.SETA);
-                break;
-            }
-            case GREATER_EQUAL_F:{
-                this.createCompare(instructions, tempStack, Operation.SETAE);
                 break;
             }
             case LABEL:{

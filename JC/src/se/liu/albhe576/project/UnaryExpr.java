@@ -29,6 +29,10 @@ public class UnaryExpr extends Expr{
             }
             case TOKEN_STAR -> quads.createDereference(symbolTable, lastResult);
             case TOKEN_MINUS -> quads.createNegate(symbolTable, lastResult);
+            case TOKEN_BANG -> {
+                QuadOp op = QuadOp.getBinaryOp(this.op.type(), lastResult, lastResult);
+                quads.createLogicalNot(symbolTable, lastResult, op);
+            }
             case TOKEN_INCREMENT, TOKEN_DECREMENT -> {
                 lastResult = AssignStmt.setupAssignment(symbolTable, quads, lastResult);
                 quads.createPrefix(lastResult, this.op.type());

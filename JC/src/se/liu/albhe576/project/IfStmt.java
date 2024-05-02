@@ -4,39 +4,29 @@ import java.util.List;
 
 public class IfStmt extends Stmt{
 
-    private final Expr condition;
-    private final List<Stmt> ifBody;
+    private final List<IfBlock> ifBlocks;
     private final List<Stmt> elseBody;
-    public IfStmt(Expr condition, List<Stmt> ifBody, List<Stmt> elseBody, int line, String file){
+    public IfStmt(List<IfBlock> ifBlocks, List<Stmt> elseBody, int line, String file){
         super(line, file);
-        this.condition = condition;
-        this.ifBody= ifBody;
+        this.ifBlocks = ifBlocks;
         this.elseBody= elseBody;
 
     }
 
     @Override
     public void compile(SymbolTable symbolTable, QuadList quads) throws  CompileException{
-        condition.compile(symbolTable, quads);
 
-        QuadList ifQuad = new QuadList();
-        Stmt.compileBlock(symbolTable, ifQuad, ifBody);
-
-        QuadList elseQuad = new QuadList();
-        Stmt.compileBlock(symbolTable, elseQuad, elseBody);
-
-        Symbol elseLabel = symbolTable.generateLabel();
         Symbol mergeLabel = symbolTable.generateLabel();
-
-        Symbol ifJmpLabel = elseBody.isEmpty() ? mergeLabel : elseLabel;
-        quads.createJumpCondition(ifJmpLabel, false);
-
-        quads.addAll(ifQuad);
-        if(!elseBody.isEmpty()){
+        for(IfBlock block : this.ifBlocks){
+            Symbol elseLabel = symbolTable.generateLabel();
+            block.condition().compile(symbolTable, quads);
+            quads.createJumpCondition(elseLabel, false);
+            Stmt.compileBlock(symbolTable, quads, block.body());
             quads.createJump(mergeLabel);
             quads.insertLabel(elseLabel);
-            quads.addAll(elseQuad);
         }
+
+        Stmt.compileBlock(symbolTable, quads, elseBody);
         quads.insertLabel(mergeLabel);
     }
 }

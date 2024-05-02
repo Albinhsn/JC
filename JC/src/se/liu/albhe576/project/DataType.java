@@ -43,12 +43,12 @@ public class DataType {
         }
         return new DataType(this.name, this.type, this.depth - 1);
     }
-    public static DataType getPointerFromType(DataType type){
-        if(type.type == DataTypes.ARRAY){
-            ArrayDataType arrayDataType = (ArrayDataType) type;
+    public DataType getPointerFromType(){
+        if(this.type == DataTypes.ARRAY){
+            ArrayDataType arrayDataType = (ArrayDataType) this;
             return new DataType(arrayDataType.itemType.name, arrayDataType.itemType.type, arrayDataType.depth + 1);
         }
-        return new DataType(type.name, type.type, type.depth + 1);
+        return new DataType(name, type, depth + 1);
     }
     public static DataType getInt(){return new DataType("int", DataTypes.INT, 0);}
     public static DataType getDouble(){return new DataType("double", DataTypes.DOUBLE, 0);}
