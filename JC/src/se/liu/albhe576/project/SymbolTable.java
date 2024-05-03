@@ -18,7 +18,7 @@ public class SymbolTable {
     public ImmediateSymbol generateImmediateSymbol(DataType type, String literal){return new ImmediateSymbol("T" + resultCount++, type, literal);}
     public Symbol generateLabel(){return new Symbol( String.format("label%d", labelCount++), new DataType("label", DataTypes.VOID, 0));}
     private static final String[] internalStructs = new String[]{"int", "float", "byte", "string", "short", "double", "long"};
-    public void compileFunction(String name, Map<String, VariableSymbol> arguments){
+    public void addFunction(String name, Map<String, VariableSymbol> arguments){
         this.scopes.put(name, new Scope(arguments));
         this.currentFunctionName = name;
     }
@@ -150,6 +150,15 @@ public class SymbolTable {
             }
         }
         return false;
+    }
+    public void addArguments(Map<String, VariableSymbol> localSymbols, Function function){
+        // IP and BP
+        int offset = 16;
+        for(StructField arg : function.getArguments()){
+            localSymbols.put(arg.name(), new VariableSymbol(arg.name(), arg.type(), offset));
+            offset += getStructSize(arg.type());
+        }
+
     }
     public SymbolTable(Map<String, Struct> structs, Map<String, Function> extern){
         this.structs = structs;

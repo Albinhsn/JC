@@ -31,11 +31,7 @@ public class ComparisonExpr extends Expr {
         this.typeCheckComparison(lResult.type, rResult.type);
         DataType resultType = DataType.getHighestDataTypePrecedence(lResult.type, rResult.type);
 
-        QuadOp op = QuadOp.getBinaryOp(this.op.type(), lResult, rResult);
-        if(quads.getLastQuad().op().isLoadedImmediate() && rQuads.getLastQuad().op().isLoadedImmediate()){
-            Optimizer.optimizeConstantFolding(symbolTable, quads, rQuads, op);
-            return;
-        }
+        QuadOp op = QuadOp.fromToken(this.op.type());
 
         lResult             = Quad.convertType(symbolTable, quads, lResult, resultType);
         rResult             = Quad.convertType(symbolTable, rQuads, rResult, resultType);

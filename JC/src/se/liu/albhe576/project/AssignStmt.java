@@ -20,7 +20,7 @@ public class AssignStmt extends Stmt{
         if(lastOp == QuadOp.LOAD){
             variableQuads.createLoadPointer(symbolTable, loaded.operand1());
         }else if(lastOp == QuadOp.LOAD_MEMBER){
-            variableQuads.createLoadMemberPointer(symbolTable, loaded.operand1(), loaded.operand2(), loaded.result().type);
+            variableQuads.createLoadMemberPointer(symbolTable, (MemberSymbol) loaded.operand1(), loaded.result().type);
             variableSymbol = loaded.result();
         }else if(lastOp == QuadOp.INDEX){
             variableQuads.createReferenceIndex(symbolTable, loaded.operand1(), loaded.operand2());

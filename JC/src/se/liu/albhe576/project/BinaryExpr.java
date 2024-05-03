@@ -34,19 +34,15 @@ public class BinaryExpr extends Expr{
         Symbol rightResult = rightQuads.getLastResult();
 
         DataType resultType = DataType.getHighestDataTypePrecedence(leftResult.type, rightResult.type);
-        QuadOp op = QuadOp.getBinaryOp(this.op.type(), leftResult, rightResult);
+        QuadOp op = QuadOp.fromToken(this.op.type());
+
         if(op.isBitwise() && isInvalidBitwise(leftResult.type, rightResult.type)){
             Compiler.error(String.format("Can't do bitwise op with %s and %s", leftResult.type, rightResult.type), line, file);
         }else if(isInvalidArithmetic(op, leftResult.type, rightResult.type)){
             Compiler.error(String.format("Can't do arithmetic op with %s and %s", leftResult.type, rightResult.type), line, file);
         }
 
-        if(quads.getLastQuad().op().isLoadedImmediate() && rightQuads.getLastQuad().op().isLoadedImmediate()){
-            Optimizer.optimizeConstantFolding(symbolTable, quads, rightQuads, op);
-            return;
-        }
-
-        leftResult = Quad.convertType(symbolTable, quads, leftResult, resultType);
+        leftResult  = Quad.convertType(symbolTable, quads, leftResult, resultType);
         rightResult = Quad.convertType(symbolTable, rightQuads, rightResult, resultType);
 
         if(leftResult.type.isPointer()){

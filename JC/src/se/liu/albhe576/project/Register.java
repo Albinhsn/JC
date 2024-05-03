@@ -89,5 +89,4 @@ public enum Register {
             }
         }
         throw new CompileException(String.format("Can't get convert target from %s", op.name()));
-    }
-}
+    }}

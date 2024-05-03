@@ -23,10 +23,11 @@ public class DotExpr extends Expr{
             Compiler.error(String.format("Trying to access member %s of struct %s, doesn't exist!", lastSymbol.type.name, this.member.literal()), line, file);
         }
 
-        Struct struct           = symbolTable.getStructs().get(lastSymbol.type.name);
-        StructField member      = Struct.getMember(struct, this.member.literal());
-        int offset              = Struct.getFieldOffset(symbolTable.getStructs(), struct, this.member.literal());
+        Struct struct               = symbolTable.getStructs().get(lastSymbol.type.name);
+        StructField member          = Struct.getMember(struct, this.member.literal());
+        int offset                  = Struct.getFieldOffset(symbolTable.getStructs(), struct, this.member.literal());
+        MemberSymbol memberSymbol   = new MemberSymbol(lastSymbol.name, lastSymbol.type, offset);
 
-        quads.createMember(symbolTable, lastSymbol, new ImmediateSymbol(this.member.literal(),member.type(), String.valueOf(offset)));
+        quads.createMember(symbolTable, memberSymbol, member.type());
     }
 }

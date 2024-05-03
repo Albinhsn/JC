@@ -20,7 +20,9 @@ public class Main {
         included.add(filePath);
         Parser parser = new Parser(new Scanner(s, filePath), included, filePath);
         parser.parse();
-        Compiler compiler = new Compiler(parser.getStructs(), parser.getFunctions());
+        SymbolTable symbolTable     = new SymbolTable(parser.getStructs(), parser.getFunctions());
+        CodeGenerator codeGenerator = new IntelCodeGenerator(symbolTable);
+        Compiler compiler           = new Compiler(symbolTable, codeGenerator);
         compiler.compile("out.asm");
     }
 }

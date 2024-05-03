@@ -11,19 +11,16 @@ public class QuadList extends ArrayList<Quad>{
     }
     public Quad getLastQuad(){return this.get(this.size() - 1);}
     public Symbol getLastOperand1(){return this.getLastQuad().operand1();}
-    public Symbol getLastOperand2(){return this.getLastQuad().operand2();}
     public Symbol getLastResult(){return this.getLastQuad().result();}
     public void insertLabel(Symbol label){this.add(new Quad(QuadOp.LABEL, label, null, null));}
     public void createLogical(SymbolTable symbolTable, Symbol left, Symbol right, TokenType op) throws CompileException {
         this.add(new Quad(QuadOp.fromToken(op), left, right, symbolTable.generateSymbol(DataType.getByte())));
     }
     public void createStoreArray(VariableSymbol arraySymbol, int offset){
-        String immediate = String.valueOf(offset);
-        this.add(new Quad(QuadOp.STORE_ARRAY_ITEM, arraySymbol, new ImmediateSymbol(immediate, DataType.getInt(), immediate), null));
+        this.add(new Quad(QuadOp.STORE_ARRAY_ITEM, new ArrayItemSymbol(arraySymbol.name, arraySymbol.type, arraySymbol.offset, offset),null, null));
     }
     public void createReturn(Symbol toBeReturned){
-        QuadOp op = toBeReturned != null && toBeReturned.type.isFloat() ? QuadOp.RET_F : QuadOp.RET_I;
-        this.add(new Quad(op, null, null, toBeReturned));
+        this.add(new Quad(QuadOp.RET, null, null, toBeReturned));
     }
     public void createCall(SymbolTable symbolTable, Symbol function, int argumentSize){
         String argumentSizeString = String.valueOf(argumentSize);
@@ -47,31 +44,23 @@ public class QuadList extends ArrayList<Quad>{
         QuadOp op = jumpTrue ? QuadOp.JMP_T : QuadOp.JMP_F;
         this.add(new Quad(op, label, null, null));
     }
-    public void createPostfix(Symbol target, TokenType op) throws CompileException {
-        QuadOp quadOp = op == TokenType.TOKEN_INCREMENT ? QuadOp.POST_INC_I : QuadOp.POST_DEC_I;
-        if(target.type.isFloatingPoint()){
-            quadOp = quadOp.convertToFloat();
-        }
+    public void createPostfix(Symbol target, TokenType op){
+        QuadOp quadOp = op == TokenType.TOKEN_INCREMENT ? QuadOp.POST_INC : QuadOp.POST_DEC;
         this.add(new Quad(quadOp, target, null, target));
 
     }
-    public void createPrefix(Symbol target, TokenType op) throws CompileException {
-        QuadOp quadOp = op == TokenType.TOKEN_INCREMENT ? QuadOp.PRE_INC_I : QuadOp.PRE_DEC_I;
-        if(target.type.isFloatingPoint()){
-            quadOp = quadOp.convertToFloat();
-        }
+    public void createPrefix(Symbol target, TokenType op){
+        QuadOp quadOp = op == TokenType.TOKEN_INCREMENT ? QuadOp.PRE_INC : QuadOp.PRE_DEC;
         this.add(new Quad(quadOp, target, null, target));
-
     }
     public void createJump(Symbol label){
         this.add(new Quad(QuadOp.JMP, label, null, null));
     }
     public void createLoadImmediate(SymbolTable symbolTable, ImmediateSymbol immediate){
-        QuadOp op = immediate.type.isFloatingPoint() ? QuadOp.LOAD_IMM_F : QuadOp.LOAD_IMM_I;
-        this.add(new Quad(op, immediate, null, symbolTable.generateSymbol(immediate.type)));
+        this.add(new Quad(QuadOp.LOAD_IMM, immediate, null, symbolTable.generateSymbol(immediate.type)));
     }
-    public void createMember(SymbolTable symbolTable, Symbol source, Symbol member){
-        this.add(new Quad(QuadOp.LOAD_MEMBER, source, member, symbolTable.generateSymbol(member.type)));
+    public void createMember(SymbolTable symbolTable, MemberSymbol source, DataType memberType){
+        this.add(new Quad(QuadOp.LOAD_MEMBER, source, null, symbolTable.generateSymbol(memberType)));
     }
     public void createIndex(SymbolTable symbolTable, Symbol value, Symbol index) throws CompileException {
         this.add(new Quad(QuadOp.INDEX, value, index, symbolTable.generateSymbol(value.type.getTypeFromPointer())));
@@ -81,8 +70,8 @@ public class QuadList extends ArrayList<Quad>{
         this.add(new Quad(op, left, right, symbolTable.generateSymbol(result)));
     }
     public void createParam(Symbol param, int offset, int count, boolean external){
-        ArgumentSymbol argumentSymbol = new ArgumentSymbol(String.valueOf(count), DataType.getInt(), offset, count, external);
-        this.add(new Quad(QuadOp.PARAM, param, argumentSymbol, null));
+        ArgumentSymbol argumentSymbol = new ArgumentSymbol(param.name, param.type, offset, count, external);
+        this.add(new Quad(QuadOp.ARGUMENT, argumentSymbol, null, null));
     }
     public void createCast(SymbolTable symbolTable, Symbol value, DataType target){
         this.add(new Quad(QuadOp.CAST, value, null, symbolTable.generateSymbol(target)));
@@ -102,8 +91,8 @@ public class QuadList extends ArrayList<Quad>{
     public void createLoadPointer(SymbolTable symbolTable, Symbol pointer) {
        this.add(new Quad(QuadOp.LOAD_POINTER, pointer, null, symbolTable.generateSymbol(pointer.type.getPointerFromType())));
     }
-    public void createLoadMemberPointer(SymbolTable symbolTable, Symbol pointer, Symbol member, DataType memberType) {
-        this.add(new Quad(QuadOp.LOAD_MEMBER_POINTER, pointer, member, symbolTable.generateSymbol(memberType.getPointerFromType())));
+    public void createLoadMemberPointer(SymbolTable symbolTable, MemberSymbol pointer, DataType memberType) {
+        this.add(new Quad(QuadOp.LOAD_MEMBER_POINTER, pointer, null, symbolTable.generateSymbol(memberType.getPointerFromType())));
     }
     public void createReferenceIndex(SymbolTable symbolTable, Symbol value, Symbol index) {
         this.add(new Quad(QuadOp.REFERENCE_INDEX, value, index, symbolTable.generateSymbol(value.type)));
@@ -113,14 +102,10 @@ public class QuadList extends ArrayList<Quad>{
         if(symbol.type.isArray()){
             createLoadPointer(symbolTable, symbol);
         }else{
-            Symbol loaded = symbolTable.generateSymbol(symbol.type);
-            this.add(new Quad(QuadOp.LOAD, symbol, null, loaded));
+            this.add(new Quad(QuadOp.LOAD, symbol, null, symbolTable.generateSymbol(symbol.type)));
         }
     }
     public void createAssign(Symbol value, Symbol variable){
         this.add(new Quad(QuadOp.ASSIGN, value, null, variable));
-    }
-    public void createAssignImmediate(VariableSymbol variable, ImmediateSymbol immediate){
-        this.add(new Quad(QuadOp.ASSIGN_IMMEDIATE, variable, immediate, variable));
     }
 }

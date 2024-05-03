@@ -14,7 +14,6 @@ public class UnaryExpr extends Expr{
         expr.compile(symbolTable, quads);
         Symbol source = quads.getLastOperand1();
         Symbol lastResult = quads.getLastResult();
-        Symbol lastOperand2 = quads.getLastOperand2();
          switch(this.op.type()){
             case TOKEN_AND_BIT -> {
                 Quad loaded = quads.pop();
@@ -24,13 +23,14 @@ public class UnaryExpr extends Expr{
                 }else if(loaded.op() == QuadOp.INDEX){
                     quads.createReferenceIndex(symbolTable, loaded.operand1(), loaded.operand2());
                 }else if(loaded.op() == QuadOp.LOAD_MEMBER){
-                    quads.createLoadMemberPointer(symbolTable, source, lastOperand2, lastResult.type);
+                    MemberSymbol memberSymbol = (MemberSymbol) source;
+                    quads.createLoadMemberPointer(symbolTable, memberSymbol, lastResult.type);
                 }
             }
             case TOKEN_STAR -> quads.createDereference(symbolTable, lastResult);
             case TOKEN_MINUS -> quads.createNegate(symbolTable, lastResult);
             case TOKEN_BANG -> {
-                QuadOp op = QuadOp.getBinaryOp(this.op.type(), lastResult, lastResult);
+                QuadOp op = QuadOp.fromToken(this.op.type());
                 quads.createLogicalNot(symbolTable, lastResult, op);
             }
             case TOKEN_INCREMENT, TOKEN_DECREMENT -> {

@@ -1,38 +1,39 @@
 package se.liu.albhe576.project;
 
+import java.util.Map;
 import java.util.Stack;
 
 public class TemporaryVariableStack {
-    Stack<VariableSymbol> variables;
-    int maxOffset;
-    int initialOffset;
-
-    public VariableSymbol peek(){
-        return this.variables.peek();
+    private int maxOffset;
+    private final SymbolTable symbolTable;
+    private final String functionName;
+    private final Stack<TemporaryStackVariable> temporaryStack;
+    public int getMaxOffset(){
+        return this.maxOffset;
+    }
+    public TemporaryVariableStack(SymbolTable symbolTable, String functionName){
+        this.symbolTable        = symbolTable;
+        this.functionName       = functionName;
+        this.temporaryStack     = new Stack<>();
+    }
+    public TemporaryStackVariable peekVariable(){
+        return this.temporaryStack.peek();
     }
 
-    public int pushVariable(String name, DataType type) throws CompileException{
-        if(type.isStruct() || type.isArray()){
-            throw new CompileException("Can't push a struct/array a temporary?");
-        }
-        int offset = -type.getSize();
-        if(!variables.isEmpty()){
-            offset += variables.peek().offset;
+    public TemporaryStackVariable popVariable(){
+        return temporaryStack.pop();
+    }
+
+    public int pushVariable(DataType type){
+        int offset;
+        if(temporaryStack.isEmpty()){
+            offset = -symbolTable.getLocalVariableStackSize(functionName);
         }else{
-            offset += initialOffset;
+            offset = temporaryStack.peek().offset();
         }
-
-        variables.push(new VariableSymbol(name, type, offset));
-        this.maxOffset = Math.min(offset, this.maxOffset);
+        offset -= SymbolTable.getStructSize(symbolTable.getStructs(), type);
+        this.maxOffset = Math.min(this.maxOffset, offset);
+        temporaryStack.push(new TemporaryStackVariable(offset, type));
         return offset;
-    }
-    public VariableSymbol popVariable(){
-        return variables.pop();
-    }
-
-    public TemporaryVariableStack(int initialOffset){
-        this.maxOffset      = -initialOffset;
-        this.initialOffset  = -initialOffset;
-        this.variables      = new Stack<>();
     }
 }

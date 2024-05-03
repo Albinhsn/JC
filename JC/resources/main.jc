@@ -5,7 +5,7 @@
 #extern float sqrt(float x)
 
 
-// #include "resources/foo.jc"
+#include "resources/foo.jc"
 #include "resources/tests.jc"
 
 // grid.grid[0].x = 0
@@ -17,9 +17,6 @@ struct B{
 
 int main(){
     run_tests();
-    int a = 5;
-    a = 1;
-    return a;
 }
 
 
