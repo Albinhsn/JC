@@ -23,11 +23,7 @@ public enum OperationType {
     }
     public static OperationType getOpFromResultType(QuadOp quadOp, DataType target) throws CompileException {
         OperationType op = getBinaryOpFromQuadOp(quadOp);
-        if(target.isFloatingPoint()){
-            op.convertToFloatingPoint(target);
-        }
-        return op;
-
+        return target.isFloatingPoint() ? op.convertToFloatingPoint(target) : op;
     }
     public static OperationType getMoveOpFromType(DataType type){
         if(!type.isFloatingPoint()){

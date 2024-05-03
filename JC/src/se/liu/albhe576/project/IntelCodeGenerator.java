@@ -37,11 +37,10 @@ public class IntelCodeGenerator implements CodeGenerator{
             advance();
         }
 
-
         int stackSpace  = -temporaryStack.getMaxOffset();
         stackSpace += Compiler.getStackAlignment(stackSpace);
         if(stackSpace != 0){
-            this.insertInstruction(OperationType.SUB, new Address<>(Register.RSP), new Address<>(stackSpace), allocateStackSpaceIndex);
+            this.instructions.add(allocateStackSpaceIndex, new IntelInstruction(new Operation(OperationType.SUB), new Address<>(Register.RSP), new Address<>(stackSpace)));
         }
 
 
@@ -66,7 +65,7 @@ public class IntelCodeGenerator implements CodeGenerator{
             Map.entry(QuadOp.JMP_T, this::createJumpOnCondition),
             Map.entry(QuadOp.JMP_F, this::createJumpOnCondition),
             Map.entry(QuadOp.ALLOCATE, this::createAllocate),
-            Map.entry(QuadOp.REFERENCE_INDEX, this::createReferenceIndex),
+            Map.entry(QuadOp.REFERENCE_INDEX, this::createIndex),
             Map.entry(QuadOp.ASSIGN, this::createAssign),
             Map.entry(QuadOp.IMUL, this::createIMul),
             Map.entry(QuadOp.CAST, this::createCast),
@@ -77,10 +76,10 @@ public class IntelCodeGenerator implements CodeGenerator{
             Map.entry(QuadOp.SHL, this::createShift),
             Map.entry(QuadOp.SHR, this::createShift),
             Map.entry(QuadOp.MOD, this::createMod),
-            Map.entry(QuadOp.PRE_INC, this::createPreInc),
-            Map.entry(QuadOp.PRE_DEC, this::createPreDec),
-            Map.entry(QuadOp.POST_INC, this::createPostInc),
-            Map.entry(QuadOp.POST_DEC, this::createPostDec),
+            Map.entry(QuadOp.PRE_INC, this::createInc),
+            Map.entry(QuadOp.PRE_DEC, this::createInc),
+            Map.entry(QuadOp.POST_INC, this::createInc),
+            Map.entry(QuadOp.POST_DEC, this::createInc),
             Map.entry(QuadOp.NEGATE, this::createNegate),
             Map.entry(QuadOp.AND, this::createBinary),
             Map.entry(QuadOp.OR, this::createBinary),
@@ -99,24 +98,14 @@ public class IntelCodeGenerator implements CodeGenerator{
             Map.entry(QuadOp.LOAD, this::createLoad),
             Map.entry(QuadOp.STORE_ARRAY_ITEM, this::createStoreArrayItem)
     );
-    private void insertInstruction(OperationType op, Operand dest, Operand source, int index){
-        this.instructions.add(index, new IntelInstruction(new Operation(op), dest, source));
-    }
     private void addInstruction(OperationType op, Operand dest, Operand source){
         this.instructions.add(new IntelInstruction(new Operation(op), dest, source));
     }
-    private void addInstruction(Operand op, Operand dest, Operand source){
-       this.instructions.add(new IntelInstruction(op, dest, source));
-    }
-    public void addTemporary(Symbol result) {
-        int offset;
-        if(result.type.isStruct()){
-            offset = this.temporaryStack.pushVariable(result.type.getPointerFromType());
-        }else{
-            offset = this.temporaryStack.pushVariable(result.type);
-        }
-        OperationType moveOp = Operation.getMoveOpFromType(result.type);
-        this.addInstruction(new Operation(moveOp), new Address<>(Register.RBP, true, offset), new Address<>(Register.getPrimaryRegisterFromDataType(result.type)));
+    public void addTemporary(DataType type) {
+        type = type.isStruct() ? type.getPointerFromType() : type;
+        int offset = this.temporaryStack.pushVariable(type);
+        OperationType moveOp = Operation.getMoveOpFromType(type);
+        this.addInstruction(moveOp, new Address<>(Register.RBP, true, offset), new Address<>(Register.getPrimaryRegisterFromDataType(type)));
     }
     public Register popTemporaryIntoSecondary(){
         TemporaryStackVariable value    = this.temporaryStack.peekVariable();
@@ -127,7 +116,6 @@ public class IntelCodeGenerator implements CodeGenerator{
         }
         return secondary;
     }
-
     private void addPrologue(){
         instructions.add(new IntelInstruction(new Operation(OperationType.PUSH), new Address<>(Register.RBP)));
         instructions.add(new IntelInstruction(new Operation(OperationType.MOV), new Address<>(Register.RBP), new Address<>(Register.RSP)));
@@ -166,21 +154,15 @@ public class IntelCodeGenerator implements CodeGenerator{
         Quad current = this.getCurrentQuad();
         if(current.op() == QuadOp.MUL && current.result().type.isInteger()){
             createIntegerMul();
-        }
-        else if(current.op() == QuadOp.DIV && current.result().type.isInteger()){
+        } else if(current.op() == QuadOp.DIV && current.result().type.isInteger()){
             createIntegerDiv();
         }else{
-            OperationType op = OperationType.getBinaryOpFromQuadOp(current.op());
-            if(current.result().type.isFloat()){
-                op = op.convertToFloat();
-            }else if(current.result().type.isDouble()){
-                op = op.convertToDouble();
-            }
+            OperationType op = OperationType.getOpFromResultType(current.op(), current.result().type);
             Register secondary   = this.popTemporaryIntoSecondary();
             Register primary     = this.popTemporaryIntoPrimary();
             this.addInstruction(op, new Address<>(primary), new Address<>(secondary));
         }
-        this.addTemporary(current.result());
+        this.addTemporary(current.result().type);
     }
     private void createLabel() throws CompileException {
         Quad currentQuad = this.getCurrentQuad();
@@ -197,59 +179,42 @@ public class IntelCodeGenerator implements CodeGenerator{
         this.popTemporaryIntoSecondary();
         Register primary     = this.popTemporaryIntoPrimary();
         this.addInstruction(op, new Address<>(primary), new Address<>(Register.CL));
-        this.addTemporary(current.result());
+        this.addTemporary(current.result().type);
     }
     private void createMod() throws CompileException {
-        Quad current = this.getCurrentQuad();
+        DataType type = this.getCurrentQuad().result().type;
         this.addInstruction(OperationType.XOR, new Address<>(Register.RDX), new Address<>(Register.RDX));
-        Register secondary = Register.getSecondaryRegisterFromDataType(current.result().type);
-        this.popIntoRegister(secondary);
+        this.popIntoRegister(Register.SECONDARY_GENERAL_REGISTER);
         this.popTemporaryIntoPrimary();
-        this.addInstruction(OperationType.IDIV, new Address<>(secondary), null);
+
+        this.addInstruction(OperationType.IDIV, new Address<>(Register.SECONDARY_GENERAL_REGISTER), null);
         this.addInstruction(
-                Operation.getMoveOpFromType(current.result().type),
-                new Address<>(Register.getPrimaryRegisterFromDataType(current.result().type)),
-                new Address<>(Register.getThirdRegisterFromDataType(current.result().type))
+                Operation.getMoveOpFromType(type),
+                new Address<>(Register.getPrimaryRegisterFromDataType(type)),
+                new Address<>(Register.getThirdRegisterFromDataType(type))
         );
-        this.addTemporary(current.result());
+        this.addTemporary(type);
     }
-    private void createPreInc() throws CompileException {
-        Quad current = this.getCurrentQuad();
-        Symbol result =current.result();
-        OperationType op    = OperationType.getBinaryOpFromQuadOp(current.op());
-        if(result.type.isFloatingPoint()){
-            this.setupPostfixFloat(result, result.type);
+    private void createIncFloat(OperationType op, Symbol result, boolean post) throws CompileException {
+        this.setupPostfixFloat(result, result.type);
+        if(post){
+            this.addTemporary(result.type);
             this.immediateArithmeticFloat(op.convertToFloatingPoint(result.type), result);
-            this.addTemporary(result);
-        }else{
-            this.createPostfixInteger(OperationType.INC, OperationType.ADD, false, result, current.operand1().type);
+            return;
         }
+        this.immediateArithmeticFloat(op.convertToFloatingPoint(result.type), result);
+        this.addTemporary(result.type);
     }
-    private void createPreDec() throws CompileException {
-        // float
+    private void createInc() throws CompileException {
         Quad current = this.getCurrentQuad();
         Symbol result =current.result();
         OperationType op    = OperationType.getBinaryOpFromQuadOp(current.op());
+        boolean post = current.op() == QuadOp.POST_INC;
         if(result.type.isFloatingPoint()){
-            this.setupPostfixFloat(result, result.type);
-            this.addTemporary(result);
-            this.immediateArithmeticFloat(op.convertToFloatingPoint(result.type), result);
+            this.createIncFloat(op, result, post);
         }else{
-            this.createPostfixInteger(OperationType.DEC, OperationType.SUB, false, result, current.operand1().type);
-        }
-    }
-    private void createPostInc() throws CompileException {
-        Quad current = this.getCurrentQuad();
-        Symbol result =current.result();
-        OperationType op    = OperationType.getBinaryOpFromQuadOp(current.op());
-       // float
-        if(result.type.isFloatingPoint()){
-            this.setupPostfixFloat(result, result.type);
-            this.addTemporary(result);
-            this.immediateArithmeticFloat(op.convertToFloatingPoint(result.type), result);
-        }else{
-            // OperationType op, OperationType pointerOp, boolean post, Symbol result, DataType target
-            this.createPostfixInteger(OperationType.INC, OperationType.ADD, true, result, current.operand1().type);
+            OperationType pointerOp = op == OperationType.INC ? OperationType.ADD : OperationType.SUB;
+            this.createPostfixInteger(op, pointerOp, post, result, current.operand1().type);
         }
     }
     public void immediateArithmeticFloat(OperationType arithmeticOp, Symbol result){
@@ -262,7 +227,7 @@ public class IntelCodeGenerator implements CodeGenerator{
         Address<?> primary = new Address<>(Register.getPrimaryRegisterFromDataType(target));
         this.addInstruction(OperationType.MOV, primary, new Address<>(Register.RCX, true));
         if(post){
-            this.addTemporary(result);
+            this.addTemporary(result.type);
         }
         if(target.isPointer()){
             int pointerSize = target.getTypeFromPointer().getSize();
@@ -273,7 +238,7 @@ public class IntelCodeGenerator implements CodeGenerator{
         this.addInstruction(OperationType.MOV, new Address<>(Register.RCX, true), primary);
 
         if(!post){
-            this.addTemporary(result);
+            this.addTemporary(result.type);
         }
     }
     public void setupPostfixFloat(Symbol result, DataType target) {
@@ -284,23 +249,12 @@ public class IntelCodeGenerator implements CodeGenerator{
         OperationType convertOp = result.type.isDouble() ? OperationType.CVTSI2SD : OperationType.CVTSI2SS;
         this.addInstruction(convertOp, new Address<>(Register.SECONDARY_SSE_REGISTER), new Address<>(Register.SECONDARY_GENERAL_REGISTER));
     }
-    private void createPostDec() throws CompileException {
-        // float
-        Symbol result = getCurrentQuad().result();
-        if(result.type.isFloatingPoint()){
-            this.setupPostfixFloat(result, result.type);
-            this.addTemporary(result);
-            this.immediateArithmeticFloat(result.type.isDouble() ? OperationType.SUBSD : OperationType.SUBSS, result);
-        }else{
-            createPostfixInteger(OperationType.DEC, OperationType.SUB, true, result, result.type);
-        }
-    }
     private void createNegate() throws CompileException {
-        Symbol result = getCurrentQuad().result();
-        Register primary = this.popTemporaryIntoPrimary();
+        Symbol result       = getCurrentQuad().result();
+        Register primary    = this.popTemporaryIntoPrimary();
         this.addInstruction(OperationType.NOT, new Address<>(primary), null);
         this.addInstruction(OperationType.INC, new Address<>(primary), null);
-        this.addTemporary(result);
+        this.addTemporary(result.type);
     }
 
     public void createCompare(OperationType compareOp, OperationType setOp, Register left, Address<?> right){
@@ -319,8 +273,8 @@ public class IntelCodeGenerator implements CodeGenerator{
 
         this.addInstruction(OperationType.JE, new Address<>(mergeLabel), null);
         createCompare(OperationType.CMP, OperationType.SETE, right, new Address<>(1));
-        this.addInstruction(new Label(mergeLabel), null, null);
-        addTemporary(current.result());
+        this.instructions.add(new IntelInstruction(new Label(mergeLabel), null, null));
+        addTemporary(current.result().type);
     }
     private void createComparison() throws CompileException {
         Register right = popTemporaryIntoSecondary();
@@ -333,7 +287,7 @@ public class IntelCodeGenerator implements CodeGenerator{
 
         OperationType cmpOp = OperationType.getCmpOpFromType(current.operand1().type);
         createCompare(cmpOp, op, left, new Address<>(right));
-        this.addTemporary(current.result());
+        this.addTemporary(current.result().type);
     }
     private void createNot() throws CompileException {
         Quad current = this.getCurrentQuad();
@@ -344,11 +298,11 @@ public class IntelCodeGenerator implements CodeGenerator{
             OperationType moveOp = OperationType.getConvertOpFromType(DataType.getInt(), current.result().type);
             this.addInstruction(moveOp, new Address<>(Register.SECONDARY_SSE_REGISTER), new Address<>(Register.RAX));
             this.createCompare(op, OperationType.SETE, primary, new Address<>(Register.SECONDARY_SSE_REGISTER));
-            this.addTemporary(current.result());
+            this.addTemporary(current.result().type);
         }else{
             Register primary = this.popTemporaryIntoPrimary();
             this.createCompare(OperationType.CMP, OperationType.SETE, primary, new Address<>(0));
-            this.addTemporary(current.result());
+            this.addTemporary(current.result().type);
         }
     }
     public void deallocateStackSpace(int space){this.addInstruction(OperationType.ADD, new Address<>(Register.RSP), new Address<>(space));}
@@ -357,14 +311,14 @@ public class IntelCodeGenerator implements CodeGenerator{
 
         ImmediateSymbol stackSizeImmediate = (ImmediateSymbol) current.operand2();
         this.addInstruction(OperationType.CALL, new Address<>(current.operand1().name), null);
-        int stackSize = Integer.parseInt(stackSizeImmediate.getValue());
-        stackSize += Compiler.getStackAlignment(stackSize);
+        int stackSize    = Integer.parseInt(stackSizeImmediate.getValue());
+        stackSize       += Compiler.getStackAlignment(stackSize);
         if(stackSize != 0){
             this.deallocateStackSpace(stackSize);
         }
 
         if(!current.result().type.isVoid()){
-            this.addTemporary(current.result());
+            this.addTemporary(current.result().type);
         }
     }
     private void createLoadImmediate() throws CompileException {
@@ -377,14 +331,14 @@ public class IntelCodeGenerator implements CodeGenerator{
         }else{
             this.addInstruction(OperationType.getMoveOpFromType(result.type), new Address<>(Register.getPrimaryRegisterFromDataType(result.type)), new Address<>(immediateSymbol.getValue()));
         }
-        this.addTemporary(result);    }
+        this.addTemporary(result.type);    }
     private void createLoad() throws CompileException {
         Quad current = getCurrentQuad();
         VariableSymbol variable = (VariableSymbol) current.operand1();
         Symbol result = current.result();
         OperationType op = (variable.type.isStruct() || current.op() == QuadOp.LOAD_POINTER) ? OperationType.LEA : OperationType.getMoveOpFromType(variable.type);
         this.addInstruction(op, new Address<>(Register.getPrimaryRegisterFromDataType(result.type)), new Address<>(Register.RBP, true, variable.offset));
-        this.addTemporary(result);
+        this.addTemporary(result.type);
     }
     private void createStoreArrayItem() throws CompileException {
         Quad current = getCurrentQuad();
@@ -394,7 +348,7 @@ public class IntelCodeGenerator implements CodeGenerator{
         if(arrayDataType.itemType.isStruct()){
             this.popIntoRegister(Register.RSI);
             this.addInstruction(OperationType.LEA, new Address<>(Register.RDI), new Address<>(Register.RBP, true, offset));
-            this.createMovSB(SymbolTable.getStructSize(symbolTable.getStructs(), arrayDataType.itemType));
+            this.createMovSB(arrayDataType.itemType);
             return;
         }
         this.popTemporaryIntoPrimary();
@@ -410,16 +364,16 @@ public class IntelCodeGenerator implements CodeGenerator{
         ImmediateSymbol immediateSymbol = (ImmediateSymbol) current.operand2();
         Register primary = this.popTemporaryIntoPrimary();
         this.addInstruction(OperationType.IMUL, new Address<>(primary), new Address<>(immediateSymbol.getValue()));
-        this.addTemporary(current.result());
+        this.addTemporary(current.result().type);
     }
     public void assignStruct(DataType structType){
         popIntoRegister(Register.RDI);
         popIntoRegister(Register.RSI);
-        int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), structType);
-        this.createMovSB(structSize);
+        this.createMovSB(structType);
     }
     public void createRepeatMoveSingleByte(){this.addInstruction(OperationType.REP, new Address<>(Register.MOVSB), null);}
-    public void createMovSB(int immediate){
+    public void createMovSB(DataType structType){
+        int immediate = SymbolTable.getStructSize(symbolTable.getStructs(), structType);
         this.addInstruction(OperationType.MOV, new Address<>(Register.RCX), new Address<>(immediate));
         this.createRepeatMoveSingleByte();
     }
@@ -436,18 +390,10 @@ public class IntelCodeGenerator implements CodeGenerator{
             this.addInstruction(OperationType.getMoveOpFromType(targetType), new Address<>(Register.RCX, true), new Address<>(Register.getPrimaryRegisterFromDataType(targetType)));
         }
     }
-    private void createReferenceIndex() throws CompileException {
-        popTemporaryIntoPrimary();
-        popTemporaryIntoSecondary();
-        DataType pointerType = getCurrentQuad().operand1().type;
-
+    private void createPointerArithmetic(DataType pointerType) throws CompileException {
         int size = symbolTable.getStructSize(pointerType.getTypeFromPointer());
         this.addInstruction(OperationType.IMUL, new Address<>(Register.PRIMARY_GENERAL_REGISTER), new Address<>(size));
         this.addInstruction(OperationType.ADD, new Address<>(Register.PRIMARY_GENERAL_REGISTER), new Address<>(Register.SECONDARY_GENERAL_REGISTER));
-        this.addTemporary(getCurrentQuad().result());
-    }
-    private void allocateStackSpace(int space) {
-        this.addInstruction(OperationType.SUB, new Address<>(Register.RSP), new Address<>(space));
     }
     private void createAllocate() throws CompileException {
         Symbol immediateSymbol =  getCurrentQuad().operand1();
@@ -455,8 +401,7 @@ public class IntelCodeGenerator implements CodeGenerator{
     }
     private void createJumpOnCondition() throws CompileException {
         Symbol dest = getCurrentQuad().operand1();
-        Address<?> immediate = new Address<>(getCurrentQuad().op() == QuadOp.JMP_T ? 1 : 0);
-        popTemporaryIntoPrimary();
+        Address<?> immediate = new Address<>(getCurrentQuad().op() == QuadOp.JMP_T ? 1 : 0); popTemporaryIntoPrimary();
         OperationType cmpOp = OperationType.getCmpOpFromType(dest.type);
         this.addInstruction(cmpOp, new Address<>(Register.PRIMARY_GENERAL_REGISTER), immediate);
         this.addInstruction(OperationType.JE, new Address<>(dest.name), null);
@@ -465,26 +410,21 @@ public class IntelCodeGenerator implements CodeGenerator{
         Symbol result = getCurrentQuad().result();
         Register primary = this.popTemporaryIntoPrimary();
         this.addInstruction(OperationType.getMoveOpFromType(result.type), new Address<>(Register.getPrimaryRegisterFromDataType(result.type)), new Address<>(primary, true));
-        this.addTemporary(result);
-    }
-    private void calculateIndex(DataType pointerType) throws CompileException {
-        popTemporaryIntoPrimary();
-        popTemporaryIntoSecondary();
-
-        int size = symbolTable.getStructSize(pointerType.getTypeFromPointer());
-        this.addInstruction(OperationType.IMUL, new Address<>(Register.PRIMARY_GENERAL_REGISTER), new Address<>(size));
-        this.addInstruction(OperationType.ADD, new Address<>(Register.PRIMARY_GENERAL_REGISTER), new Address<>(Register.SECONDARY_GENERAL_REGISTER));
+        this.addTemporary(result.type);
     }
     private void createIndex() throws CompileException {
         Quad current = getCurrentQuad();
         Symbol result = current.result();
-        DataType pointerType = current.operand1().type;
-        this.calculateIndex(pointerType);
+
+        popTemporaryIntoPrimary();
+        popTemporaryIntoSecondary();
+        this.createPointerArithmetic(current.operand1().type);
+
         if(current.op() == QuadOp.INDEX){
             OperationType operationType = result.type.isStruct() ? OperationType.LEA : OperationType.getMoveOpFromType(result.type);
             this.addInstruction(operationType, new Address<>(Register.getPrimaryRegisterFromDataType(result.type)), new Address<>(Register.PRIMARY_GENERAL_REGISTER, true));
         }
-        this.addTemporary(result);
+        this.addTemporary(result.type);
     }
     private void createLoadMember() throws CompileException {
         Quad current = this.getCurrentQuad();
@@ -495,7 +435,7 @@ public class IntelCodeGenerator implements CodeGenerator{
         this.popTemporaryIntoPrimary();
         OperationType operationType = (result.type.isStruct() || op == QuadOp.LOAD_MEMBER_POINTER) ? OperationType.LEA : OperationType.getMoveOpFromType(result.type);
         this.addInstruction(operationType, new Address<>(Register.getPrimaryRegisterFromDataType(result.type)), new Address<>(Register.RAX, true, member.getOffset()));
-        this.addTemporary(result);
+        this.addTemporary(result.type);
     }
     public void addExternalParameter(ArgumentSymbol argumentSymbol) {
         TemporaryStackVariable param = this.temporaryStack.peekVariable();
@@ -511,9 +451,7 @@ public class IntelCodeGenerator implements CodeGenerator{
     public void moveStruct(ArgumentSymbol argument){
         popIntoRegister(Register.RSI);
         this.addInstruction(OperationType.LEA, new Address<>(Register.RDI), new Address<>(Register.RSP, true, argument.getOffset()));
-
-        int structSize = SymbolTable.getStructSize(symbolTable.getStructs(), argument.type);
-        this.createMovSB(structSize);
+        this.createMovSB(argument.type);
     }
     private void createArgument() throws CompileException {
         Quad current = this.getCurrentQuad();
@@ -529,9 +467,6 @@ public class IntelCodeGenerator implements CodeGenerator{
             }
         }
     }
-    private void convert(OperationType op, Register dest, Register source){
-        this.addInstruction(op, new Address<>(dest), new Address<>(source));
-    }
     private void createConvert() throws CompileException {
         Quad current = getCurrentQuad();
         Symbol dest = current.operand1();
@@ -544,13 +479,11 @@ public class IntelCodeGenerator implements CodeGenerator{
         OperationType convert = OperationType.getConvertOpFromType(dest.type, result.type);
         Register target = Register.getMinimumConvertTarget(convert, result.type);
         Register source = Register.getMinimumConvertSource(convert, dest.type);
-        this.convert(convert, target, source);
-        addTemporary(result);
+        this.addInstruction(convert, new Address<>(target), new Address<>(source));
+        addTemporary(result.type);
     }
     private void createReturn() throws CompileException {
-        Quad current = this.getCurrentQuad();
-        Symbol result = current.result();
-        if(result != null){
+        if(this.getCurrentQuad().result() != null){
             this.popTemporaryIntoPrimary();
         }
         this.addEpilogue();
