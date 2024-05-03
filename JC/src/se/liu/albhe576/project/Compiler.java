@@ -38,8 +38,6 @@ public class Compiler {
         // Intermediate code generation
         final Map<String, QuadList> functionQuads = this.generateIntermediate();
 
-        Optimizer.optimizeIntermediates(functionQuads.values());
-
         Map<String, List<Instruction>> functionInstructions = new HashMap<>();
         for(Map.Entry<String, QuadList> function : functionQuads.entrySet()){
             List<Instruction> instructions = this.codeGenerator.generateInstructions(function.getValue(), function.getKey());
