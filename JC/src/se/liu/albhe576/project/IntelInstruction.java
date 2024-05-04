@@ -1,7 +1,6 @@
 package se.liu.albhe576.project;
 
 public class IntelInstruction extends Instruction{
-
     private final Operand op;
     private final Operand destination;
     private final Operand source;
@@ -16,7 +15,6 @@ public class IntelInstruction extends Instruction{
     public IntelInstruction(Operand op){
         this(op, null, null);
     }
-
     @Override
     String emit() {
         StringBuilder out = new StringBuilder(op.emit());
@@ -30,7 +28,7 @@ public class IntelInstruction extends Instruction{
     }
 
     @Override
-    boolean isRet() {
+    boolean isReturn() {
         return op.isRet();
     }
 }

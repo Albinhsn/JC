@@ -1,7 +1,6 @@
 package se.liu.albhe576.project;
 
 public class Address<T> extends Operand{
-
     private final T address;
     private final boolean effective;
     private final int offset;
@@ -17,7 +16,6 @@ public class Address<T> extends Operand{
     public Address(T address){
         this(address, false, 0);
     }
-
     @Override
     String emit() {
         if(effective){

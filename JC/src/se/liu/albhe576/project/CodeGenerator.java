@@ -5,5 +5,5 @@ import java.util.Map;
 
 public interface CodeGenerator {
     StringBuilder outputInstructions(Map<String, List<Instruction>> functions);
-    List<Instruction> generateInstructions(QuadList quads, String functionName) throws CompileException;
+    Map<String,List<Instruction>> generateInstructions(Map<String, QuadList> functionQuads) throws CompileException;
 }

@@ -5,8 +5,8 @@
 #extern float sqrt(float x)
 
 
-#include "resources/foo.jc"
-// #include "resources/tests.jc"
+// #include "resources/foo.jc"
+#include "resources/tests.jc"
 
 // grid.grid[0].x = 0
 // and and mod tests
@@ -16,13 +16,7 @@ struct B{
 }
 
 int main(){
-    int k = 6;
-    int *l = &k;
-    int x = (*l)++;
-    print_testi(x, 6, "(*l)++");
-    int y = l[0]++;
-    print_testi(y, 7, "l[0]++");
-    // run_tests();
+    run_tests();
 }
 
 

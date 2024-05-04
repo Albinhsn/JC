@@ -35,14 +35,9 @@ public class Compiler {
         return (alignmentInBytes - (stackSize % alignmentInBytes)) & (alignmentInBytes - 1);
     }
     public void compile(String fileName) throws CompileException, IOException{
-        // Intermediate code generation
         final Map<String, QuadList> functionQuads = this.generateIntermediate();
 
-        Map<String, List<Instruction>> functionInstructions = new HashMap<>();
-        for(Map.Entry<String, QuadList> function : functionQuads.entrySet()){
-            List<Instruction> instructions = this.codeGenerator.generateInstructions(function.getValue(), function.getKey());
-            functionInstructions.put(function.getKey(), instructions);
-        }
+        Map<String, List<Instruction>> functionInstructions = this.codeGenerator.generateInstructions(functionQuads);
         StringBuilder output = this.codeGenerator.outputInstructions(functionInstructions);
 
         FileWriter fileWriter = new FileWriter(fileName);

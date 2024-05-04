@@ -2,66 +2,12 @@ package se.liu.albhe576.project;
 
 import java.util.*;
 
+import static se.liu.albhe576.project.Register.*;
+import static se.liu.albhe576.project.OperationType.*;
+
 public class IntelCodeGenerator implements CodeGenerator{
-    public static final Register[] LINUX_FLOAT_PARAM_LOCATIONS = new Register[]{Register.XMM0, Register.XMM1, Register.XMM2, Register.XMM3, Register.XMM4, Register.XMM5, Register.XMM6, Register.XMM7};
-    public static final Register[] LINUX_GENERAL_PARAM_LOCATIONS = new Register[]{Register.RDI, Register.RSI, Register.RDX, Register.RCX, Register.R8, Register.R9};
-    private final SymbolTable symbolTable;
-    private QuadList quads;
-    private List<Instruction> instructions;
-    private int index;
-    private TemporaryVariableStack temporaryStack;
-    private boolean isAtEnd(){
-        return index >= this.quads.size();
-    }
-    private DataType getCurrentResult() throws CompileException {
-        return this.getCurrentQuad().result().type;
-    }
-    private DataType getCurrentDestination() throws CompileException {
-        return this.getCurrentQuad().operand1().type;
-    }
-    private Symbol getCurrentDestinationSymbol() throws CompileException {
-        return this.getCurrentQuad().operand1();
-    }
-    private QuadOp getCurrentOp() throws CompileException {
-        return this.getCurrentQuad().op();
-    }
-    private Quad getCurrentQuad() throws CompileException{
-        Quad out = this.quads.get(index);
-        if(out == null){
-            throw new CompileException("Can't get current at end?");
-        }
-        return out;
-    }
-    private void advance(){this.index++;}
-    public List<Instruction> generateInstructions(QuadList quads, String name) throws CompileException {
-        this.index              = 0;
-        this.quads              = quads;
-        this.instructions       = new ArrayList<>();
-        this.temporaryStack     = new TemporaryVariableStack(symbolTable, name);
 
-        this.addPrologue();
-        int allocateStackSpaceIndex = this.instructions.size();
-        while(!this.isAtEnd()){
-            if(!this.optimize()){
-                this.INSTRUCTION_GENERATION_MAP.get(this.getCurrentQuad().op()).generate();
-            }
-            advance();
-        }
-
-        int stackSpace  = -temporaryStack.getMaxOffset();
-        stackSpace += Compiler.getStackAlignment(stackSpace);
-        if(stackSpace != 0){
-            this.instructions.add(allocateStackSpaceIndex, new IntelInstruction(new Operation(OperationType.SUB), new Address<>(Register.RSP), new Address<>(stackSpace)));
-        }
-
-
-        if(!this.instructions.get(this.instructions.size() - 1).isRet()){
-            this.addEpilogue();
-            this.instructions.add(new IntelInstruction(new Operation(OperationType.RET)));
-        }
-        return this.instructions;
-    }
-    @FunctionalInterface private interface Generate{ void generate() throws CompileException;}
+    @FunctionalInterface private interface Generate{ void generate(Quad quad) throws CompileException;}
     private final Map<QuadOp, Generate> INSTRUCTION_GENERATION_MAP = Map.ofEntries(
             Map.entry(QuadOp.RET, this::createReturn),
             Map.entry(QuadOp.LABEL, this::createLabel),
@@ -109,218 +55,256 @@ public class IntelCodeGenerator implements CodeGenerator{
             Map.entry(QuadOp.LOAD, this::createLoad),
             Map.entry(QuadOp.STORE_ARRAY_ITEM, this::createStoreArrayItem)
     );
-    private void addInstruction(OperationType op, Register destRegister, Register sourceRegister){
-        Address<?> dest     = destRegister   == null ? null : new Address<>(destRegister);
-        Address<?> source   = sourceRegister == null ? null : new Address<>(sourceRegister);
+    public static final Register[] LINUX_FLOAT_PARAM_LOCATIONS      = new Register[]{XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7};
+    public static final Register[] LINUX_GENERAL_PARAM_LOCATIONS    = new Register[]{RDI, RSI, RDX, RCX, R8, R9};
+    private final SymbolTable symbolTable;
+    private List<Instruction> instructions;
+    private TemporaryVariableStack temporaryStack;
+    public Map<String, List<Instruction>> generateInstructions(Map<String, QuadList> functionQuads) throws CompileException {
+        final Map<String, List<Instruction>> functions = new HashMap<>();
+
+        for(Map.Entry<String, QuadList> function : functionQuads.entrySet()){
+            this.instructions       = new ArrayList<>();
+            this.temporaryStack     = new TemporaryVariableStack(symbolTable, function.getKey());
+
+            this.addPrologue();
+            final int allocateStackSpaceIndex = this.instructions.size();
+            for(Quad quad : function.getValue()){
+                this.INSTRUCTION_GENERATION_MAP.get(quad.op()).generate(quad);
+            }
+            if(!this.instructions.get(this.instructions.size() - 1).isReturn()){
+                this.addEpilogue();
+                this.instructions.add(new IntelInstruction(new Operation(RET)));
+            }
+
+            int stackSpace  = -1 * temporaryStack.getMaxOffset();
+            stackSpace += Compiler.getStackAlignment(stackSpace);
+            if(stackSpace != 0){
+                this.instructions.add(allocateStackSpaceIndex, new IntelInstruction(new Operation(SUB), new Address<>(RSP), new Immediate<>(stackSpace)));
+            }
+            functions.put(function.getKey(), this.instructions);
+        }
+
+        return functions;
+    }
+    private void addInstruction(OperationType op, Register dest){
+        this.instructions.add(new IntelInstruction(new Operation(op), new Address<>(dest), null));
+    }
+    private void addInstruction(OperationType op, Operand dest){
+        this.instructions.add(new IntelInstruction(new Operation(op), dest, null));
+    }
+    private void addInstruction(OperationType op, Operand dest, Register source){
+        this.instructions.add(new IntelInstruction(new Operation(op), dest, new Address<>(source)));
+    }
+    private void addInstruction(OperationType op, Register destRegister, Operand source){
+        Address<?> dest     = destRegister == null ? null : new Address<>(destRegister);
         this.instructions.add(new IntelInstruction(new Operation(op), dest, source));
+    }
+    private void addInstruction(OperationType op, Register dest, Register source){
+        this.instructions.add(new IntelInstruction(new Operation(op), new Address<>(dest), new Address<>(source)));
     }
     private void addInstruction(OperationType op, Operand dest, Operand source){
         this.instructions.add(new IntelInstruction(new Operation(op), dest, source));
     }
-    public void addTemporary() throws CompileException {
-        DataType type           = this.getCurrentResult();
+    private void addTemporary(DataType type) throws CompileException {
         type                    = type.isStruct() ? type.getPointerFromType() : type;
-        int offset              = this.temporaryStack.pushVariable(type);
-        OperationType moveOp    = Operation.getMoveOpFromType(type);
-        this.addInstruction(moveOp, new Address<>(Register.RBP, true, offset), new Address<>(Register.getPrimaryRegisterFromDataType(type)));
+        int offset              = this.temporaryStack.push(type);
+        OperationType  moveOp        = Operation.getMoveOpFromType(type);
+        this.addInstruction(moveOp, this.getEffectiveAddress(RBP, offset), new Address<>(getPrimaryRegisterFromDataType(type)));
     }
-    public Register popTemporaryIntoSecondary(){
-        TemporaryStackVariable value    = this.temporaryStack.peekVariable();
-        Register secondary              = Register.getSecondaryRegisterFromDataType(value.type());
+    private Register popTemporaryIntoSecondary() throws CompileException {
+        TemporaryVariable value    = this.temporaryStack.peek();
+        Register secondary = getSecondaryRegisterFromDataType(value.type());
         popIntoRegister(secondary);
         if(value.type().isInteger() && !(value.type().isLong() || value.type().isInt())){
-            this.createSignExtend(Register.SECONDARY_GENERAL_REGISTER, secondary);
+            this.createSignExtend(SECONDARY_GENERAL_REGISTER, new Address<>(secondary));
         }
         return secondary;
     }
-    public OperationType popIntoRegister(Register primary){
-        TemporaryStackVariable variable = this.temporaryStack.popVariable();
-        Operation moveOp                = new Operation(Operation.getMoveOpFromType(variable.type()));
-        this.instructions.add(new IntelInstruction(moveOp, new Address<>(primary), new Address<>(Register.RBP, true, variable.offset())));
-        return moveOp.getType();
+    private OperationType popIntoRegister(Register primary){
+        TemporaryVariable variable = this.temporaryStack.pop();
+        OperationType moveOp                = Operation.getMoveOpFromType(variable.type());
+        this.addInstruction(moveOp, primary, this.getEffectiveAddress(RBP, variable.offset()));
+        return moveOp;
     }
-    private void createSignExtend(Register dest, Register source){
-        this.instructions.add(new IntelInstruction(new Operation(OperationType.MOVSX), new Address<>(dest), new Address<>(source)));
+    private void createSignExtend(Register dest, Operand source){
+        this.addInstruction(MOVSX, dest, source);
     }
-    public Register popTemporaryIntoPrimary(){
-        TemporaryStackVariable variable = this.temporaryStack.peekVariable();
-        Register primary                = Register.getPrimaryRegisterFromDataType(variable.type());
+    private Register popTemporaryIntoPrimary() throws CompileException {
+        TemporaryVariable variable = this.temporaryStack.peek();
+        Register primary       = getPrimaryRegisterFromDataType(variable.type());
         OperationType lastOp            = this.popIntoRegister(primary);
-        if(lastOp != OperationType.MOVSX && variable.type().isInteger() && !(variable.type().isLong() || variable.type().isInt())){
-            this.createSignExtend(Register.RAX, primary);
+        if(lastOp != MOVSX && variable.type().isInteger() && !(variable.type().isLong() || variable.type().isInt())){
+            this.createSignExtend(RAX, new Address<>(primary));
         }
         return primary;
     }
-    private void createBinary() throws CompileException {
-        QuadOp currentOp     = this.getCurrentOp();
-        DataType result      = this.getCurrentResult();
-        Register secondary   = this.popTemporaryIntoSecondary();
-        Register primary     = this.popTemporaryIntoPrimary();
+    private void createBinary(Quad quad) throws CompileException {
+        DataType result        = quad.result().type;
+        Register secondary     = this.popTemporaryIntoSecondary();
+        Register primary       = this.popTemporaryIntoPrimary();
+        OperationType  op      = getOpFromResultType(quad.op(), result);
 
-        if(currentOp == QuadOp.DIV && result.isInteger()){
+        if(quad.op()== QuadOp.DIV && result.isInteger()){
             this.createIntegerDivision();
-        } else if(currentOp == QuadOp.MUL && result.isInteger()){
-            this.addInstruction(OperationType.MUL, secondary, null);
+        } else if(quad.op() == QuadOp.MUL && result.isInteger()){
+            this.addInstruction(op, new Address<>(secondary));
         } else{
-            OperationType op = OperationType.getOpFromResultType(currentOp, result);
             this.addInstruction(op, primary, secondary);
         }
-        this.addTemporary();
+        this.addTemporary(result);
     }
-    private void createLabel() throws CompileException {
-        this.instructions.add(new IntelInstruction(new Label(this.getCurrentDestinationSymbol().name)));
+    private void createLabel(Quad quad) {
+        this.instructions.add(new IntelInstruction(new Label(quad.operand1().name)));
     }
-    private void createJmp() throws CompileException {
-        this.instructions.add(new IntelInstruction(new Operation(OperationType.JMP), new Address<>(this.getCurrentDestinationSymbol().name)));
+    private void createJmp(Quad quad) {
+        this.instructions.add(new IntelInstruction(new Operation(JMP), new Immediate<>(quad.operand1().name)));
     }
-    private void createCast() {}
-    private void createShift() throws CompileException {
-        OperationType op    = OperationType.getBinaryOpFromQuadOp(this.getCurrentQuad().op());
+    private void createCast(Quad quad) {}
+    private void createShift(Quad quad) throws CompileException {
+        OperationType   op   = getBinaryOpFromQuadOp(quad.op());
         this.popTemporaryIntoSecondary();
         Register primary     = this.popTemporaryIntoPrimary();
-        this.addInstruction(op, primary, Register.CL);
-        this.addTemporary();
+        this.addInstruction(op, primary, CL);
+        this.addTemporary(quad.result().type);
     }
     private void createIntegerDivision(){
-        this.addInstruction(OperationType.XOR, new Address<>(Register.RDX), new Address<>(Register.RDX));
-        this.addInstruction(OperationType.IDIV, new Address<>(Register.SECONDARY_GENERAL_REGISTER), null);
+        this.addInstruction(XOR, RDX, RDX);
+        this.addInstruction(IDIV, SECONDARY_GENERAL_REGISTER);
     }
-    private void createMod() throws CompileException {
-        DataType type = this.getCurrentResult();
+    private void createMod(Quad quad) throws CompileException {
+        DataType type = quad.result().type;
         this.popTemporaryIntoSecondary();
         this.popTemporaryIntoPrimary();
         this.createIntegerDivision();
-        this.createMovePrimary(type, new Address<>(Register.getThirdRegisterFromDataType(type)));
-        this.addTemporary();
+        this.createMoveIntoPrimary(type, new Address<>(getThirdRegisterFromDataType(type)));
+        this.addTemporary(type);
     }
     private void createPostfixFloat(OperationType op, DataType result, boolean post) throws CompileException {
         this.setupPostfixFloat(result);
         op = op.convertToFloatingPoint(result);
         if(post){
-            this.addTemporary();
+            this.addTemporary(result);
             this.immediateArithmeticFloat(op, result);
         }else{
             this.immediateArithmeticFloat(op, result);
-            this.addTemporary();
+            this.addTemporary(result);
         }
     }
-    private void createInc() throws CompileException {
-        Quad current = this.getCurrentQuad();
-        DataType result = this.getCurrentResult();
-        OperationType op    = OperationType.getBinaryOpFromQuadOp(current.op());
-        boolean post = current.op() == QuadOp.POST_INC;
+    private void createInc(Quad quad) throws CompileException {
+        DataType result = quad.result().type;
+        OperationType op    = getBinaryOpFromQuadOp(quad.op());
+        boolean post = quad.op() == QuadOp.POST_INC;
         if(result.isFloatingPoint()){
             this.createPostfixFloat(op, result, post);
         }else{
-            OperationType pointerOp = op == OperationType.INC ? OperationType.ADD : OperationType.SUB;
+            OperationType pointerOp = op == INC ? ADD : SUB;
             this.createPostfixInt(op, pointerOp, post, result);
         }
     }
-    public void immediateArithmeticFloat(OperationType arithmeticOp, DataType result){
+
+    private void immediateArithmeticFloat(OperationType arithmeticOp, DataType result){
         OperationType moveOp = Operation.getMoveOpFromType(result);
-        this.addInstruction(arithmeticOp, Register.PRIMARY_SSE_REGISTER, Register.SECONDARY_SSE_REGISTER);
-        this.addInstruction(moveOp, new Address<>(Register.RAX, true), new Address<>(Register.PRIMARY_SSE_REGISTER));
+        this.addInstruction(arithmeticOp, PRIMARY_SSE_REGISTER, SECONDARY_SSE_REGISTER);
+        this.addInstruction(moveOp, this.getEffectiveAddress(RAX), PRIMARY_SSE_REGISTER);
     }
-    public void createPostfixInt(OperationType op, OperationType pointerOp, boolean post, DataType target) throws CompileException {
+    private void createPostfixInt(OperationType op, OperationType pointerOp, boolean post, DataType target) throws CompileException {
         this.popTemporaryIntoSecondary();
-        this.createMovePrimary(target, new Address<>(Register.RCX, true));
+        this.createMoveIntoPrimary(target, this.getEffectiveAddress(RCX));
 
         if(post){
-            this.addTemporary();
+            this.addTemporary(target);
         }
 
-        Address<?> primary = new Address<>(Register.getPrimaryRegisterFromDataType(target));
+        Address<?> primary = new Address<>(getPrimaryRegisterFromDataType(target));
         if(target.isPointer()){
             int pointerSize = target.getTypeFromPointer().getSize();
-            this.addInstruction(pointerOp, primary, new Address<>(pointerSize));
+            this.addInstruction(pointerOp, primary, new Immediate<>(pointerSize));
         }else{
-            this.addInstruction(op, primary, null);
+            this.addInstruction(op, primary);
         }
-        this.createMove(DataType.getInt(), new Address<>(Register.RCX, true), primary);
+        this.createMove(DataType.getInt(), this.getEffectiveAddress(RCX), primary);
 
         if(!post){
-            this.addTemporary();
+            this.addTemporary(target);
         }
     }
-    public void setupPostfixFloat(DataType result) {
+    private void setupPostfixFloat(DataType result) throws CompileException {
         this.popTemporaryIntoPrimary();
-        this.createMovePrimary(result, new Address<>(Register.RAX, true));
-        this.createMove(DataType.getInt(), new Address<>(Register.SECONDARY_GENERAL_REGISTER), new Address<>(1));
+        this.createMoveIntoPrimary(result, this.getEffectiveAddress(RAX));
+        this.createMove(DataType.getInt(), new Address<>(SECONDARY_GENERAL_REGISTER), new Immediate<>(1));
 
-        OperationType convertOp = result.isDouble() ? OperationType.CVTSI2SD : OperationType.CVTSI2SS;
-        this.addInstruction(convertOp, Register.SECONDARY_SSE_REGISTER, Register.SECONDARY_GENERAL_REGISTER);
+        OperationType convertOp = result.isDouble() ? CVTSI2SD : CVTSI2SS;
+        this.addInstruction(convertOp, SECONDARY_SSE_REGISTER, SECONDARY_GENERAL_REGISTER);
     }
-    private void createNegate() throws CompileException {
+    private void createNegate(Quad quad) throws CompileException {
         Register primary    = this.popTemporaryIntoPrimary();
-        this.addInstruction(OperationType.NOT, primary, null);
-        this.addInstruction(OperationType.INC, primary, null);
-        this.addTemporary();
+        this.addInstruction(NOT, primary);
+        this.addInstruction(INC, primary);
+        this.addTemporary(quad.result().type);
     }
 
-    public void createCompare(OperationType compareOp, OperationType setOp, Register left, Address<?> right){
-        this.addInstruction(compareOp, new Address<>(left), right);
-        this.addInstruction(setOp, Register.AL, null);
+    private void createCompare(OperationType compareOp, OperationType setOp, Register left, Operand right){
+        this.addInstruction(compareOp, left, right);
+        this.addInstruction(setOp, new Address<>(AL));
     }
     private void createLabel(String label){
         this.instructions.add(new IntelInstruction(new Label(label), null, null));
     }
-    private void createLogical() throws CompileException {
+    private void createLogical(Quad quad) throws CompileException {
         Register right  = popTemporaryIntoSecondary();
         Register left   = popTemporaryIntoPrimary();
-        Quad current    = this.getCurrentQuad();
 
-        int firstRegister = current.op() == QuadOp.LOGICAL_OR ? 1 : 0;
+        // Rename
+        int firstRegister = quad.op() == QuadOp.LOGICAL_OR ? 1 : 0;
 
-        this.addInstruction(OperationType.CMP, new Address<>(left), new Address<>(firstRegister));
+        this.addInstruction(CMP, left, new Immediate<>(firstRegister));
         String mergeLabel        = symbolTable.generateLabel().name;
 
-        this.addInstruction(OperationType.JE, new Address<>(mergeLabel), null);
-        this.createCompare(OperationType.CMP, OperationType.SETE, right, new Address<>(1));
+        this.addInstruction(JE, new Immediate<>(mergeLabel));
+        this.createCompare(CMP, SETE, right, new Immediate<>(1));
         this.createLabel(mergeLabel);
-        this.addTemporary();
+        this.addTemporary(quad.result().type);
     }
-    private void createComparison() throws CompileException {
-        Register right      = popTemporaryIntoSecondary();
-        Register left       = popTemporaryIntoPrimary();
-        OperationType op    = OperationType.getOpFromResultType(this.getCurrentOp(), this.getCurrentResult());
-        DataType destination = this.getCurrentDestination();
+    private void createComparison(Quad quad) throws CompileException {
+        Register right          = popTemporaryIntoSecondary();
+        Register left           = popTemporaryIntoPrimary();
+        OperationType op        = getOpFromResultType(quad.op(), quad.result().type);
+        DataType destination    = quad.operand1().type;
 
         if(destination.isFloatingPoint()){
             op = op.convertToFloat();
         }
 
-        OperationType cmpOp = OperationType.getCmpOpFromType(destination);
+        OperationType cmpOp = getCmpOpFromType(destination);
         createCompare(cmpOp, op, left, new Address<>(right));
-        this.addTemporary();
+        this.addTemporary(quad.result().type);
     }
-    private void createNotFloat() throws CompileException {
+    private void createNotFloat(DataType resultType) throws CompileException {
         Register primary        = this.popTemporaryIntoPrimary();
-        this.createMovePrimary(DataType.getInt(), new Address<>(0));
+        this.createMoveIntoPrimary(DataType.getInt(), new Immediate<>(0));
 
-        DataType resultType     = this.getCurrentResult();
-        OperationType op        = OperationType.getCmpOpFromType(resultType);
-        OperationType convertOp = OperationType.getConvertOpFromType(DataType.getInt(), resultType);
+        OperationType op        = getCmpOpFromType(resultType);
+        OperationType convertOp = getConvertOpFromType(DataType.getInt(), resultType);
 
-        this.addInstruction(convertOp, Register.SECONDARY_SSE_REGISTER, Register.RAX);
-        this.createCompare(op, OperationType.SETE, primary, new Address<>(Register.SECONDARY_SSE_REGISTER));
+        this.addInstruction(convertOp, SECONDARY_SSE_REGISTER, RAX);
+        this.createCompare(op, SETE, primary, new Address<>(SECONDARY_SSE_REGISTER));
     }
-    private void createNot() throws CompileException {
-        if(this.getCurrentResult().isFloatingPoint()){
-            this.createNotFloat();
+    private void createNot(Quad quad) throws CompileException {
+        if(quad.result().type.isFloatingPoint()){
+            this.createNotFloat(quad.result().type);
         }else{
             Register primary = this.popTemporaryIntoPrimary();
-            this.createCompare(OperationType.CMP, OperationType.SETE, primary, new Address<>(0));
+            this.createCompare(CMP, SETE, primary, new Immediate<>(0));
         }
-        this.addTemporary();
+        this.addTemporary(quad.result().type);
     }
-    public void deallocateStackSpace(int space){
-        this.addInstruction(OperationType.ADD, new Address<>(Register.RSP), new Address<>(space));
+    private void deallocateStackSpace(int space){
+        this.addInstruction(ADD, RSP, new Immediate<>(space));
     }
-    private void createCall() throws CompileException {
-        Quad current = this.getCurrentQuad();
-
-        ImmediateSymbol stackSizeImmediate = (ImmediateSymbol) current.operand2();
-        this.addInstruction(OperationType.CALL, new Address<>(current.operand1().name), null);
+    private void createCall(Quad quad) throws CompileException {
+        ImmediateSymbol stackSizeImmediate = (ImmediateSymbol) quad.operand2();
+        this.addInstruction(CALL, new Immediate<>(quad.operand1().name));
 
         int stackSize    = Integer.parseInt(stackSizeImmediate.getValue());
         stackSize       += Compiler.getStackAlignment(stackSize);
@@ -328,8 +312,8 @@ public class IntelCodeGenerator implements CodeGenerator{
             this.deallocateStackSpace(stackSize);
         }
 
-        if(!current.result().type.isVoid()){
-            this.addTemporary();
+        if(!quad.result().type.isVoid()){
+            this.addTemporary(quad.result().type);
         }
     }
     private Address<?> getImmediate(ImmediateSymbol immediateSymbol, DataType result){
@@ -339,216 +323,190 @@ public class IntelCodeGenerator implements CodeGenerator{
         }
         return new Address<>(immediateSymbol.getValue());
     }
-    private void createMove(DataType destinationType, Address<?> destination, Address<?> source){
-        this.addInstruction(OperationType.getMoveOpFromType(destinationType), destination, source);
+    private void createMove(DataType destinationType, Address<?> destination, Operand source){
+        this.addInstruction(getMoveOpFromType(destinationType), destination, source);
     }
-    private void createMovePrimary(DataType destinationType, Address<?> source){
-        this.createMove(destinationType, new Address<>(Register.getPrimaryRegisterFromDataType(destinationType)), source);
+    private void createMoveIntoPrimary(DataType destinationType, Operand source) throws CompileException {
+        this.createMove(destinationType, new Address<>(getPrimaryRegisterFromDataType(destinationType)), source);
     }
-    private void createLoadImmediate() throws CompileException {
-        DataType result                     = getCurrentResult();
-        Address<?> immediate                = getImmediate((ImmediateSymbol) getCurrentDestinationSymbol(), result);
+    private void createLoadImmediate(Quad quad) throws CompileException {
+        DataType result                     = quad.result().type;
+        Address<?> immediate                = getImmediate((ImmediateSymbol) quad.operand1(), result);
 
-        this.createMovePrimary(result, immediate);
-        this.addTemporary();
+        this.createMoveIntoPrimary(result, immediate);
+        this.addTemporary(result);
     }
-    private void createLoad() throws CompileException {
-        Quad current            = getCurrentQuad();
-        VariableSymbol variable = (VariableSymbol) current.operand1();
-        DataType result         = getCurrentResult();
+    private void createLoad(Quad quad) throws CompileException {
+        VariableSymbol variable = (VariableSymbol) quad.operand1();
+        DataType result         = quad.result().type;
 
-        Address<?> source = new Address<>(Register.RBP, true, variable.offset);
-        if(variable.type.isStruct() || current.op() == QuadOp.LOAD_POINTER){
-            this.addInstruction(OperationType.LEA, new Address<>(Register.getPrimaryRegisterFromDataType(result)), source);
+        Address<?> source = this.getEffectiveAddress(RBP, variable.offset);
+        if(variable.type.isStruct() || quad.op() == QuadOp.LOAD_POINTER){
+            this.createLoadEffectiveAddress(getPrimaryRegisterFromDataType(result), source);
         }else{
-            this.createMovePrimary(variable.type, source);
+            this.createMoveIntoPrimary(variable.type, source);
         }
-        this.addTemporary();
+        this.addTemporary(result);
     }
-    private Address<?> getStackVariableAddress(int offset){
-        return new Address<>(Register.RBP, true, offset);
+    private Address<?> getEffectiveAddress(Register register){
+        return new Address<>(register, true, 0);
     }
-    private void createStoreArrayItem() throws CompileException {
-        Quad current                = getCurrentQuad();
-        ArrayItemSymbol arraySymbol = (ArrayItemSymbol) current.operand1();
+    private Address<?> getEffectiveAddress(Register register, int offset){
+        return new Address<>(register, true, offset);
+    }
+    private void createLoadEffectiveAddress(Register destination, Address<?> source){
+        this.addInstruction(LEA, destination, source);
+    }
+    private void createStoreArrayItem(Quad quad) throws CompileException {
+        ArrayItemSymbol arraySymbol = (ArrayItemSymbol) quad.operand1();
         ArrayDataType arrayDataType = (ArrayDataType)   arraySymbol.type;
 
-        Address<?> stackAddress = this.getStackVariableAddress(arraySymbol.offset + arraySymbol.getOffset());
+        Address<?> stackAddress = this.getEffectiveAddress(RBP, arraySymbol.offset + arraySymbol.getOffset());
         if(arrayDataType.itemType.isStruct()){
-            this.popIntoRegister(Register.RSI);
-            this.addInstruction(OperationType.LEA, new Address<>(Register.RDI), stackAddress);
+            this.popIntoRegister(RSI);
+            this.createLoadEffectiveAddress(RDI, stackAddress);
             this.createMovSB(arrayDataType.itemType);
         }else{
             this.popTemporaryIntoPrimary();
-            OperationType moveOp = OperationType.getMoveOpFromType(arrayDataType.itemType);
-            this.addInstruction(moveOp, stackAddress, new Address<>(Register.getPrimaryRegisterFromDataType(arrayDataType.itemType)));
+            OperationType moveOp = getMoveOpFromType(arrayDataType.itemType);
+            this.addInstruction(moveOp, stackAddress, getPrimaryRegisterFromDataType(arrayDataType.itemType));
         }
 
     }
     private void addPrologue(){
-        this.addInstruction(OperationType.PUSH, Register.RBP, null);
-        this.addInstruction(OperationType.MOV, Register.RBP, Register.RSP);
+        this.addInstruction(PUSH, RBP);
+        this.addInstruction(MOV, RBP, RSP);
     }
     private void addEpilogue(){
-        this.addInstruction(OperationType.MOV, Register.RSP, Register.RBP);
-        this.addInstruction(OperationType.POP, Register.RBP, null);
+        this.addInstruction(MOV, RSP, RBP);
+        this.addInstruction(POP, RBP);
     }
-    private void createIMul() throws CompileException {
-        Quad current                    = this.getCurrentQuad();
-        ImmediateSymbol immediateSymbol = (ImmediateSymbol) current.operand2();
+    private void createIMul(Quad quad) throws CompileException {
+        ImmediateSymbol immediateSymbol = (ImmediateSymbol) quad.operand2();
         Register primary                = this.popTemporaryIntoPrimary();
-        this.addInstruction(OperationType.IMUL, new Address<>(primary), new Address<>(immediateSymbol.getValue()));
-        this.addTemporary();
+        this.addInstruction(IMUL, primary, new Immediate<>(immediateSymbol.getValue()));
+        this.addTemporary(quad.result().type);
     }
-    public void createMovSB(DataType structType){
+    private void createMovSB(DataType structType){
         int immediate = SymbolTable.getStructSize(symbolTable.getStructs(), structType);
-        this.addInstruction(OperationType.MOV, new Address<>(Register.RCX), new Address<>(immediate));
-        this.addInstruction(OperationType.REP, new Address<>(Register.MOVSB), null);
+        this.addInstruction(MOV, RCX, new Immediate<>(immediate));
+        this.addInstruction(REP, new Operation(MOVSB));
     }
-    private void createAssign() throws CompileException {
-        Quad current        = this.getCurrentQuad();
-        DataType targetType = current.operand1().type;
+    private void createAssign(Quad quad) throws CompileException {
+        DataType targetType = quad.operand1().type;
         if(targetType.isStruct()){
-            popIntoRegister(Register.RDI);
-            popIntoRegister(Register.RSI);
+            popIntoRegister(RDI);
+            popIntoRegister(RSI);
             this.createMovSB(targetType);
         }else{
-            TemporaryStackVariable pointer  = this.temporaryStack.popVariable();
-            TemporaryStackVariable value    = this.temporaryStack.popVariable();
-            this.createMovePrimary(value.type(), this.getStackVariableAddress(value.offset()));
-            this.createMove(pointer.type(), new Address<>(Register.getSecondaryRegisterFromDataType(pointer.type())), this.getStackVariableAddress(pointer.offset()));
-            this.createMove(targetType, new Address<>(Register.RCX, true), new Address<>(Register.getPrimaryRegisterFromDataType(targetType)));
+            TemporaryVariable pointer  = this.temporaryStack.pop();
+            TemporaryVariable value    = this.temporaryStack.pop();
+            this.createMoveIntoPrimary(value.type(), this.getEffectiveAddress(RBP, value.offset()));
+            this.createMove(pointer.type(), new Address<>(getSecondaryRegisterFromDataType(pointer.type())), this.getEffectiveAddress(RBP, pointer.offset()));
+            this.createMove(targetType, this.getEffectiveAddress(RCX), new Address<>(getPrimaryRegisterFromDataType(targetType)));
         }
     }
-    private void createAllocate() throws CompileException {
-        Symbol immediateSymbol =  getCurrentQuad().operand1();
-        this.addInstruction(OperationType.SUB, new Address<>(Register.RSP), new Address<>(immediateSymbol.name));
+    private void createAllocate(Quad quad) {
+        Symbol immediateSymbol =  quad.operand1();
+        this.addInstruction(SUB, RSP, new Immediate<>(immediateSymbol.name));
     }
-    private void createJumpOnCondition() throws CompileException {
-        Symbol dest             = getCurrentQuad().operand1();
-        int jumpOnTrue          = getCurrentQuad().op() == QuadOp.JMP_T ? 1 : 0;
+    private void createJumpOnCondition(Quad quad) throws CompileException {
+        Symbol dest             = quad.operand1();
+        int jumpOnTrue          = quad.op() == QuadOp.JMP_T ? 1 : 0;
         popTemporaryIntoPrimary();
 
-        OperationType cmpOp = OperationType.getCmpOpFromType(dest.type);
-        this.addInstruction(cmpOp, new Address<>(Register.PRIMARY_GENERAL_REGISTER), new Address<>(jumpOnTrue));
-        this.addInstruction(OperationType.JE, new Address<>(dest.name), null);
+        OperationType cmpOp = getCmpOpFromType(dest.type);
+        this.addInstruction(cmpOp, PRIMARY_GENERAL_REGISTER, new Immediate<>(jumpOnTrue));
+        this.addInstruction(JE, new Immediate<>(dest.name));
     }
-    private void createDereference() throws CompileException {
-        DataType result     = this.getCurrentResult();
+    private void createDereference(Quad quad) throws CompileException {
+        DataType result     = quad.result().type;
         Register primary    = this.popTemporaryIntoPrimary();
-        this.createMovePrimary(result, new Address<>(primary, true));
-        this.addTemporary();
+        this.createMoveIntoPrimary(result, this.getEffectiveAddress(primary));
+        this.addTemporary(result);
     }
-    private void createIndex() throws CompileException {
-        Quad current = getCurrentQuad();
-        DataType target = current.result().type;
+    private void createIndex(Quad quad) throws CompileException {
+        DataType target = quad.result().type;
 
         popTemporaryIntoPrimary();
         popTemporaryIntoSecondary();
-        int size = symbolTable.getStructSize(current.operand1().type.getTypeFromPointer());
-        this.addInstruction(OperationType.IMUL, new Address<>(Register.PRIMARY_GENERAL_REGISTER), new Address<>(size));
-        this.addInstruction(OperationType.ADD, new Address<>(Register.PRIMARY_GENERAL_REGISTER), new Address<>(Register.SECONDARY_GENERAL_REGISTER));
+        int size = symbolTable.getStructSize(quad.operand1().type.getTypeFromPointer());
+        this.addInstruction(IMUL, PRIMARY_GENERAL_REGISTER, new Immediate<>(size));
+        this.addInstruction(ADD, PRIMARY_GENERAL_REGISTER, SECONDARY_GENERAL_REGISTER);
 
-        if(current.op() == QuadOp.INDEX){
-            OperationType operationType = target.isStruct() ? OperationType.LEA : OperationType.getMoveOpFromType(target);
-            this.addInstruction(operationType, new Address<>(Register.getPrimaryRegisterFromDataType(target)), new Address<>(Register.PRIMARY_GENERAL_REGISTER, true));
+        if(quad.op() == QuadOp.INDEX){
+            Register destination = getPrimaryRegisterFromDataType(target);
+            if(target.isStruct()){
+                this.createLoadEffectiveAddress(destination, this.getEffectiveAddress(PRIMARY_GENERAL_REGISTER));
+            }else{
+                this.createMove(target, new Address<>(destination), this.getEffectiveAddress(PRIMARY_GENERAL_REGISTER));
+            }
         }
-        this.addTemporary();
+
+        this.addTemporary(target);
     }
-    private void createLoadMember() throws CompileException {
-        DataType result             = getCurrentResult();
-        MemberSymbol member         = (MemberSymbol) getCurrentDestinationSymbol();
-        Address<?> memberAddress    = new Address<>(Register.PRIMARY_GENERAL_REGISTER, true, member.getOffset());
+    private void createLoadMember(Quad quad) throws CompileException {
+        DataType result             = quad.result().type;
+        MemberSymbol member         = (MemberSymbol) quad.operand1();
+        Address<?> memberAddress    = this.getEffectiveAddress(PRIMARY_GENERAL_REGISTER, member.getOffset());
 
         this.popTemporaryIntoPrimary();
-        if(result.isStruct() || getCurrentOp() == QuadOp.LOAD_MEMBER_POINTER){
-            this.addInstruction(OperationType.LEA, new Address<>(Register.PRIMARY_GENERAL_REGISTER), memberAddress);
+        if(result.isStruct() || quad.op() == QuadOp.LOAD_MEMBER_POINTER){
+            this.createLoadEffectiveAddress(PRIMARY_GENERAL_REGISTER, memberAddress);
         }else{
-            this.createMovePrimary(result, memberAddress);
+            this.createMoveIntoPrimary(result, memberAddress);
         }
-        this.addTemporary();
+        this.addTemporary(result);
     }
-    public void addExternalParameter(ArgumentSymbol argumentSymbol) {
-        TemporaryStackVariable param    = this.temporaryStack.peekVariable();
-        Register[] registers            = argumentSymbol.type.isFloatingPoint() ? LINUX_FLOAT_PARAM_LOCATIONS : LINUX_GENERAL_PARAM_LOCATIONS;
+    private void addExternalParameter(ArgumentSymbol argumentSymbol) throws CompileException {
+        TemporaryVariable param    = this.temporaryStack.peek();
+        Register[] registers = argumentSymbol.type.isFloatingPoint() ? LINUX_FLOAT_PARAM_LOCATIONS : LINUX_GENERAL_PARAM_LOCATIONS;
         popTemporaryIntoPrimary();
         if(argumentSymbol.getCount() >= registers.length){
-            this.addInstruction(OperationType.getMoveOpFromType(argumentSymbol.type), new Address<>(Register.RSP, true, argumentSymbol.getOffset()), new Address<>(Register.getPrimaryRegisterFromDataType(argumentSymbol.type)));
+            this.addInstruction(getMoveOpFromType(argumentSymbol.type), this.getEffectiveAddress(RSP, argumentSymbol.getOffset()), getPrimaryRegisterFromDataType(argumentSymbol.type));
         }else{
-            Register source = param.type().isFloatingPoint() ? Register.PRIMARY_SSE_REGISTER : Register.PRIMARY_GENERAL_REGISTER;
+            Register source = param.type().isFloatingPoint() ? PRIMARY_SSE_REGISTER : PRIMARY_GENERAL_REGISTER;
             this.createMove(param.type(), new Address<>(registers[argumentSymbol.getCount()]), new Address<>(source));
         }
     }
-    public void moveStruct(ArgumentSymbol argument){
-        popIntoRegister(Register.RSI);
-        this.addInstruction(OperationType.LEA, new Address<>(Register.RDI), new Address<>(Register.RSP, true, argument.getOffset()));
+    private void moveStruct(ArgumentSymbol argument){
+        popIntoRegister(RSI);
+        this.createLoadEffectiveAddress(RDI, this.getEffectiveAddress(RSP, argument.getOffset()));
         this.createMovSB(argument.type);
     }
-    private void createArgument() throws CompileException {
-        Quad current = this.getCurrentQuad();
-        ArgumentSymbol argumentSymbol = (ArgumentSymbol) current.operand1();
-        if(current.operand1().type.isStruct()){
+    private void createArgument(Quad quad) throws CompileException {
+        ArgumentSymbol argumentSymbol = (ArgumentSymbol) quad.operand1();
+        if(quad.operand1().type.isStruct()){
             this.moveStruct(argumentSymbol);
         }else if(!argumentSymbol.getExternal()){
             this.popTemporaryIntoPrimary();
-            this.createMove(argumentSymbol.type, new Address<>(Register.RSP, true, argumentSymbol.getOffset()), new Address<>(Register.getPrimaryRegisterFromDataType(argumentSymbol.type)));
+            this.createMove(argumentSymbol.type, this.getEffectiveAddress(RSP, argumentSymbol.getOffset()), new Address<>(getPrimaryRegisterFromDataType(argumentSymbol.type)));
         }
         else{
             this.addExternalParameter(argumentSymbol);
         }
     }
-    private void createConvert() throws CompileException {
-        DataType dest     = getCurrentDestination();
-        DataType result = getCurrentResult();
+    private void createConvert(Quad quad) throws CompileException {
+        DataType dest       = quad.operand1().type;
+        DataType result     = quad.result().type;
         if(dest.isInteger() && result.isInteger() && dest.isSameType(DataType.getHighestDataTypePrecedence(dest, result))){
             return;
         }
         popTemporaryIntoPrimary();
 
-        OperationType convert   = OperationType.getConvertOpFromType(dest, result);
-        Register target         = Register.getMinimumConvertTarget(convert, result);
-        Register source         = Register.getMinimumConvertSource(convert, dest);
+        OperationType convert   = getConvertOpFromType(dest, result);
+        Register target         = getMinimumConvertTarget(convert, result);
+        Register source         = getMinimumConvertSource(convert, dest);
         this.addInstruction(convert, target, source);
-        this.addTemporary();
+        this.addTemporary(result);
     }
 
-    private void createReturn() throws CompileException {
-        if(this.getCurrentQuad().result() != null){
+    private void createReturn(Quad quad) throws CompileException {
+        if(quad.result() != null){
             this.popTemporaryIntoPrimary();
         }
         this.addEpilogue();
-        this.instructions.add(new IntelInstruction(new Operation(OperationType.RET)));
-    }
-
-    private boolean optimizeAssignment() throws CompileException {
-        final int matchCount = 2;
-        if(quads.size() - index < matchCount){
-            return false;
-        }
-
-        Quad current = this.getCurrentQuad();
-        if(current.op() != QuadOp.LOAD_POINTER){
-            return false;
-        }
-        index++;
-        VariableSymbol variable = (VariableSymbol) current.operand1();
-        int offset = variable.offset;
-
-        current = this.getCurrentQuad();
-        if(current.op() != QuadOp.ASSIGN || (current.result().type.isStruct())){
-            index--;
-            return false;
-        }
-        this.instructions.remove(this.instructions.size() - 1);
-
-        OperationType movOp = OperationType.getMoveOpFromType(getCurrentResult());
-        this.addInstruction(movOp, this.getStackVariableAddress(offset), new Address<>(Register.getPrimaryRegisterFromDataType(getCurrentResult())));
-
-        return true;
-    }
-
-    private boolean optimize() throws CompileException {
-        return optimizeAssignment();
+        this.instructions.add(new IntelInstruction(new Operation(RET)));
     }
 
     private void outputConstants(StringBuilder stringBuilder){

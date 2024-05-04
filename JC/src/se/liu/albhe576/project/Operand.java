@@ -5,7 +5,6 @@ public abstract class Operand {
     public String toString() {
         return emit();
     }
-
     protected boolean isRet(){
         return false;
     }
