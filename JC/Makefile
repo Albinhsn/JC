@@ -4,3 +4,6 @@ r:
 c:
 	java -jar ./out/artifacts/JC/JC.jar 
 
+
+len:
+	find . -name "*.java" | xargs wc -l 

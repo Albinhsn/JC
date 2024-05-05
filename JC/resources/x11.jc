@@ -73,6 +73,11 @@ struct x11_window{
   int window_root_id;
 }
 
+void debug_window(x11_window * window){
+	printf("fd: %d, font:%d, gc:%d window:%d, root:%d\n", window.fd, window.font_id, window.gc_id, window.window_id, window.window_root_id);
+}
+
+
 void write_i16_to_bytes(short x, byte * b){
     b[0] = x & 0xFF;
     b[1] = (x >> 8) & 0xFF;
@@ -228,7 +233,7 @@ void x11_redraw(int fd, int window_id){
     req[2] = 4;
     req[3] = 0;
 
-    write_i32_to_bytes(window_id, &req[4]); 
+    write_i32_to_bytes(window_id, &req[4]);
     req[8] = 0;
     req[9] = 0;
     req[10] = 0;
@@ -282,7 +287,8 @@ void x11_create_window(int fd, int new_window_id, int window_root_id, int root_v
 void x11_map_window(int fd, int window_id){
 
     byte * req = malloc(8);
-    write_i32_to_bytes(X11_OP_REQ_MAP_WINDOW | (2 << 16), req);
+    printf("mapping window: %d %d\n", fd, window_id);
+    write_i32_to_bytes(X11_OP_REQ_MAP_WINDOW | (2 << 16), &req[0]);
     write_i32_to_bytes(window_id, &req[4]);
 
     int written = write(fd, req, 8);
@@ -319,6 +325,8 @@ int set_fd_non_blocking(int fd){
 
 }
 
+
+
 struct Reply{
     byte * response;
     int code;
@@ -343,7 +351,7 @@ Reply poll_messages(int fd, int window_id, int gc_id){
     reply.response = 0;
     reply.code = 0;
     byte * req = malloc(32);
-    
+
     write_i32_to_bytes(fd, &req[0]);
     write_i32_to_bytes(POLLIN, &req[4]);
     write_i32_to_bytes(window_id, &req[16]);
@@ -353,7 +361,7 @@ Reply poll_messages(int fd, int window_id, int gc_id){
     if(res == 0){
       return reply;
     }
-    
+
     if(POLLERR == res){
       printf("Poll error!\n");
       reply.code = -1;
@@ -424,7 +432,7 @@ int x11_draw_rect(x11_window * window, short x, short y, short w, short h){
     return -1;
   }
   return 1;
-  
+
 }
 
 #define X11_OP_REQ_IMAGE_TEXT8 0x4c
@@ -452,7 +460,7 @@ int x11_draw_text(x11_window * window, string s, int s_length, int x, int y){
   for(int i = 16 + s_length; i < write_count; i++){
     req[i] = 0;
   }
-	
+
 
   int written = write(window.fd, req, write_count);
   free(req);
@@ -516,6 +524,7 @@ int create_x11_window(x11_window * window, int x, int y, int w, int h){
   x11_data data;
   init_data(&data, server_res, server_read);
   free(server_res);
+  printf("x11_data: mask: %d, id: %d, base: %d\n", data.id_mask, data.id, data.id_base);
 
   window.window_root_id = data.id;
   window.gc_id = x11_next_id(&data);
@@ -525,6 +534,9 @@ int create_x11_window(x11_window * window, int x, int y, int w, int h){
   x11_create_gc(window.fd, window.font_id, window.gc_id, window.window_root_id);
 
   window.window_id = x11_next_id(&data);
+  debug_window(&window);
+
+
   x11_create_window(window.fd, window.window_id, window.window_root_id, data.root_visual_id, x, y,w, h);
   x11_map_window(window.fd, window.window_id);
 
