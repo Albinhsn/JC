@@ -1,0 +1,52 @@
+
+struct Foo{
+    int a;
+    int b;
+}
+
+struct Foof{
+    float a;
+    float b;
+}
+struct Foob{
+    byte a;
+    byte b;
+}
+
+struct Bar{
+    int c;
+    Foo foo;
+}
+
+void print_testi(int got, int expected, string name){
+    if(got != expected){
+        printf("FAILED: got %d expected %d with %s\n", got, expected, name);
+    }
+}
+void print_tests(short got, short expected, string name){
+    if(got != expected){
+        printf("FAILED: got %d expected %d with %s\n", got, expected, name);
+    }
+}
+void print_testd(double got, double expected, string name){
+    if(got != expected){
+        printf("FAILED: got %lf expected %lf with %s\n", got, expected, name);
+    }
+}
+
+void print_testl(long got, long expected, string name){
+    if(got != expected){
+        printf("FAILED: got %ld expected %ld with %s\n", got, expected, name);
+    }
+}
+void print_testb(byte got, byte expected, string name){
+    if(got != expected){
+        printf("FAILED: got %d expected %d with %s\n", got, expected, name);
+    }
+}
+
+void print_testf(float got, float expected, string name){
+    if(got != expected){
+       printf("FAILED: got %lf expected %lf with %s\n", got, expected, name);
+    }
+}

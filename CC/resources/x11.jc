@@ -1,0 +1,549 @@
+
+
+#extern void * malloc(int size)
+#extern void  free(void * ptr)
+#extern void  printf(...)
+
+#extern int socket(int domain, int type, int protocol)
+#extern int connect(...)
+#extern int write(...)
+#extern int read(...)
+#extern int fcntl(...)
+#extern int poll(...)
+#extern int time(...)
+
+#define AF_UNIX 1
+#define SOCK_STREAM 1
+
+#define OPEN_FONT_NAME_BYTE_COUNT 5
+#define OPEN_FONT_PADDING 3
+#define OPEN_FONT_PACKET_U32_COUNT 5
+#define X11_OP_REQ_OPEN_FONT 0x2d
+
+#define X11_OP_REQ_MAP_WINDOW 0x08
+#define X11_OP_REQ_CREATE_GC 0x37
+#define X11_FLAG_GC_BG 0x00000004
+#define X11_FLAG_GC_FG 0x00000008
+#define X11_FLAG_GC_FONT 0x00004000
+#define X11_FLAG_GC_EXPOSE 0x00010000
+
+#define CREATE_GC_PACKET_FLAG_COUNT 3
+#define CREATE_GC_PACKET_U32_COUNT 7
+
+
+#define RED    0x00FF0000
+#define GREEN  0x0000FF00
+#define BLUE   0x000000FF
+#define CYAN   0x0000FFFF
+#define PURPLE 0x00FF00FF
+#define BLACK  0x00000000
+#define WHITE  0xFFFFFFFF
+#define GRAY   0x88888888
+
+
+#define X11_OP_REQ_CREATE_WINDOW 0x01
+#define X11_FLAG_WIN_BG_COLOR 0x00000002
+#define X11_EVENT_FLAG_KEY_RELEASE 0x0002
+#define X11_EVENT_FLAG_EXPOSURE 0x8000
+#define X11_FLAG_WIN_EVENT 0x00000800
+
+#define X11_EVENT_EXPOSURE 0xc
+
+#define CREATE_WINDOW_FLAG_COUNT 2
+#define CREATE_WINDOW_PACKET_U32_COUNT 10
+#define CREATE_WINDOW_BORDER 1
+#define CREATE_WINDOW_GROUP 1
+
+#define F_GETFL 3
+#define F_SETFL 4
+#define O_NONBLOCK 4000
+
+#define POLLIN 0x001
+#define POLLPRI 0x002
+#define POLLOUT 0x004
+#define POLLERR  0x008
+#define POLLHUP  0x010
+#define POLLNVAL 0x020
+
+struct x11_window{
+  int fd;
+  int font_id;
+  int gc_id;
+  int window_id;
+  int window_root_id;
+}
+
+void debug_window(x11_window * window){
+	printf("fd: %d, font:%d, gc:%d window:%d, root:%d\n", window.fd, window.font_id, window.gc_id, window.window_id, window.window_root_id);
+}
+
+
+void write_i16_to_bytes(short x, byte * b){
+    b[0] = x & 0xFF;
+    b[1] = (x >> 8) & 0xFF;
+}
+
+void place_int(long * numb, byte * b){
+    *numb = *(int*)b;
+}
+void place_short(short * numb, byte * b){
+    *numb = *(short*)b;
+}
+
+struct sockaddr_un{
+  byte * p;
+}
+
+void create_sockaddr_un(sockaddr_un * addr){
+
+  int len = 17;
+  string path = "/tmp/.X11-unix/X0";
+
+  addr.p = malloc(110);
+  addr.p[0] = AF_UNIX;
+  addr.p[1] = 0;
+
+  for(int i = 0; i < len; i++){
+    addr.p[i + 2] = path[i];
+  }
+  for(int i = len + 2; i < 110; i++){
+    addr.p[i] = 0;
+  }
+}
+
+struct x11_connection_req_t{
+    byte order;
+    byte pad1;
+    short major;
+    short minor;
+    short auto_proto;
+    short auth_data;
+    short pad2;
+}
+
+
+struct x11_data{
+    long id; // 32 bit
+    long id_base; // 32 bit
+    long id_mask;
+    long root_visual_id;
+}
+
+
+void init_data(x11_data * data, byte * res, int server_read){
+    // eax global id 0
+    // edi id_base 0x1c00000, 29360128
+    // edx id_mask 0x1fffff, 2097151
+
+    // id_base is offset 4, int
+    data.id_base = 0;
+    place_int(&data.id_base, &res[4]);
+
+    // id_mask is offset 8, int
+    data.id_mask = 0;
+    place_int(&data.id_mask, &res[8]);
+
+    // vendor length is offset 16, short
+    short vendor_length;
+    place_short(&vendor_length, &res[16]);
+
+    // number of formats, 21 offset, byte, is the size in bytes
+    byte formats = res[21] * 8;
+
+
+    // (32 + vendor length + 3) & -4 from start O
+    int offset = ((35 + vendor_length) & -4) + formats;
+
+    data.id = 0;
+    place_int(&data.id, &res[offset]);
+    data.root_visual_id = 0;
+    place_int(&data.root_visual_id, &res[offset + 32]);
+
+
+}
+
+int x11_next_id(x11_data * data){
+
+    int out =  data.id_mask & data.id | data.id_base;
+    data.id++;
+    return out;
+}
+
+void write_i32_to_bytes(int a, byte * b){
+    for(int i = 0; i < 4; i++){
+        b[i] = (a >> (i * 8));
+    }
+}
+
+int open_font(int fd, x11_data * data, int font_id){
+
+    byte * req = malloc(20);
+
+    // first 4 bytes are
+    int fst = X11_OP_REQ_OPEN_FONT | (OPEN_FONT_NAME_BYTE_COUNT << 16);
+    write_i32_to_bytes(fst, &req[0]);
+    write_i32_to_bytes(font_id, &req[4]);
+    write_i32_to_bytes(OPEN_FONT_NAME_BYTE_COUNT, &req[8]);
+
+    string fixed = "fixed";
+    for(int i = 0; i < 5; i++){
+        req[12 + i] = fixed[i];
+    }
+
+    int written = write(fd, req, 20);
+    return written == 20;
+}
+
+
+
+void x11_create_gc(int fd, int font_id, int gc_id, int window_root_id){
+    int create_gc_flags = X11_FLAG_GC_BG | X11_FLAG_GC_FG | X11_FLAG_GC_FONT;
+
+    byte * req = malloc(28);
+
+    int fst = X11_OP_REQ_CREATE_GC | (CREATE_GC_PACKET_U32_COUNT << 16);
+    write_i32_to_bytes(fst, &req[0]);
+
+    // Graphical context id
+    write_i32_to_bytes(gc_id, &req[4]);
+
+    // Window root id
+    write_i32_to_bytes(window_root_id, &req[8]);
+
+    write_i32_to_bytes(create_gc_flags, &req[12]);
+    write_i32_to_bytes(BLUE, &req[16]);
+    write_i32_to_bytes(0, &req[20]);
+    write_i32_to_bytes(font_id, &req[24]);
+
+
+    int written = write(fd, req, 28);
+    if(written != 28){
+        printf("Failed to write everything create gc!\n");
+        return;
+    }
+
+}
+
+#define X11_OP_REQ_CLEAR_AREA 61
+void x11_redraw(int fd, int window_id){
+    byte * req = malloc(16);
+
+    req[0] = X11_OP_REQ_CLEAR_AREA;
+    req[1] = 0;
+    req[2] = 4;
+    req[3] = 0;
+
+    write_i32_to_bytes(window_id, &req[4]);
+    req[8] = 0;
+    req[9] = 0;
+    req[10] = 0;
+    req[11] = 0;
+    req[12] = 0;
+    req[13] = 0;
+    req[14] = 0;
+    req[15] = 0;
+
+    int written = write(fd, req, 16);
+    if(written != 16){
+        printf("Failed to write redraw!\n");
+        return;
+    }
+
+    free(req);
+}
+
+
+void x11_create_window(int fd, int new_window_id, int window_root_id, int root_visual_id, short x, short y, short w, short h){
+
+    byte * req = malloc(40);
+
+    int fst = X11_OP_REQ_CREATE_WINDOW | (CREATE_WINDOW_PACKET_U32_COUNT << 16);
+    write_i32_to_bytes(fst, req);
+
+    write_i32_to_bytes(new_window_id, &req[4]);
+    write_i32_to_bytes(window_root_id, &req[8]);
+
+    write_i16_to_bytes(x, &req[12]);
+    write_i16_to_bytes(y, &req[14]);
+    write_i16_to_bytes(w, &req[16]);
+    write_i16_to_bytes(h, &req[18]);
+
+
+    write_i32_to_bytes(CREATE_WINDOW_GROUP | (CREATE_WINDOW_BORDER << 16), &req[20]);
+    write_i32_to_bytes(root_visual_id, &req[24]);
+    write_i32_to_bytes(X11_FLAG_WIN_BG_COLOR | X11_FLAG_WIN_EVENT, &req[28]);
+    write_i32_to_bytes(0, &req[32]);
+    write_i32_to_bytes(X11_EVENT_FLAG_KEY_RELEASE | X11_EVENT_FLAG_EXPOSURE, &req[36]);
+
+
+    int written = write(fd, req, 40);
+    if(written != 40){
+        printf("Failed to write create window!\n");
+        return;
+    }
+}
+
+
+void x11_map_window(int fd, int window_id){
+
+    byte * req = malloc(8);
+    printf("mapping window: %d %d\n", fd, window_id);
+    write_i32_to_bytes(X11_OP_REQ_MAP_WINDOW | (2 << 16), &req[0]);
+    write_i32_to_bytes(window_id, &req[4]);
+
+    int written = write(fd, req, 8);
+    if(written != 8){
+        printf("Failed to map window!\n");
+        return;
+    }
+
+}
+
+int connect_to_fd(int fd, byte * addr){
+  int res = connect(fd, addr, 110);
+  if(res < 0){
+    printf("Failed to connect!\n");
+    return 0;
+  }
+  return 1;
+}
+
+
+int set_fd_non_blocking(int fd){
+
+    int res = fcntl(fd, F_GETFL, 0);
+    if(res <= 0){
+        return 0;
+    }
+
+    res |= O_NONBLOCK;
+    res = fcntl(fd, F_SETFL, res);
+    if(res < 0){
+        return 0;
+    }
+    return 1;
+
+}
+
+
+
+struct Reply{
+    byte * response;
+    int code;
+}
+
+void read_reply(Reply * reply, int fd){
+
+    reply.response = malloc(32);
+    int res = read(fd, reply.response, 32);
+    if(res <= 1){
+        printf("Failed to read more then 1 in reply?\n");
+        reply.code = -1;
+        return;
+    }
+    reply.code = 1;
+}
+
+
+Reply poll_messages(int fd, int window_id, int gc_id){
+
+    Reply reply;
+    reply.response = 0;
+    reply.code = 0;
+    byte * req = malloc(32);
+
+    write_i32_to_bytes(fd, &req[0]);
+    write_i32_to_bytes(POLLIN, &req[4]);
+    write_i32_to_bytes(window_id, &req[16]);
+    write_i32_to_bytes(gc_id, &req[20]);
+
+    int res = poll(req, 1, 0);
+    if(res == 0){
+      return reply;
+    }
+
+    if(POLLERR == res){
+      printf("Poll error!\n");
+      reply.code = -1;
+      return reply;
+    }
+    if(POLLHUP == res){
+      printf("Poll hup!\n");
+      reply.code = -1;
+      return reply;
+    }
+
+    free(req);
+    read_reply(&reply, fd);
+    return reply;
+}
+
+#define X11_OP_REQ_CHANGE_GC 56
+void x11_change_color(int fd, int gc_id, int window_root_id, int font_id, int color){
+    int gc_flags = X11_FLAG_GC_BG;
+
+    byte * req = malloc(28);
+
+    int fst = X11_OP_REQ_CHANGE_GC | (4 << 16);
+    write_i32_to_bytes(fst, &req[0]);
+
+    // Graphical context id
+    write_i32_to_bytes(gc_id, &req[4]);
+
+    write_i32_to_bytes(gc_flags, &req[8]);
+    write_i32_to_bytes(color, &req[12]);
+
+
+    int write_count = 16;
+    int written = write(fd, req, write_count);
+    free(req);
+    if(written != write_count){
+        printf("Failed to write everything in change color!\n");
+        return;
+    }
+}
+
+#define X11_OP_REQ_POLY_RECTANGLE 70
+
+int x11_draw_rect(x11_window * window, short x, short y, short w, short h){
+  byte * req = malloc(1024);
+
+  // drawable and gc
+  write_i32_to_bytes(window.window_id, &req[4]);
+  write_i32_to_bytes(window.gc_id, &req[8]);
+
+  write_i16_to_bytes(x, &req[12]);
+  write_i16_to_bytes(y, &req[14]);
+  write_i16_to_bytes(w, &req[16]);
+  write_i16_to_bytes(h, &req[18]);
+
+  int packets = 5; // 3 + 2 * 1
+
+  int fst = (packets << 16) | X11_OP_REQ_POLY_RECTANGLE;
+  write_i32_to_bytes(fst, req);
+
+  int write_count = 4 * packets;
+
+  int written = write(window.fd, req, write_count);
+  free(req);
+
+  if(written != write_count){
+    printf("Failed to write when writing rect! %d out of %d\n", written, write_count);
+    return -1;
+  }
+  return 1;
+
+}
+
+#define X11_OP_REQ_IMAGE_TEXT8 0x4c
+int x11_draw_text(x11_window * window, string s, int s_length, int x, int y){
+
+  byte * req = malloc(1024);
+  write_i32_to_bytes(window.window_id, &req[4]);
+  write_i32_to_bytes(window.gc_id, &req[8]);
+
+  write_i16_to_bytes(x, &req[12]);
+  write_i16_to_bytes(y, &req[14]);
+
+  int count = (4-(s_length % 4)) % 4;
+  int packets = ((count + s_length) >> 2) + 4;
+
+  int fst = (packets << 16) | (s_length << 8) | X11_OP_REQ_IMAGE_TEXT8;
+  write_i32_to_bytes(fst, req);
+
+  for(int i = 0; i < s_length; i++){
+    req[16 + i] = s[i];
+  }
+
+
+  int write_count = 4 * packets;
+  for(int i = 16 + s_length; i < write_count; i++){
+    req[i] = 0;
+  }
+
+
+  int written = write(window.fd, req, write_count);
+  free(req);
+
+  if(written != write_count){
+    printf("Failed to write when writing text! %d out of %d\n", written, write_count);
+    return -1;
+  }
+  return 1;
+}
+
+void init_req(x11_connection_req_t * req){
+  req.order = 108; // 'l' in ascii
+  req.pad1 = 0;
+  req.major = 11;
+  req.minor = 0;
+  req.auto_proto = 0;
+  req.auth_data = 0;
+  req.pad2 = 0;
+}
+
+int create_x11_window(x11_window * window, int x, int y, int w, int h){
+  window.fd = socket(AF_UNIX, SOCK_STREAM, 0);
+
+  sockaddr_un addr;
+  create_sockaddr_un(&addr);
+
+  if(connect_to_fd(window.fd, addr.p) == 0){
+    return -1;
+  }
+
+  x11_connection_req_t req;
+  init_req(&req);
+
+  if(write(window.fd, &req, 12) != 12){
+    printf("failed to write connection req!\n");
+    return -1;
+  }
+
+  byte response[8];
+  int amount_read = read(window.fd, response, 8);
+  if(amount_read != 8){
+    printf("Didn't read the 8 bytes expected but %d!\n", amount_read);
+    return -1;
+  }
+
+  if(response[0] == 0){
+    printf("Failed to read?\n");
+    return -1;
+  }
+
+  int server_res_size = (1<<15) / 4;
+  byte * server_res = malloc(server_res_size);
+
+  int server_read = read(window.fd, server_res, server_res_size);
+
+  if(server_read <= 0){
+    printf("Failed to do the big read, read %d\n", server_read);
+  }
+
+  x11_data data;
+  init_data(&data, server_res, server_read);
+  free(server_res);
+  printf("x11_data: mask: %d, id: %d, base: %d\n", data.id_mask, data.id, data.id_base);
+
+  window.window_root_id = data.id;
+  window.gc_id = x11_next_id(&data);
+  window.font_id = x11_next_id(&data);
+
+  open_font(window.fd, &data, window.font_id);
+  x11_create_gc(window.fd, window.font_id, window.gc_id, window.window_root_id);
+
+  window.window_id = x11_next_id(&data);
+  debug_window(&window);
+
+
+  x11_create_window(window.fd, window.window_id, window.window_root_id, data.root_visual_id, x, y,w, h);
+  x11_map_window(window.fd, window.window_id);
+
+  //if(set_fd_non_blocking(window.fd) == 0){
+    //return -1;
+  // }
+
+  return 0;
+
+}

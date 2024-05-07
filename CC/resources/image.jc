@@ -1,0 +1,148 @@
+#extern void * malloc(int size)
+#extern void  free(void * ptr)
+#extern void  printf(...)
+#extern int*  fopen(...)
+#extern int  fprintf(...)
+#extern int  fclose(...)
+#extern float sqrt(float x)
+
+#define TRUE 1
+#define FALSE 0
+
+
+void output_ppm_header(int * file, int width, int height){
+    fprintf(file, "P3\n%ld %ld\n255\n", width, height);
+}
+
+struct Color {
+    int r;
+    int g;
+    int b;
+}
+
+Color get_yellow(){
+    Color color;
+    color.r = 255;
+    color.g = 255;
+    color.b = 0;
+
+    return color;
+}
+
+Color get_black(){
+    Color color;
+    color.r = 0;
+    color.g = 0;
+    color.b = 0;
+
+    return color;
+}
+
+struct Rect{
+    int minX;
+    int minY;
+    int maxX;
+    int maxY;
+    Color color;
+}
+
+Rect create_rect(int minX, int maxX, int minY, int maxY, Color color){
+    Rect rect;
+    rect.minX = minX;
+    rect.maxX = maxX;
+    rect.minY = minY;
+    rect.maxY = maxY;
+    rect.color = color;
+
+    return rect;
+}
+
+struct Circle{
+    int x;
+    int y;
+    int r;
+    Color color;
+}
+
+Circle create_circle(int x, int y, int r, Color color){
+    Circle circle;
+    circle.x = x;
+    circle.y = y;
+    circle.r = r;
+    circle.color = color;
+
+    return circle;
+}
+
+
+void write_pixel(int * FILE, Color color){
+    fprintf(FILE, "%d %d %d\n", color.r, color.g, color.b);
+}
+
+float distance_from_circle(Circle circle, int x, int y){
+    int xDiff = circle.x - x;
+    int yDiff = circle.y - y;
+    float tot = xDiff * xDiff + yDiff * yDiff;
+    return sqrt(tot);
+}
+
+int hit_rect(Rect rect, int x, int y){
+    if(rect.minX > x || x > rect.maxX){
+        return 0;
+    }
+    if(rect.minY > y || y > rect.maxY){
+        return 0;
+    }
+    printf("(%ld, %ld) ->", x,y);
+    printf("(%ld, %ld), (%ld, %ld)\n", rect.minX, rect.maxX, rect.minY, rect.maxY);
+    return TRUE;
+}
+
+int main(){
+    int * FILE = fopen("test.ppm", "w");
+    int width = 400;
+    int height = 400;
+
+    output_ppm_header(FILE, width, height);
+    int * image = malloc(width * height);
+
+    float fWidth = width;
+    float fHeight = height;
+
+    int eyeOffsetX = 40;
+    int eyeOffsetY = 40;
+    int eyeR = 20;
+    Circle head      = create_circle(200, 200, 125, get_yellow());
+    Circle eye1      = create_circle(200 - eyeOffsetX, 200 - eyeOffsetY, eyeR, get_black());
+    Circle eye2      = create_circle(200 + eyeOffsetX, 200 - eyeOffsetY, eyeR, get_black());
+
+    Rect   mouthMiddle = create_rect(160, 240, 230, 270, get_black());
+
+    for(int y = 0; y < height; y++){
+        for(int x = 0; x < width; x++){
+            Color pixel;
+            pixel.r = 255 * (y / fHeight);
+            pixel.g = 255 * (x / fWidth);
+            pixel.b = 255;
+
+
+            if(distance_from_circle(head, x, y) < head.r){
+                pixel = head.color;
+            }
+            if(distance_from_circle(eye1, x, y) < eye1.r){
+                pixel = eye1.color;
+            }
+            if(distance_from_circle(eye2, x, y) < eye2.r){
+                pixel = eye2.color;
+            }
+            if(hit_rect(mouthMiddle, x, y)){
+                pixel = mouthMiddle.color;
+            }
+
+            write_pixel(FILE, pixel);
+        }
+    }
+
+    free(image);
+    fclose(FILE);
+}

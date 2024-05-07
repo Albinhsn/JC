@@ -1,0 +1,247 @@
+#include "resources/x11.jc"
+
+#define LEFT 0
+#define UP 1
+#define RIGHT 2
+#define DOWN 3
+
+struct timeval{
+    long tv_sec;
+    long tv_usec;
+}
+
+struct Position{
+    byte x;
+    byte y;
+    byte prev_x;
+    byte prev_y;
+}
+
+#extern void gettimeofday(timeval * tv, int idk)
+
+struct Grid{
+    Position * grid;
+    byte length;
+    byte direction;
+    byte width;
+    byte height;
+    byte item_x;
+    byte item_y;
+}
+
+void debug_grid(Grid * grid){
+    printf("l: %ld, d: %ld, w: %ld, h: %ld\n", grid.length, grid.direction, grid.width, grid.height);
+    printf("ix: %d, iy: %d\n", grid.item_x, grid.item_y);
+    for(int i = 0; i < grid.length; i++){
+        printf("(%ld, %ld) -> ", grid.grid[i].x, grid.grid[i].y);
+    }
+    printf("\n");
+}
+
+
+
+int random(int timestamp){
+
+    int hash = 2166136261;
+    for(int i = 0; i < 4; i++){
+        hash ^= (timestamp >> (i * 8)) & 0xFF;
+        hash *= 16777619;
+    }
+    return hash;
+}
+
+long get_millis(timeval tv){
+    return (tv.tv_sec*1000)+(tv.tv_usec/1000);
+}
+
+int draw_grid(x11_window * window, Grid * grid){
+
+  int screen_height = 400;
+  int screen_width  = 400;
+
+  int block_width = screen_width / grid.width;
+  int block_height = screen_height / grid.height;
+
+  x11_change_color(window.fd, window.gc_id, window.window_root_id, window.font_id, WHITE);
+  for(int i = 0; i <grid.length; i++){
+
+      Position curr = grid.grid[i];
+      int window_x = curr.x * block_width;
+      int window_y = block_height * curr.y;
+      if(x11_draw_rect(window, window_x, window_y, block_width, block_height) == -1){
+        return -1;
+      }
+  }
+
+  x11_change_color(window.fd, window.gc_id, window.window_root_id, window.font_id, GREEN);
+  int window_x = grid.item_x * block_width;
+  int window_y = block_height * grid.item_y;
+  x11_draw_rect(window, window_x, window_y, block_width, block_height);
+
+}
+
+void init_grid(Grid * grid, int current_timestamp, int width, int height){
+    grid.width = width;
+    grid.height = height;
+    grid.grid = malloc(4 * width * height);
+
+    grid.grid[0].x = width / 2;
+    grid.grid[0].y = height / 2;
+    grid.length = 1;
+    grid.direction = UP;
+
+    int item_pos = random(current_timestamp);
+    grid.item_x = (item_pos & 0xFF) % width;
+    grid.item_y = ((item_pos >> 8) & 0xFF) % height;
+    printf("Item: %d %d\n", grid.item_x, grid.item_y);
+    printf("%d %d\n", (item_pos & 0xFF), (item_pos & 0xFF) % grid.width);
+    printf("%d %d\n", (item_pos & 0xFF), (item_pos & 0xFF) % grid.height);
+}
+
+
+byte update(Grid * grid, int current_timestamp){
+
+    // Move
+    byte direction = grid.direction;
+    if(direction == UP){
+        grid.grid[0].prev_x = grid.grid[0].x;
+        grid.grid[0].prev_y = grid.grid[0].y;
+        grid.grid[0].y -= 1;
+    }
+    if(direction == DOWN){
+        grid.grid[0].prev_x = grid.grid[0].x;
+        grid.grid[0].prev_y = grid.grid[0].y;
+        grid.grid[0].y += 1;
+    }
+    if(direction == LEFT){
+        grid.grid[0].prev_x = grid.grid[0].x;
+        grid.grid[0].prev_y = grid.grid[0].y;
+        grid.grid[0].x -= 1;
+    }
+    if(direction == RIGHT){
+        grid.grid[0].prev_x = grid.grid[0].x;
+        grid.grid[0].prev_y = grid.grid[0].y;
+        grid.grid[0].x += 1;
+    }
+
+    Position head = grid.grid[0];
+    if(head.x < 0 || head.x >= grid.width){
+        printf("X OOB\n");
+        return 1;
+    }
+    if(head.y < 0 || head.y >= grid.height){
+        printf("Y OOB\n");
+        return 1;
+    }
+
+    for(int i = 1; i < grid.length; i++){
+
+        if(head.x == grid.grid[i].x && head.y == grid.grid[i].y){
+            printf("HIT TAIL\n");
+            return 1;
+        }
+
+        grid.grid[i].prev_x = grid.grid[i].x;
+        grid.grid[i].prev_y = grid.grid[i].y;
+        grid.grid[i].x = grid.grid[i - 1].prev_x;
+        grid.grid[i].y = grid.grid[i - 1].prev_y;
+    }
+
+    // Figure out if we caught the item
+    if(head.x == grid.item_x && head.y == grid.item_y){
+        grid.grid[grid.length].x = grid.grid[grid.length - 1].prev_x;
+        grid.grid[grid.length].y = grid.grid[grid.length - 1].prev_y;
+        grid.length++;
+
+        int item_pos = random(current_timestamp);
+        printf("%d %d\n", (item_pos & 0xFF), (item_pos & 0xFF) % grid.width);
+        grid.item_x = (item_pos & 0xFF) % grid.width;
+        grid.item_y = ((item_pos >> 8) & 0xFF) % grid.height;
+    }
+
+    return 0;
+}
+
+void handle_input(byte * response, Grid * grid){
+    byte keycode = response[1];
+    // a = 38
+    if(keycode == 38 && grid.direction != RIGHT){
+        printf("LEFT\n");
+        grid.direction = LEFT;
+    }
+    // w = 25
+    if(keycode == 25 && grid.direction != DOWN){
+        printf("UP\n");
+        grid.direction = UP;
+    }
+    // s = 39
+    if(keycode == 39 && grid.direction != UP){
+        printf("DOWN\n");
+        grid.direction = DOWN;
+    }
+    // d = 40
+    if(keycode == 40 && grid.direction != LEFT){
+        printf("RIGHT\n");
+        grid.direction = RIGHT;
+    }
+
+}
+
+int main(){
+
+  int tick_timer = 200;
+  int grid_width = 20;
+  int grid_height= 20;
+
+  int timestamp = 0;
+  int current_timestamp = 0;
+  timeval tv;
+  gettimeofday(&tv, 0);
+  timestamp = get_millis(tv);
+  current_timestamp = timestamp;
+
+  Grid grid;
+  init_grid(&grid, current_timestamp, grid_width, grid_height);
+
+  x11_window window;
+  int result = create_x11_window(&window, 200, 200, 400, 400);
+  x11_change_color(window.fd, window.gc_id, window.window_root_id, window.font_id, WHITE);
+
+
+  if(result != 0){
+    printf("Failed to create x11 window!\n");
+    return 1;
+  }
+  while(1 == 1){
+
+    Reply reply =  poll_messages(window.fd, window.window_id, window.gc_id);
+
+    if(reply.code == -1){
+        printf("Code was 0\n");
+        return 1;
+    }
+    if(reply.code != 0 && reply.response != 0){
+        if(reply.response[0] == 3){
+            handle_input(reply.response, &grid);
+        }
+        free(reply.response);
+    }
+    if(draw_grid(&window, &grid) == -1){
+        return 1;
+    }
+
+
+    gettimeofday(&tv, 0);
+    timestamp = get_millis(tv);
+    if(current_timestamp + tick_timer <= timestamp){
+      current_timestamp = timestamp + tick_timer;
+
+      if(update(&grid, current_timestamp) == 1){
+         printf("GAME OVER\n");
+         return 1;
+      }
+      x11_redraw(window.fd, window.window_id);
+    }
+  }
+
+}
