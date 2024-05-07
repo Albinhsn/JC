@@ -7,18 +7,18 @@
 
 enum Precedence
 {
-  NONE,
-  ASSIGNMENT,
-  OR,
-  AND,
-  EQUALITY,
-  COMPARISON,
-  BITWISE,
-  TERM,
-  FACTOR,
-  UNARY,
-  CALL,
-  PRIMARY
+  PREC_NONE,
+  PREC_ASSIGNMENT,
+  PREC_OR,
+  PREC_AND,
+  PREC_EQUALITY,
+  PREC_COMPARISON,
+  PREC_BITWISE,
+  PREC_TERM,
+  PREC_FACTOR,
+  PREC_UNARY,
+  PREC_CALL,
+  PREC_PRIMARY
 };
 typedef enum Precedence Precedence;
 
@@ -45,7 +45,16 @@ struct Parser
 };
 typedef struct Parser Parser;
 
-void                  init_parser(Parser* parser, Scanner* scanner, Arena* arena);
-void                  parse(Parser* parser);
+typedef Expr * (*ParseFn)(Parser* parser, Expr* expr, bool canAssign, int line);
+
+typedef struct
+{
+  ParseFn    prefix;
+  ParseFn    infix;
+  Precedence precedence;
+} ParseRule;
+
+void init_parser(Parser* parser, Scanner* scanner, Arena* arena);
+void parse(Parser* parser);
 
 #endif

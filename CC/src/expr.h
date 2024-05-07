@@ -34,8 +34,8 @@ typedef struct BinaryExpr BinaryExpr;
 
 struct CallExpr
 {
-  Token name;
-  Expr* args;
+  String name;
+  Expr** args;
   int   argCount;
 };
 typedef struct CallExpr CallExpr;
@@ -57,7 +57,7 @@ typedef struct ComparisonExpr ComparisonExpr;
 
 struct DotExpr
 {
-  Token member;
+  String member;
   Expr* target;
 };
 typedef struct DotExpr DotExpr;
@@ -77,7 +77,7 @@ typedef struct IndexExpr IndexExpr;
 
 struct LiteralExpr
 {
-  Token literal;
+  String literal;
 };
 typedef struct LiteralExpr LiteralExpr;
 
@@ -85,7 +85,7 @@ struct LogicalExpr
 {
   Expr* left;
   Expr* right;
-  Token op;
+  Token* op;
 };
 typedef struct LogicalExpr LogicalExpr;
 
@@ -105,7 +105,7 @@ typedef struct UnaryExpr UnaryExpr;
 
 struct VariableExpr
 {
-  Token *variable;
+  String variable;
 };
 typedef struct VariableExpr VariableExpr;
 

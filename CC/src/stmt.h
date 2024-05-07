@@ -25,7 +25,7 @@ typedef struct Stmt   Stmt;
 
 struct ArrayStmt
 {
-  Expr*    items;
+  Expr**    items;
   DataType item_type;
   Token    target;
   int      item_count;
@@ -35,14 +35,14 @@ typedef struct ArrayStmt ArrayStmt;
 
 struct AssignStmt
 {
-  Expr target;
-  Expr value;
+  Expr* target;
+  Expr* value;
 };
 typedef struct AssignStmt AssignStmt;
 
 struct ExpressionStmt
 {
-  Expr expr;
+  Expr *expr;
 };
 typedef struct ExpressionStmt ExpressionStmt;
 
@@ -58,7 +58,7 @@ typedef struct ForStmt ForStmt;
 
 struct WhileStmt
 {
-  Expr  condition;
+  Expr * condition;
   Stmt* body;
   int   body_count;
 };
@@ -66,7 +66,7 @@ typedef struct WhileStmt WhileStmt;
 
 struct IfBlock
 {
-  Expr  condition;
+  Expr * condition;
   Stmt* body;
   int   body_count;
 };
@@ -110,6 +110,7 @@ struct StructStmt
   String       name;
   StructField* fields;
   int          field_count;
+  int field_capacity;
 };
 typedef struct StructStmt StructStmt;
 
