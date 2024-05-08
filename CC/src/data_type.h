@@ -15,7 +15,8 @@ enum DataTypes
   DATATYPE_BYTE,
   DATATYPE_VOID,
   DATATYPE_ARRAY,
-  DATATYPE_STRUCT
+  DATATYPE_STRUCT,
+  DATATYPE_STRING
 };
 typedef enum DataTypes DataTypes;
 
@@ -30,5 +31,7 @@ typedef struct DataType DataType;
 
 DataType                get_pointer_from_type(DataType type);
 DataType                get_type_from_token(Token* token);
+
+void debug_type(DataType type);
 
 #endif

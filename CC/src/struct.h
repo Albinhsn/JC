@@ -9,4 +9,7 @@ struct StructField
 };
 typedef struct StructField StructField;
 
+void debug_field(StructField * field);
+
+
 #endif

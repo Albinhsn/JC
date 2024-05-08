@@ -2,11 +2,13 @@
 #include "common.h"
 #include "data_type.h"
 #include "expr.h"
+#include "files.h"
 #include "scanner.h"
 #include "stmt.h"
 #include "struct.h"
 #include "token.h"
 #include <stdlib.h>
+#include <string.h>
 
 static Stmt*     parse_statement(Parser* parser);
 static Expr*     parse_dereference(Parser* parser, Expr* expr, bool canAssign, int line);
@@ -102,6 +104,7 @@ static void advance(Parser* parser)
   {
   }
   parser->current = parse_token(parser->scanner);
+  // printf("New current %.*s\n", (i32)parser->current->literal.len, parser->current->literal.buffer);
 }
 static bool match_type(Parser* parser, TokenType type)
 {
@@ -128,7 +131,7 @@ static DataType parse_pointer_type(Parser* parser, DataType type)
 
 static bool is_declared_struct(Parser* parser, String name)
 {
-  return true;
+  return false;
 }
 
 static DataType parse_type(Parser* parser)
@@ -136,7 +139,7 @@ static DataType parse_type(Parser* parser)
   DataType type = get_type_from_token(parser->current);
   if (type.type == DATATYPE_STRUCT && !is_declared_struct(parser, parser->current->literal))
   {
-    error("Can't declare struct of unknown type!");
+    // error("Can't declare struct of unknown type!");
   }
   advance(parser);
   return parse_pointer_type(parser, type);
@@ -184,7 +187,7 @@ static Stmt* parse_struct_declaration(Parser* parser)
   stmt->type                = STMT_STRUCT;
   stmt->struct_.name        = name->literal;
   stmt->struct_.field_count = 0;
-  stmt->struct_.fields      = (StructField*)parser->arena->ptr;
+  stmt->struct_.fields      = (StructField*)(parser->arena->memory + parser->arena->ptr);
   while (!match_type(parser, TOKEN_RIGHT_BRACE))
   {
     parse_struct_field(parser);
@@ -209,6 +212,30 @@ static Expr* parse_expression(Parser* parser, Expr* expr, Precedence precedence)
 {
   advance(parser);
 
+  ParseRule prefix = rules[parser->previous->type];
+  if (prefix.prefix == 0)
+  {
+    printf("%.*s\n", (i32)parser->previous->literal.len, parser->previous->literal.buffer);
+    error("Expected expression!");
+  }
+
+  bool canAssign    = prefix.precedence <= PREC_ASSIGNMENT;
+
+  expr              = prefix.prefix(parser, expr, canAssign, parser->previous->line);
+  ParseRule current = rules[parser->current->type];
+
+  while (precedence <= current.precedence)
+  {
+    advance(parser);
+    expr    = current.infix(parser, expr, canAssign, parser->previous->line);
+    current = rules[parser->current->type];
+  }
+
+  if (canAssign && match_type(parser, TOKEN_EQUAL))
+  {
+    error("Can't assign to this");
+  }
+
   return expr;
 }
 
@@ -216,7 +243,7 @@ static Expr* parse_literal(Parser* parser, Expr* expr, bool canAssign, int line)
 {
   Expr* literal            = sta_arena_push_struct(parser->arena, Expr);
   literal->type            = EXPR_LITERAL;
-  literal->literal.literal = parser->previous->literal;
+  literal->literal.literal = parser->previous;
 
   return literal;
 }
@@ -239,21 +266,22 @@ static Expr* parse_right_side_of_binary(Parser* parser, Precedence precedence)
 }
 static Expr* parse_comparison(Parser* parser, Expr* expr, bool canAssign, int line)
 {
-  Token* op                        = parser->previous;
-  Expr*  comparison_expr           = sta_arena_push_struct(parser->arena, Expr);
-  comparison_expr->comparison.left = expr;
-  comparison_expr->type            = EXPR_COMPARISON;
-  Expr* right_side                 = parse_right_side_of_binary(parser, rules[op->type].precedence);
+  Expr* comparison_expr             = sta_arena_push_struct(parser->arena, Expr);
+  comparison_expr->comparison.left  = expr;
+  comparison_expr->comparison.op    = parser->previous;
+  comparison_expr->type             = EXPR_COMPARISON;
+  comparison_expr->comparison.right = parse_right_side_of_binary(parser, rules[parser->previous->type].precedence);
 
   return comparison_expr;
 }
 static Expr* parse_binary(Parser* parser, Expr* expr, bool canAssign, int line)
 {
-  Token* op                = parser->previous;
-  Expr*  binary_expr       = sta_arena_push_struct(parser->arena, Expr);
-  binary_expr->binary.left = expr;
-  binary_expr->type        = EXPR_BINARY;
-  Expr* right_side         = parse_right_side_of_binary(parser, rules[op->type].precedence);
+  Expr* binary_expr         = sta_arena_push_struct(parser->arena, Expr);
+  binary_expr->type         = EXPR_BINARY;
+  binary_expr->binary.left  = expr;
+  binary_expr->binary.op    = parser->previous;
+  binary_expr->binary.right = parse_right_side_of_binary(parser, rules[parser->previous->type].precedence);
+  debug_expr(binary_expr);
   return binary_expr;
 }
 static Expr* parse_dereference(Parser* parser, Expr* expr, bool canAssign, int line)
@@ -273,24 +301,27 @@ static Expr* parse_unary(Parser* parser, Expr* expr, bool canAssign, int line)
   unary_expr->unary.target = parse_expression(parser, 0, PREC_UNARY);
   return unary_expr;
 }
-static void parse_list(Parser* parser)
-{
-}
 static Expr* parse_call(Parser* parser, Token* variable)
 {
-  Expr* call_expr          = sta_arena_push_struct(parser->arena, Expr);
-  call_expr->type          = EXPR_CALL;
-  call_expr->call.name     = variable->literal;
-  call_expr->call.argCount = 0;
-  call_expr->call.args     = (Expr**)&parser->arena->ptr;
+  Expr* call_expr              = sta_arena_push_struct(parser->arena, Expr);
+  call_expr->type              = EXPR_CALL;
+  call_expr->call.name         = variable->literal;
+  call_expr->call.arg_count    = 0;
+  call_expr->call.args         = (Expr**)malloc(sizeof(Expr*));
+  call_expr->call.arg_capacity = 1;
 
   if (parser->current->type != TOKEN_RIGHT_PAREN)
   {
     do
     {
-      sta_arena_push_struct(parser->arena, Expr*);
-      call_expr->call.args[call_expr->call.argCount++] = parse_expression(parser, 0, PREC_ASSIGNMENT);
-    } while (!match_type(parser, TOKEN_RIGHT_PAREN));
+      if (call_expr->call.arg_capacity <= call_expr->call.arg_count)
+      {
+        call_expr->call.arg_capacity *= 2;
+        call_expr->call.args = (Expr**)realloc(call_expr->call.args, sizeof(Expr*) * call_expr->call.arg_capacity);
+      }
+      call_expr->call.args[call_expr->call.arg_count] = parse_expression(parser, 0, PREC_ASSIGNMENT);
+      call_expr->call.arg_count++;
+    } while (match_type(parser, TOKEN_COMMA));
   }
   consume(parser, TOKEN_RIGHT_PAREN, "Expect ')' after call args");
 
@@ -320,9 +351,6 @@ static Expr* parse_logical(Parser* parser, Expr* expr, bool canAssign, int line)
 
   return logical;
 }
-static void parse_array_items(Parser* parser)
-{
-}
 static Expr* parse_index(Parser* parser, Expr* expr, bool canAssign, int line)
 {
   Expr* index        = sta_arena_push_struct(parser->arena, Expr);
@@ -340,7 +368,6 @@ static bool match_augmented(Parser* parser)
 }
 static Stmt* parse_expression_statement(Parser* parser)
 {
-  int   line = parser->scanner->line;
   Stmt* stmt = sta_arena_push_struct(parser->arena, Stmt);
   Expr* expr = parse_expression(parser, 0, PREC_OR);
 
@@ -353,11 +380,15 @@ static Stmt* parse_expression_statement(Parser* parser)
   }
   else if (match_augmented(parser))
   {
-    Token* op           = parser->previous;
-    Expr*  right_side   = parse_expression(parser, 0, PREC_ASSIGNMENT);
-    stmt->type          = STMT_ASSIGN;
-    stmt->assign.target = expr;
-    stmt->assign.value  = right_side;
+    Expr* binary         = sta_arena_push_struct(parser->arena, Expr);
+    binary->type         = EXPR_BINARY;
+    binary->binary.op    = parser->previous;
+    binary->binary.left  = expr;
+    binary->binary.right = parse_expression(parser, 0, PREC_ASSIGNMENT);
+    stmt->type           = STMT_ASSIGN;
+    stmt->assign.target  = expr;
+    stmt->assign.value   = binary;
+    return stmt;
   }
 
   stmt->expr.expr = expr;
@@ -378,27 +409,29 @@ static Stmt* parse_return_statement(Parser* parser)
   out->return_.value = parse_expression(parser, 0, PREC_ASSIGNMENT);
   return out;
 }
-static int parse_body(Parser* parser)
+static void parse_body(Parser* parser, StmtBlock* block)
 {
-  // THIS DOESN*T WORK
-  int count = 0;
+  block->block_count    = 0;
+  block->block_capacity = 4;
+  block->block          = (Stmt**)malloc(sizeof(Stmt*) * block->block_capacity);
   while (!match_type(parser, TOKEN_RIGHT_BRACE))
   {
     if (!match_type(parser, TOKEN_SEMICOLON))
     {
-      parse_statement(parser);
-      count++;
+      if (block->block_count >= block->block_capacity)
+      {
+        block->block_capacity *= 2;
+        block->block = (Stmt**)realloc(block->block, block->block_capacity * sizeof(Stmt*));
+      }
+      block->block[block->block_count++] = parse_statement(parser);
     }
   }
-
-  return count;
 }
 static Stmt* parse_for_statement(Parser* parser)
 {
   advance(parser);
   Stmt* out = sta_arena_push_struct(parser->arena, Stmt);
   out->type = STMT_FOR;
-  int line  = parser->previous->line;
   consume(parser, TOKEN_LEFT_PAREN, "Expect ( after for");
 
   out->for_.init      = parse_statement(parser);
@@ -409,8 +442,7 @@ static Stmt* parse_for_statement(Parser* parser)
   consume(parser, TOKEN_RIGHT_PAREN, "Expect ')' after update");
   consume(parser, TOKEN_LEFT_BRACE, "Expect '{' after for loop (init, condition, update)");
 
-  out->for_.body       = (Stmt*)parser->arena->ptr;
-  out->for_.body_count = parse_body(parser);
+  parse_body(parser, &out->for_.block);
 
   return out;
 }
@@ -419,15 +451,13 @@ static Stmt* parse_while_statement(Parser* parser)
   Stmt* out = sta_arena_push_struct(parser->arena, Stmt);
   out->type = STMT_WHILE;
   advance(parser);
-  int line = parser->previous->line;
 
   consume(parser, TOKEN_LEFT_PAREN, "expect '(' after while");
   out->while_.condition = parse_expression(parser, 0, PREC_ASSIGNMENT);
   consume(parser, TOKEN_RIGHT_PAREN, "expected ')' after while");
   consume(parser, TOKEN_LEFT_BRACE, "Expected '{' after while condition");
 
-  out->while_.body       = (Stmt*)&parser->arena->ptr;
-  out->while_.body_count = parse_body(parser);
+  parse_body(parser, &out->while_.block);
 
   return out;
 }
@@ -442,42 +472,344 @@ static int parse_arguments(Parser* parser)
       count++;
     } while (match_type(parser, TOKEN_COMMA));
   }
-
   consume(parser, TOKEN_RIGHT_PAREN, "Expected right paren after arguments");
   return count;
 }
 static Stmt* parse_array(Parser* parser, String name, DataType type, int line)
 {
+  consume(parser, TOKEN_INT_LITERAL, "Expected array size?");
+
+  Stmt* stmt                                   = sta_arena_push_struct(parser->arena, Stmt);
+  stmt->type                                   = STMT_ARRAY;
+  stmt->array.name                             = name;
+
+  char* item_size_str                          = malloc(parser->previous->literal.len + 1);
+  item_size_str[parser->previous->literal.len] = 0;
+  strncpy(item_size_str, parser->previous->literal.buffer, parser->previous->literal.len);
+  stmt->array.item_size = atoi(item_size_str);
+
+  free(item_size_str);
+
+  stmt->array.item_count = 0;
+  stmt->array.items      = sta_arena_push_array(parser->arena, Expr*, stmt->array.item_size);
+
+  if (match_type(parser, TOKEN_EQUAL))
+  {
+    consume(parser, TOKEN_LEFT_BRACKET, "Expected [ after equals in array stmt");
+    if (parser->current->type != TOKEN_RIGHT_BRACKET)
+    {
+      do
+      {
+        stmt->array.items[stmt->array.item_count++] = parse_expression(parser, 0, PREC_ASSIGNMENT);
+      } while (match_type(parser, TOKEN_COMMA));
+    }
+    if (stmt->array.item_size < stmt->array.item_count)
+    {
+      error("Can't have more items in array then declared!");
+    }
+    consume(parser, TOKEN_RIGHT_BRACKET, "expect ] after array stmt");
+  }
+
+  consume(parser, TOKEN_SEMICOLON, "Expected ';' after array stmt");
+
+  return stmt;
 }
 static Stmt* parse_variable_declaration(Parser* parser, DataType type)
 {
+  int line = parser->current->line;
+  consume(parser, TOKEN_IDENTIFIER, "Expected identifier after variable type");
+
+  String name = parser->previous->literal;
+
+  advance(parser);
+  switch (parser->previous->type)
+  {
+  case TOKEN_EQUAL:
+  {
+    Stmt* stmt           = sta_arena_push_struct(parser->arena, Stmt);
+    stmt->type           = STMT_VARIABLE;
+    stmt->variable.type  = type;
+    stmt->variable.name  = name;
+    stmt->variable.value = parse_expression(parser, 0, PREC_ASSIGNMENT);
+    return stmt;
+  }
+  case TOKEN_SEMICOLON:
+  {
+    Stmt* stmt           = sta_arena_push_struct(parser->arena, Stmt);
+    stmt->type           = STMT_VARIABLE;
+    stmt->variable.type  = type;
+    stmt->variable.name  = name;
+    stmt->variable.value = 0;
+    return stmt;
+  }
+  default:
+  {
+    return parse_array(parser, name, type, line);
+  }
+  }
 }
 static IfBlock* parse_if_block(Parser* parser)
 {
+  IfBlock* if_block = sta_arena_push_struct(parser->arena, IfBlock);
+  consume(parser, TOKEN_LEFT_PAREN, "Expect ( after if");
+  if_block->condition = parse_expression(parser, 0, PREC_ASSIGNMENT);
+  consume(parser, TOKEN_RIGHT_PAREN, "Expect ) after if condition");
+  consume(parser, TOKEN_LEFT_BRACE, "Expect { after if condition");
+
+  parse_body(parser, &if_block->block);
+  return if_block;
 }
 static Stmt* parse_if_statement(Parser* parser)
 {
+  advance(parser);
+  Stmt* if_stmt               = sta_arena_push_struct(parser->arena, Stmt);
+  if_stmt->type               = STMT_IF;
+
+  if_stmt->if_.block_count    = 1;
+  if_stmt->if_.block_capacity = 1;
+  if_stmt->if_.blocks         = (IfBlock**)malloc(sizeof(IfBlock*) * if_stmt->if_.block_capacity);
+  if_stmt->if_.blocks[0]      = parse_if_block(parser);
+  while (match_type(parser, TOKEN_ELSE))
+  {
+    if (match_type(parser, TOKEN_IF))
+    {
+      if (if_stmt->if_.block_count >= if_stmt->if_.block_capacity)
+      {
+        if_stmt->if_.block_capacity *= 2;
+        if_stmt->if_.blocks = (IfBlock**)realloc(if_stmt->if_.blocks, if_stmt->if_.block_capacity * sizeof(IfBlock*));
+      }
+      if_stmt->if_.blocks[if_stmt->if_.block_count++] = parse_if_block(parser);
+    }
+    else
+    {
+      consume(parser, TOKEN_LEFT_BRACE, "Expected '{' after if condition");
+      if_stmt->if_.else_ = true;
+      parse_body(parser, &if_stmt->if_.else_block);
+    }
+  }
+
+  return if_stmt;
 }
 static Stmt* parse_statement(Parser* parser)
 {
+  switch (parser->current->type)
+  {
+  case TOKEN_FOR:
+  {
+    return parse_for_statement(parser);
+  }
+  case TOKEN_WHILE:
+  {
+    return parse_while_statement(parser);
+  }
+  case TOKEN_IF:
+  {
+    // printf("Parsing if\n");
+    return parse_if_statement(parser);
+  }
+  case TOKEN_RETURN:
+  {
+    return parse_return_statement(parser);
+  }
+  default:
+  {
+    if (is_variable_type(parser->current->type))
+    {
+      DataType type = parse_type(parser);
+      return parse_variable_declaration(parser, type);
+    }
+    else if (match_type(parser, TOKEN_SEMICOLON))
+    {
+      return 0;
+    }
+    // printf("Parsing expression_statement\n");
+    Stmt* out = parse_expression_statement(parser);
+    consume(parser, TOKEN_SEMICOLON, "Expected ';' after expression statement");
+    return out;
+  }
+  }
 }
 static void parse_include(Parser* parser)
 {
+  consume(parser, TOKEN_STRING_LITERAL, "Expected string after include");
+  String filename = parser->previous->literal;
+  String file_content = {};
+  Arena  arena;
+  arena.memory = (u64)malloc(4096 * 4096);
+
+  char file[32];
+  memset(file, 0, 32);
+  strncpy(file, filename.buffer, filename.len);
+  sta_read_file(&arena, &file_content, filename.buffer);
+
+  Scanner scanner;
+  init_scanner(&scanner, &arena, &file_content, file);
+  Parser include_parser;
+
+  init_parser(&include_parser, &scanner, &arena);
+  parse(&include_parser);
+  printf("Added %d stmts from %.*s\n", include_parser.stmt_count,(i32)filename.len, filename.buffer);
+
+  int prev_count = parser->stmt_count;
+  parser->stmt_count += include_parser.stmt_count;
+  while (parser->stmt_cap <= parser->stmt_count)
+  {
+    parser->stmt_cap *= 2;
+  }
+
+  parser->stmts = (Stmt**)realloc(parser->stmts, sizeof(Stmt*) * parser->stmt_cap);
+  for (int i = prev_count; i < parser->stmt_count; i++)
+  {
+    parser->stmts[i] = include_parser.stmts[i - include_parser.stmt_count];
+  }
+  free_stmts(&include_parser);
 }
 static Stmt* parse_define(Parser* parser)
 {
+  consume(parser, TOKEN_IDENTIFIER, "Expect name of macro!");
+  Stmt* macro          = sta_arena_push_struct(parser->arena, Stmt);
+  macro->type          = STMT_MACRO;
+  macro->macro.name    = parser->previous->literal;
+  macro->macro.content = (Token*)(parser->arena->ptr + parser->arena->memory);
+  int line             = parser->scanner->line;
+  while (line == parser->scanner->line)
+  {
+    (void)sta_arena_push_struct(parser->arena, Token);
+    advance(parser);
+  }
+
+  return macro;
 }
 static Stmt* parse_extern(Parser* parser)
 {
+  if (!(is_variable_type(parser->current->type)))
+  {
+  }
+  Stmt* external                = sta_arena_push_struct(parser->arena, Stmt);
+  external->type                = STMT_EXTERN;
+  external->extern_.return_type = parse_type(parser);
+
+  consume(parser, TOKEN_IDENTIFIER, "Expected identifier for function name after #extern");
+  external->extern_.name = parser->previous->literal;
+
+  consume(parser, TOKEN_LEFT_PAREN, "Expected ( for function arguments after function name in extern");
+  if (match_type(parser, TOKEN_ELLIPSIS))
+  {
+    consume(parser, TOKEN_RIGHT_PAREN, "Expected ) after function args in extern");
+    external->extern_.argument_count = 0;
+    external->extern_.var_args       = true;
+    external->extern_.arguments      = 0;
+  }
+  else
+  {
+    external->extern_.arguments      = (StructField*)(parser->arena->ptr + parser->arena->memory);
+    external->extern_.argument_count = parse_arguments(parser);
+  }
+  return external;
 }
 static Stmt* parse_function(Parser* parser)
 {
+  if (!(is_variable_type(parser->current->type)))
+  {
+    error("Can't declare something other then extern, include, struct or function");
+  }
+
+  Stmt* stmt                 = sta_arena_push_struct(parser->arena, Stmt);
+  stmt->type                 = STMT_FUNCTION;
+  stmt->function.return_type = parse_type(parser);
+
+  consume(parser, TOKEN_IDENTIFIER, "Expected function name after return type");
+  stmt->function.name = parser->previous->literal;
+  consume(parser, TOKEN_LEFT_PAREN, "Expected '(' after function name");
+  stmt->function.arguments      = (StructField*)(parser->arena->ptr + parser->arena->memory);
+  stmt->function.argument_count = parse_arguments(parser);
+  consume(parser, TOKEN_LEFT_BRACE, "Expect '{' after function arguments");
+  parse_body(parser, &stmt->function.block);
+
+  return stmt;
 }
+static void add_stmt(Parser* parser, Stmt* stmt)
+{
+  if (parser->stmt_count >= parser->stmt_cap)
+  {
+    parser->stmt_cap *= 2;
+    parser->stmts = (Stmt**)realloc(parser->stmts, sizeof(Stmt*) * parser->stmt_cap);
+  }
+  parser->stmts[parser->stmt_count++] = stmt;
+}
+
 void parse(Parser* parser)
 {
+  advance(parser);
   while (!match_type(parser, TOKEN_EOF))
   {
-    advance(parser);
-    debug_token(parser->current);
+    if (match_type(parser, TOKEN_INCLUDE))
+    {
+      parse_include(parser);
+    }
+    else if (match_type(parser, TOKEN_STRUCT))
+    {
+      add_stmt(parser, parse_struct_declaration(parser));
+    }
+    else if (match_type(parser, TOKEN_DEFINE))
+    {
+      add_stmt(parser, parse_define(parser));
+    }
+    else if (match_type(parser, TOKEN_EXTERN))
+    {
+      add_stmt(parser, parse_extern(parser));
+    }
+    else if (!match_type(parser, TOKEN_SEMICOLON))
+    {
+      add_stmt(parser, parse_function(parser));
+    }
   }
+}
+
+void free_expr(Expr* expr)
+{
+  if (expr->type == EXPR_CALL)
+  {
+    free(expr->call.args);
+  }
+  // call
+}
+
+void free_stmt(Stmt* stmt)
+{
+  switch (stmt->type)
+  {
+  case STMT_IF:
+  {
+    break;
+  }
+  case STMT_FOR:
+  {
+    // free(stmt->for_.block.block);
+    break;
+  }
+  case STMT_WHILE:
+  {
+    // free(stmt->while_.block.block);
+    break;
+  }
+  case STMT_FUNCTION:
+  {
+    // free(stmt->while_.block.block);
+    break;
+  }
+  default:
+  {
+  }
+    // and block/body
+  }
+}
+void free_stmts(Parser* parser)
+{
+  for (int i = 0; i < parser->stmt_count; i++)
+  {
+    free_stmt(parser->stmts[i]);
+  }
+  free(parser->stmts);
+  free((void*)parser->arena->memory);
 }

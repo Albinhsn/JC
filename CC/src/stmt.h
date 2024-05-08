@@ -18,18 +18,27 @@ enum StmtType
   STMT_FUNCTION,
   STMT_STRUCT,
   STMT_EXTERN,
+  STMT_MACRO
 };
 typedef enum StmtType StmtType;
 
 typedef struct Stmt   Stmt;
 
+struct StmtBlock
+{
+  Stmt** block;
+  int    block_count;
+  int    block_capacity;
+};
+typedef struct StmtBlock StmtBlock;
+
 struct ArrayStmt
 {
-  Expr**    items;
+  Expr**   items;
+  String   name;
   DataType item_type;
-  Token    target;
   int      item_count;
-  int      size;
+  int      item_size;
 };
 typedef struct ArrayStmt ArrayStmt;
 
@@ -42,41 +51,40 @@ typedef struct AssignStmt AssignStmt;
 
 struct ExpressionStmt
 {
-  Expr *expr;
+  Expr* expr;
 };
 typedef struct ExpressionStmt ExpressionStmt;
 
 struct ForStmt
 {
-  Stmt* init;
-  Stmt* condition;
-  Stmt* update;
-  Stmt* body;
-  int   body_count;
+  Stmt*     init;
+  Stmt*     condition;
+  Stmt*     update;
+  StmtBlock block;
 };
 typedef struct ForStmt ForStmt;
 
 struct WhileStmt
 {
-  Expr * condition;
-  Stmt* body;
-  int   body_count;
+  Expr*     condition;
+  StmtBlock block;
 };
 typedef struct WhileStmt WhileStmt;
 
 struct IfBlock
 {
-  Expr * condition;
-  Stmt* body;
-  int   body_count;
+  Expr*     condition;
+  StmtBlock block;
 };
 typedef struct IfBlock IfBlock;
 
 struct IfStmt
 {
-  IfBlock* blocks;
-  Stmt*    else_body;
-  int      else_body_count;
+  IfBlock** blocks;
+  int       block_count;
+  int       block_capacity;
+  StmtBlock else_block;
+  bool      else_;
 };
 typedef struct IfStmt IfStmt;
 
@@ -97,9 +105,8 @@ typedef struct VariableStmt VariableStmt;
 struct FunctionStmt
 {
   StructField* arguments;
-  Stmt*        body;
+  StmtBlock    block;
   int          argument_count;
-  int          body_count;
   DataType     return_type;
   String       name;
 };
@@ -110,7 +117,7 @@ struct StructStmt
   String       name;
   StructField* fields;
   int          field_count;
-  int field_capacity;
+  int          field_capacity;
 };
 typedef struct StructStmt StructStmt;
 
@@ -126,11 +133,9 @@ typedef struct ExternStmt ExternStmt;
 
 struct MacroStmt
 {
-  Token* arguments;
-  Stmt*  content;
+  Token* content;
   String name;
-  int    argument_count;
-  int    content_size;
+  int    count;
 };
 typedef struct MacroStmt MacroStmt;
 
@@ -154,5 +159,7 @@ struct Stmt
   StmtType type;
 };
 typedef struct Stmt Stmt;
+
+void                debug_stmt(Stmt* stmt);
 
 #endif

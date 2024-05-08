@@ -32,5 +32,7 @@ int main(int argc, char** argv)
   init_parser(&parser, &scanner, &arena2);
   parse(&parser);
 
+  free_stmts(&parser);
+
   return 0;
 }

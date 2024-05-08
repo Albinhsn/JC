@@ -38,8 +38,9 @@ struct Parser
   Arena*      arena;
   TokenQueue* queue;
   Scanner*    scanner;
-  Stmt*       stmts;
+  Stmt**       stmts;
   int         stmt_count;
+  int stmt_cap;
   Token*      current;
   Token*      previous;
 };
@@ -56,5 +57,6 @@ typedef struct
 
 void init_parser(Parser* parser, Scanner* scanner, Arena* arena);
 void parse(Parser* parser);
+void                free_stmts(Parser* parser);
 
 #endif

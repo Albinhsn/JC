@@ -66,13 +66,11 @@ static void skip_whitespace(Scanner* scanner)
   {
     if (is_out_of_bounds(scanner))
     {
-      printf("Out of bounds\n");
       return;
     }
     u8 current = current_char(scanner);
     if (isdigit(current) || isalpha(current))
     {
-      printf("Digit/Alpha\n");
       return;
     }
     switch (current)
@@ -110,6 +108,7 @@ static void skip_whitespace(Scanner* scanner)
     case '#':
     case '^':
     case ':':
+    case ',':
     case '&':
     case '|':
     case '-':
@@ -177,7 +176,8 @@ static Token* parse_keyword(Scanner* scanner)
 
   String literal = {};
   literal.buffer = (char*)&scanner->input->buffer[index];
-  literal.len    = scanner->index - index - 1;
+  scanner->index--;
+  literal.len    = scanner->index - index;
   return create_token(scanner->arena, get_keyword(literal), literal, scanner->line);
 }
 

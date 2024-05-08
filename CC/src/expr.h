@@ -20,15 +20,15 @@ enum ExprType
   EXPR_UNARY,
   EXPR_VARIABLE
 };
-typedef enum ExprType  ExprType;
+typedef enum ExprType ExprType;
 
-typedef struct Expr Expr;
+typedef struct Expr   Expr;
 
 struct BinaryExpr
 {
-  Expr* left;
-  Expr* right;
-  Token op;
+  Expr*  left;
+  Expr*  right;
+  Token* op;
 };
 typedef struct BinaryExpr BinaryExpr;
 
@@ -36,7 +36,8 @@ struct CallExpr
 {
   String name;
   Expr** args;
-  int   argCount;
+  int    arg_count;
+  int    arg_capacity;
 };
 typedef struct CallExpr CallExpr;
 
@@ -49,16 +50,16 @@ typedef struct CastExpr CastExpr;
 
 struct ComparisonExpr
 {
-  Expr* left;
-  Expr* right;
-  Token op;
+  Expr*  left;
+  Expr*  right;
+  Token* op;
 };
 typedef struct ComparisonExpr ComparisonExpr;
 
 struct DotExpr
 {
   String member;
-  Expr* target;
+  Expr*  target;
 };
 typedef struct DotExpr DotExpr;
 
@@ -77,29 +78,29 @@ typedef struct IndexExpr IndexExpr;
 
 struct LiteralExpr
 {
-  String literal;
+  Token* literal;
 };
 typedef struct LiteralExpr LiteralExpr;
 
 struct LogicalExpr
 {
-  Expr* left;
-  Expr* right;
+  Expr*  left;
+  Expr*  right;
   Token* op;
 };
 typedef struct LogicalExpr LogicalExpr;
 
 struct PostfixExpr
 {
-  Token *op;
-  Expr* target;
+  Token* op;
+  Expr*  target;
 };
 typedef struct PostfixExpr PostfixExpr;
 
 struct UnaryExpr
 {
-  Token *op;
-  Expr* target;
+  Token* op;
+  Expr*  target;
 };
 typedef struct UnaryExpr UnaryExpr;
 
@@ -132,5 +133,7 @@ struct Expr
 };
 
 typedef struct Expr Expr;
+
+void                debug_expr(Expr* expr);
 
 #endif
