@@ -18,6 +18,7 @@ u64 sta_arena_push(Arena* arena, u64 size)
 {
   if (arena->ptr + size > arena->maxSize)
   {
+    printf("Over max size! %ld %ld %ld\n", size, arena->ptr, arena->maxSize);
     return 0;
   }
   u64 out = arena->memory + arena->ptr;

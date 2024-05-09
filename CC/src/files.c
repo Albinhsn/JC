@@ -1,4 +1,5 @@
 #include "files.h"
+#include "common.h"
 #include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -63,7 +64,7 @@ bool sta_read_file(Arena* arena, struct String* string, const char* fileName)
   filePtr = fopen(fileName, "r");
   if (!filePtr)
   {
-    return NULL;
+    return false;
   }
 
   fileSize                 = fseek(filePtr, 0, SEEK_END);
@@ -76,7 +77,7 @@ bool sta_read_file(Arena* arena, struct String* string, const char* fileName)
   count = fread(string->buffer, 1, fileSize, filePtr);
   if (count != fileSize)
   {
-    free(string->buffer);
+    sta_arena_pop(arena, fileSize + 1);
     return false;
   }
 
@@ -123,7 +124,9 @@ bool sta_read_targa_from_file(Arena* arena, Image* image, const char* filename)
   else if (image->bpp == 24)
   {
     imageSize = image->width * image->height * 3;
-  }else{
+  }
+  else
+  {
     assert(false);
   }
 

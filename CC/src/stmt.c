@@ -116,7 +116,10 @@ void debug_struct(StructStmt* strukt)
   for (int i = 0; i < strukt->field_count; i++)
   {
     debug_field(&strukt->fields[i]);
-    printf(";\n\t");
+    printf(";\n");
+    if(i < strukt->field_count - 1){
+      printf("\t");
+    }
   }
   printf("}\n");
 }

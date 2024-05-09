@@ -245,7 +245,7 @@ static Token* parse_number(Scanner* scanner)
 
     while (!is_out_of_bounds(scanner) && isdigit(current))
     {
-      advance(scanner);
+      current = advance(scanner);
     }
   }
   scanner->index--;

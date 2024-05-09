@@ -42,7 +42,7 @@ static ParseRule rules[] = {
     [TOKEN_RIGHT_PAREN]     = {                       0,                    0,       PREC_NONE},
     [TOKEN_LEFT_BRACE]      = {                       0,                    0,       PREC_NONE},
     [TOKEN_RIGHT_BRACE]     = {                       0,                    0,       PREC_NONE},
-    [TOKEN_LEFT_BRACKET]    = {             parse_index,                    0,       PREC_CALL},
+    [TOKEN_LEFT_BRACKET]    = {                       0,          parse_index,       PREC_CALL},
     [TOKEN_RIGHT_BRACKET]   = {                       0,                    0,       PREC_NONE},
     [TOKEN_INCLUDE]         = {                       0,                    0,       PREC_NONE},
     [TOKEN_EXTERN]          = {                       0,                    0,       PREC_NONE},
@@ -88,13 +88,65 @@ static ParseRule rules[] = {
     [TOKEN_EOF]             = {                       0,                    0,       PREC_NONE}
 };
 
-void init_parser(Parser* parser, Scanner* scanner, Arena* arena)
+void init_parser(Parser* parser, Scanner* scanner, Arena* arena, Symbol* symbols, int symbol_count, int symbol_cap)
 {
   parser->scanner    = scanner;
   parser->queue      = 0;
   parser->arena      = arena;
-  parser->stmt_count = 8;
-  parser->stmts      = malloc(sizeof(Stmt) * parser->stmt_count);
+  parser->stmt_count = 0;
+  parser->stmt_cap   = 8;
+  parser->stmts      = malloc(sizeof(Stmt) * parser->stmt_cap);
+
+  if (symbols == 0)
+  {
+    parser->symbol_count = 0;
+    parser->symbol_cap   = 8;
+    parser->symbols      = malloc(sizeof(Symbol) * parser->symbol_cap);
+  }
+  else
+  {
+    parser->symbol_count = symbol_count;
+    parser->symbol_cap   = symbol_cap;
+    parser->symbols      = symbols;
+  }
+}
+
+static void add_symbol(Parser* parser, String name, SymbolType type)
+{
+  if (parser->symbol_count >= parser->symbol_cap)
+  {
+    parser->symbol_cap *= 2;
+    parser->symbols = (Symbol*)realloc(parser->symbols, sizeof(Symbol) * parser->symbol_cap);
+  }
+  parser->symbols[parser->symbol_count].type  = type;
+  parser->symbols[parser->symbol_count++].key = name;
+}
+
+static bool is_declared_symbol(Parser* parser, String* symbol)
+{
+  for (int i = 0; i < parser->symbol_count; i++)
+  {
+    if (sta_strcmp(&parser->symbols[i].key, symbol))
+    {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool is_declared_struct(Parser* parser, String name)
+{
+  Symbol* symbols = parser->symbols;
+  printf("Checking %.*s\n", (i32)name.len, name.buffer);
+  for (int i = 0; i < parser->symbol_count; i++)
+  {
+    printf("Checking %.*s %d %d\n", (i32)symbols[i].key.len, symbols[i].key.buffer, symbols[i].type, SYMBOL_STRUCT);
+    if (symbols[i].type == SYMBOL_STRUCT && sta_strcmp(&symbols[i].key, &name))
+    {
+      return true;
+    }
+  }
+  return false;
 }
 
 static void advance(Parser* parser)
@@ -104,7 +156,7 @@ static void advance(Parser* parser)
   {
   }
   parser->current = parse_token(parser->scanner);
-  // printf("New current %.*s\n", (i32)parser->current->literal.len, parser->current->literal.buffer);
+  printf("New current %.*s\n", (i32)parser->current->literal.len, parser->current->literal.buffer);
 }
 static bool match_type(Parser* parser, TokenType type)
 {
@@ -129,21 +181,17 @@ static DataType parse_pointer_type(Parser* parser, DataType type)
   return type;
 }
 
-static bool is_declared_struct(Parser* parser, String name)
-{
-  return false;
-}
-
 static DataType parse_type(Parser* parser)
 {
   DataType type = get_type_from_token(parser->current);
-  if (type.type == DATATYPE_STRUCT && !is_declared_struct(parser, parser->current->literal))
+  if (type.type == DATATYPE_STRUCT && !is_declared_struct(parser, type.name))
   {
     // error("Can't declare struct of unknown type!");
   }
   advance(parser);
   return parse_pointer_type(parser, type);
 }
+
 static void parse_struct_field(Parser* parser)
 {
   StructField* field = sta_arena_push_struct(parser->arena, StructField);
@@ -188,6 +236,9 @@ static Stmt* parse_struct_declaration(Parser* parser)
   stmt->struct_.name        = name->literal;
   stmt->struct_.field_count = 0;
   stmt->struct_.fields      = (StructField*)(parser->arena->memory + parser->arena->ptr);
+
+  add_symbol(parser, name->literal, SYMBOL_STRUCT);
+
   while (!match_type(parser, TOKEN_RIGHT_BRACE))
   {
     parse_struct_field(parser);
@@ -215,15 +266,15 @@ static Expr* parse_expression(Parser* parser, Expr* expr, Precedence precedence)
   ParseRule prefix = rules[parser->previous->type];
   if (prefix.prefix == 0)
   {
-    printf("%.*s\n", (i32)parser->previous->literal.len, parser->previous->literal.buffer);
     error("Expected expression!");
   }
 
-  bool canAssign    = prefix.precedence <= PREC_ASSIGNMENT;
+  bool canAssign    = precedence <= PREC_ASSIGNMENT;
 
   expr              = prefix.prefix(parser, expr, canAssign, parser->previous->line);
   ParseRule current = rules[parser->current->type];
 
+  printf("Parsing %s %d\n", parser->scanner->filename, parser->scanner->line);
   while (precedence <= current.precedence)
   {
     advance(parser);
@@ -353,10 +404,10 @@ static Expr* parse_logical(Parser* parser, Expr* expr, bool canAssign, int line)
 }
 static Expr* parse_index(Parser* parser, Expr* expr, bool canAssign, int line)
 {
-  Expr* index        = sta_arena_push_struct(parser->arena, Expr);
-  expr->type         = EXPR_INDEX;
-  expr->index.target = expr;
-  expr->index.index  = parse_expression(parser, 0, PREC_ASSIGNMENT);
+  Expr* index         = sta_arena_push_struct(parser->arena, Expr);
+  index->type         = EXPR_INDEX;
+  index->index.target = expr;
+  index->index.index  = parse_expression(parser, 0, PREC_ASSIGNMENT);
   consume(parser, TOKEN_RIGHT_BRACKET, "Expect ']' after index");
   return index;
 }
@@ -604,7 +655,6 @@ static Stmt* parse_statement(Parser* parser)
   }
   case TOKEN_IF:
   {
-    // printf("Parsing if\n");
     return parse_if_statement(parser);
   }
   case TOKEN_RETURN:
@@ -613,7 +663,10 @@ static Stmt* parse_statement(Parser* parser)
   }
   default:
   {
-    if (is_variable_type(parser->current->type))
+
+    String lit = parser->current->literal;
+    printf("%.*s\n", lit.len, lit.buffer);
+    if (is_variable_type(parser->current->type) || is_declared_struct(parser, parser->current->literal))
     {
       DataType type = parse_type(parser);
       return parse_variable_declaration(parser, type);
@@ -622,8 +675,12 @@ static Stmt* parse_statement(Parser* parser)
     {
       return 0;
     }
-    // printf("Parsing expression_statement\n");
-    Stmt* out = parse_expression_statement(parser);
+
+    printf("Parsing expression_statement\n");
+    Stmt*  out          = parse_expression_statement(parser);
+    String prev_literal = parser->previous->literal;
+    String curr_literal = parser->current->literal;
+    printf("%.*s %.*s\n", (i32)prev_literal.len, prev_literal.buffer, (i32)curr_literal.len, curr_literal.buffer);
     consume(parser, TOKEN_SEMICOLON, "Expected ';' after expression statement");
     return out;
   }
@@ -632,25 +689,34 @@ static Stmt* parse_statement(Parser* parser)
 static void parse_include(Parser* parser)
 {
   consume(parser, TOKEN_STRING_LITERAL, "Expected string after include");
-  String filename = parser->previous->literal;
+  String filename     = parser->previous->literal;
   String file_content = {};
-  Arena  arena;
-  arena.memory = (u64)malloc(4096 * 4096);
+  Arena  arena        = {};
+  arena.memory        = (u64)malloc(4096 * 4096);
+  arena.maxSize       = 4096 * 4096;
+  arena.ptr           = 0;
 
   char file[32];
   memset(file, 0, 32);
   strncpy(file, filename.buffer, filename.len);
-  sta_read_file(&arena, &file_content, filename.buffer);
+  sta_read_file(&arena, &file_content, file);
 
   Scanner scanner;
   init_scanner(&scanner, &arena, &file_content, file);
   Parser include_parser;
 
-  init_parser(&include_parser, &scanner, &arena);
+  Arena  arena2  = {};
+  arena2.maxSize = 4096 * 4096;
+  arena2.memory  = (u64)malloc(arena2.maxSize);
+  arena2.ptr     = 0;
+  init_parser(&include_parser, &scanner, &arena2, parser->symbols, parser->symbol_count, parser->symbol_cap);
   parse(&include_parser);
-  printf("Added %d stmts from %.*s\n", include_parser.stmt_count,(i32)filename.len, filename.buffer);
 
-  int prev_count = parser->stmt_count;
+  parser->symbol_cap   = include_parser.symbol_cap;
+  parser->symbol_count = include_parser.symbol_count;
+  parser->symbols      = include_parser.symbols;
+
+  int prev_count       = parser->stmt_count;
   parser->stmt_count += include_parser.stmt_count;
   while (parser->stmt_cap <= parser->stmt_count)
   {
@@ -671,7 +737,9 @@ static Stmt* parse_define(Parser* parser)
   macro->type          = STMT_MACRO;
   macro->macro.name    = parser->previous->literal;
   macro->macro.content = (Token*)(parser->arena->ptr + parser->arena->memory);
-  int line             = parser->scanner->line;
+
+  add_symbol(parser, macro->macro.name, SYMBOL_MACRO);
+  int line = parser->scanner->line;
   while (line == parser->scanner->line)
   {
     (void)sta_arena_push_struct(parser->arena, Token);
@@ -691,6 +759,7 @@ static Stmt* parse_extern(Parser* parser)
 
   consume(parser, TOKEN_IDENTIFIER, "Expected identifier for function name after #extern");
   external->extern_.name = parser->previous->literal;
+  add_symbol(parser, external->extern_.name, SYMBOL_FUNCTION);
 
   consume(parser, TOKEN_LEFT_PAREN, "Expected ( for function arguments after function name in extern");
   if (match_type(parser, TOKEN_ELLIPSIS))
@@ -724,6 +793,9 @@ static Stmt* parse_function(Parser* parser)
   stmt->function.arguments      = (StructField*)(parser->arena->ptr + parser->arena->memory);
   stmt->function.argument_count = parse_arguments(parser);
   consume(parser, TOKEN_LEFT_BRACE, "Expect '{' after function arguments");
+
+  add_symbol(parser, stmt->function.name, SYMBOL_FUNCTION);
+
   parse_body(parser, &stmt->function.block);
 
   return stmt;
@@ -763,6 +835,10 @@ void parse(Parser* parser)
     {
       add_stmt(parser, parse_function(parser));
     }
+  }
+  for (int i = 0; i < parser->stmt_count; i++)
+  {
+    debug_stmt(parser->stmts[i]);
   }
 }
 
