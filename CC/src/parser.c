@@ -66,8 +66,8 @@ static ParseRule rules[] = {
     [TOKEN_GREATER_EQUAL]   = {                       0,     parse_comparison, PREC_COMPARISON},
     [TOKEN_LESS]            = {                       0,     parse_comparison, PREC_COMPARISON},
     [TOKEN_LESS_EQUAL]      = {                       0,     parse_comparison, PREC_COMPARISON},
-    [TOKEN_INCREMENT]       = {             parse_unary,        parse_postfix, PREC_ASSIGNMENT},
-    [TOKEN_DECREMENT]       = {             parse_unary,        parse_postfix, PREC_ASSIGNMENT},
+    [TOKEN_INCREMENT]       = {             parse_unary,        parse_postfix,       PREC_TERM},
+    [TOKEN_DECREMENT]       = {             parse_unary,        parse_postfix,       PREC_TERM},
     [TOKEN_IF]              = {                       0,                    0,       PREC_NONE},
     [TOKEN_ELSE]            = {                       0,                    0,       PREC_NONE},
     [TOKEN_FOR]             = {                       0,                    0,       PREC_NONE},
@@ -137,10 +137,8 @@ static bool is_declared_symbol(Parser* parser, String* symbol)
 static bool is_declared_struct(Parser* parser, String name)
 {
   Symbol* symbols = parser->symbols;
-  printf("Checking %.*s\n", (i32)name.len, name.buffer);
   for (int i = 0; i < parser->symbol_count; i++)
   {
-    printf("Checking %.*s %d %d\n", (i32)symbols[i].key.len, symbols[i].key.buffer, symbols[i].type, SYMBOL_STRUCT);
     if (symbols[i].type == SYMBOL_STRUCT && sta_strcmp(&symbols[i].key, &name))
     {
       return true;
@@ -186,7 +184,7 @@ static DataType parse_type(Parser* parser)
   DataType type = get_type_from_token(parser->current);
   if (type.type == DATATYPE_STRUCT && !is_declared_struct(parser, type.name))
   {
-    // error("Can't declare struct of unknown type!");
+    error("Can't declare struct of unknown type!");
   }
   advance(parser);
   return parse_pointer_type(parser, type);
@@ -300,7 +298,21 @@ static Expr* parse_literal(Parser* parser, Expr* expr, bool canAssign, int line)
 }
 static Expr* parse_grouped_expression(Parser* parser, Expr* expr, bool canAssign, int line)
 {
-  return expr;
+  Expr* out;
+  if (is_variable_type(parser->current->type) || is_declared_struct(parser, parser->current->literal))
+  {
+    out            = sta_arena_push_struct(parser->arena, Expr);
+    out->type      = EXPR_CAST;
+    out->cast.type = parse_type(parser);
+    consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after grouped expression");
+    out->cast.target = parse_expression(parser, 0, PREC_ASSIGNMENT);
+  }
+  else
+  {
+    out = parse_expression(parser, 0, PREC_ASSIGNMENT);
+    consume(parser, TOKEN_RIGHT_PAREN, "Expected ')' after grouped expression");
+  }
+  return out;
 }
 static Expr* parse_dot_expression(Parser* parser, Expr* expr, bool canAssign, int line)
 {
@@ -308,6 +320,8 @@ static Expr* parse_dot_expression(Parser* parser, Expr* expr, bool canAssign, in
   Expr* dot_expr       = sta_arena_push_struct(parser->arena, Expr);
   dot_expr->type       = EXPR_DOT;
   dot_expr->dot.member = parser->previous->literal;
+  dot_expr->dot.target = expr;
+  debug_expr(dot_expr);
 
   return dot_expr;
 }
@@ -428,6 +442,7 @@ static Stmt* parse_expression_statement(Parser* parser)
     stmt->type          = STMT_ASSIGN;
     stmt->assign.target = expr;
     stmt->assign.value  = equals;
+    return stmt;
   }
   else if (match_augmented(parser))
   {
@@ -485,11 +500,13 @@ static Stmt* parse_for_statement(Parser* parser)
   out->type = STMT_FOR;
   consume(parser, TOKEN_LEFT_PAREN, "Expect ( after for");
 
-  out->for_.init      = parse_statement(parser);
+  out->for_.init = parse_statement(parser);
+  consume(parser, TOKEN_SEMICOLON, "Expect ';' after condition stmt");
   out->for_.condition = parse_expression_statement(parser);
   consume(parser, TOKEN_SEMICOLON, "Expect ';' after condition stmt");
 
   out->for_.update = parse_expression_statement(parser);
+  debug_stmt(out->for_.update);
   consume(parser, TOKEN_RIGHT_PAREN, "Expect ')' after update");
   consume(parser, TOKEN_LEFT_BRACE, "Expect '{' after for loop (init, condition, update)");
 
@@ -540,6 +557,7 @@ static Stmt* parse_array(Parser* parser, String name, DataType type, int line)
   stmt->array.item_size = atoi(item_size_str);
 
   free(item_size_str);
+  consume(parser, TOKEN_RIGHT_BRACKET, "expect ] after array size");
 
   stmt->array.item_count = 0;
   stmt->array.items      = sta_arena_push_array(parser->arena, Expr*, stmt->array.item_size);
@@ -664,8 +682,6 @@ static Stmt* parse_statement(Parser* parser)
   default:
   {
 
-    String lit = parser->current->literal;
-    printf("%.*s\n", lit.len, lit.buffer);
     if (is_variable_type(parser->current->type) || is_declared_struct(parser, parser->current->literal))
     {
       DataType type = parse_type(parser);
@@ -680,7 +696,6 @@ static Stmt* parse_statement(Parser* parser)
     Stmt*  out          = parse_expression_statement(parser);
     String prev_literal = parser->previous->literal;
     String curr_literal = parser->current->literal;
-    printf("%.*s %.*s\n", (i32)prev_literal.len, prev_literal.buffer, (i32)curr_literal.len, curr_literal.buffer);
     consume(parser, TOKEN_SEMICOLON, "Expected ';' after expression statement");
     return out;
   }
@@ -724,11 +739,10 @@ static void parse_include(Parser* parser)
   }
 
   parser->stmts = (Stmt**)realloc(parser->stmts, sizeof(Stmt*) * parser->stmt_cap);
-  for (int i = prev_count; i < parser->stmt_count; i++)
+  for (int i = prev_count, j = 0; j < include_parser.stmt_count; j++, i++)
   {
-    parser->stmts[i] = include_parser.stmts[i - include_parser.stmt_count];
+    parser->stmts[i] = include_parser.stmts[j];
   }
-  free_stmts(&include_parser);
 }
 static Stmt* parse_define(Parser* parser)
 {
@@ -778,7 +792,7 @@ static Stmt* parse_extern(Parser* parser)
 }
 static Stmt* parse_function(Parser* parser)
 {
-  if (!(is_variable_type(parser->current->type)))
+  if (!(is_variable_type(parser->current->type) || is_declared_struct(parser, parser->current->literal)))
   {
     error("Can't declare something other then extern, include, struct or function");
   }

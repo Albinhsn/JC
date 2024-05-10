@@ -11,10 +11,10 @@ static void debug_binary(BinaryExpr* binary)
 static void debug_call(CallExpr* call)
 {
   printf("%.*s(", (i32)call->name.len, call->name.buffer);
-  for (int i = 0; i < call->argCount; i++)
+  for (int i = 0; i < call->arg_count; i++)
   {
     debug_expr(call->args[i]);
-    if (i < call->argCount - 1)
+    if (i < call->arg_count - 1)
     {
       printf(", ");
     }
@@ -59,7 +59,9 @@ static void debug_literal(LiteralExpr* literal)
   if (literal->literal->type == TOKEN_STRING_LITERAL)
   {
     printf("\"%.*s\"", (i32)literal->literal->literal.len, literal->literal->literal.buffer);
-  }else{
+  }
+  else
+  {
     printf("%.*s", (i32)literal->literal->literal.len, literal->literal->literal.buffer);
   }
 }

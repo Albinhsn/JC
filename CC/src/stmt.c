@@ -84,15 +84,23 @@ void debug_if(IfStmt* if_)
 }
 void debug_return(ReturnStmt* return_)
 {
-  printf("return ");
-  debug_expr(return_->value);
+  printf("return");
+  if (return_->value != 0)
+  {
+    printf(" ");
+    debug_expr(return_->value);
+  }
   printf(";\n");
 }
 void debug_variable(VariableStmt* variable)
 {
   debug_type(variable->type);
-  printf(" %.*s = ", (i32)variable->name.len, variable->name.buffer);
-  debug_expr(variable->value);
+  printf(" %.*s", (i32)variable->name.len, variable->name.buffer);
+  if (variable->value != 0)
+  {
+    printf(" = ");
+    debug_expr(variable->value);
+  }
   printf(";\n");
 }
 void debug_function(FunctionStmt* function)
@@ -117,7 +125,8 @@ void debug_struct(StructStmt* strukt)
   {
     debug_field(&strukt->fields[i]);
     printf(";\n");
-    if(i < strukt->field_count - 1){
+    if (i < strukt->field_count - 1)
+    {
       printf("\t");
     }
   }
@@ -155,6 +164,11 @@ void debug_extern(ExternStmt* extern_)
 
 void debug_stmt(Stmt* stmt)
 {
+  if (stmt == 0)
+  {
+    printf("Got 0 stmt\n");
+    return;
+  }
   switch (stmt->type)
   {
   case STMT_ARRAY:
@@ -219,4 +233,3 @@ void debug_stmt(Stmt* stmt)
   }
   }
 }
-
