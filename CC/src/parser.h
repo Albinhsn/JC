@@ -38,21 +38,9 @@ enum Precedence
 };
 typedef enum Precedence Precedence;
 
-struct TokenQueue
-{
-  Token* queue;
-  int    count;
-  int    capacity;
-};
-typedef struct TokenQueue TokenQueue;
-
-void                      push_token(TokenQueue* queue, Token* token);
-void                      pop_token(TokenQueue* queue, Token* token);
-
 struct Parser
 {
   Arena*      arena;
-  TokenQueue* queue;
   Scanner*    scanner;
   Symbol*     symbols;
   int         symbol_count;
@@ -77,5 +65,6 @@ typedef struct
 void init_parser(Parser* parser, Scanner* scanner, Arena* arena, Symbol* symbols, int symbol_count, int symbol_cap);
 void parse(Parser* parser);
 void free_stmts(Parser* parser);
+void free_parser(Parser* parser);
 
 #endif

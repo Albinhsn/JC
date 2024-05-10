@@ -91,7 +91,6 @@ static ParseRule rules[] = {
 void init_parser(Parser* parser, Scanner* scanner, Arena* arena, Symbol* symbols, int symbol_count, int symbol_cap)
 {
   parser->scanner    = scanner;
-  parser->queue      = 0;
   parser->arena      = arena;
   parser->stmt_count = 0;
   parser->stmt_cap   = 8;
@@ -150,10 +149,7 @@ static bool is_declared_struct(Parser* parser, String name)
 static void advance(Parser* parser)
 {
   parser->previous = parser->current;
-  if (parser->queue != 0 && parser->queue->count != 0)
-  {
-  }
-  parser->current = parse_token(parser->scanner);
+  parser->current  = parse_token(parser->scanner);
   printf("New current %.*s\n", (i32)parser->current->literal.len, parser->current->literal.buffer);
 }
 static bool match_type(Parser* parser, TokenType type)
@@ -706,25 +702,17 @@ static void parse_include(Parser* parser)
   consume(parser, TOKEN_STRING_LITERAL, "Expected string after include");
   String filename     = parser->previous->literal;
   String file_content = {};
-  Arena  arena        = {};
-  arena.memory        = (u64)malloc(4096 * 4096);
-  arena.maxSize       = 4096 * 4096;
-  arena.ptr           = 0;
 
-  char file[32];
+  char   file[32];
   memset(file, 0, 32);
   strncpy(file, filename.buffer, filename.len);
-  sta_read_file(&arena, &file_content, file);
+  sta_read_file(parser->scanner->arena, &file_content, file);
 
   Scanner scanner;
-  init_scanner(&scanner, &arena, &file_content, file);
+  init_scanner(&scanner, parser->scanner->arena, &file_content, file);
   Parser include_parser;
 
-  Arena  arena2  = {};
-  arena2.maxSize = 4096 * 4096;
-  arena2.memory  = (u64)malloc(arena2.maxSize);
-  arena2.ptr     = 0;
-  init_parser(&include_parser, &scanner, &arena2, parser->symbols, parser->symbol_count, parser->symbol_cap);
+  init_parser(&include_parser, &scanner, parser->arena, parser->symbols, parser->symbol_count, parser->symbol_cap);
   parse(&include_parser);
 
   parser->symbol_cap   = include_parser.symbol_cap;
@@ -743,6 +731,7 @@ static void parse_include(Parser* parser)
   {
     parser->stmts[i] = include_parser.stmts[j];
   }
+  free(include_parser.stmts);
 }
 static Stmt* parse_define(Parser* parser)
 {
@@ -858,11 +847,92 @@ void parse(Parser* parser)
 
 void free_expr(Expr* expr)
 {
-  if (expr->type == EXPR_CALL)
+  switch (expr->type)
   {
-    free(expr->call.args);
+  case EXPR_BINARY:
+  {
+    BinaryExpr* binary = &expr->binary;
+    free_expr(binary->left);
+    free_expr(binary->right);
+    break;
   }
-  // call
+  case EXPR_CALL:
+  {
+    CallExpr* call = &expr->call;
+    for (int i = 0; i < call->arg_count; i++)
+    {
+      free_expr(call->args[i]);
+    }
+    free(call->args);
+    break;
+  }
+  case EXPR_CAST:
+  {
+    free_expr(expr->cast.target);
+    break;
+  }
+  case EXPR_COMPARISON:
+  {
+    ComparisonExpr* comparison = &expr->comparison;
+    free_expr(comparison->left);
+    free_expr(comparison->right);
+    break;
+  }
+  case EXPR_DOT:
+  {
+    DotExpr* dot = &expr->dot;
+    free_expr(dot->target);
+    break;
+  }
+  case EXPR_GROUPED:
+  {
+    GroupedExpr* grouped = &expr->grouped;
+    free_expr(grouped->grouped);
+    break;
+  }
+  case EXPR_INDEX:
+  {
+    IndexExpr* index = &expr->index;
+    free_expr(index->target);
+    free_expr(index->index);
+    break;
+  }
+  case EXPR_LOGICAL:
+  {
+    LogicalExpr* logical = &expr->logical;
+    free_expr(logical->left);
+    free_expr(logical->right);
+    break;
+  }
+  case EXPR_POSTFIX:
+  {
+    PostfixExpr* postfix = &expr->postfix;
+    free_expr(postfix->target);
+    break;
+  }
+  case EXPR_UNARY:
+  {
+    UnaryExpr* unary = &expr->unary;
+    free_expr(unary->target);
+    break;
+  }
+  case EXPR_VARIABLE:
+  case EXPR_LITERAL:
+  {
+    break;
+  }
+  }
+}
+
+void        free_stmt(Stmt* stmt);
+
+static void free_stmt_block(StmtBlock* block)
+{
+  for (int i = 0; i < block->block_count; i++)
+  {
+    free_stmt(block->block[i]);
+  }
+  free(block->block);
 }
 
 void free_stmt(Stmt* stmt)
@@ -871,27 +941,90 @@ void free_stmt(Stmt* stmt)
   {
   case STMT_IF:
   {
+    IfStmt* if_stmt = &stmt->if_;
+    for (int i = 0; i < if_stmt->block_count; i++)
+    {
+      free_stmt_block(&if_stmt->blocks[i]->block);
+    }
+    free(if_stmt->blocks);
+
+    if (if_stmt->else_)
+    {
+      free_stmt_block(&if_stmt->else_block);
+    }
     break;
   }
   case STMT_FOR:
   {
-    // free(stmt->for_.block.block);
+    ForStmt* for_stmt = &stmt->for_;
+
+    free_stmt(for_stmt->condition);
+    free_stmt(for_stmt->update);
+    free_stmt(for_stmt->init);
+    free_stmt_block(&for_stmt->block);
     break;
   }
   case STMT_WHILE:
   {
-    // free(stmt->while_.block.block);
+    WhileStmt* while_stmt = &stmt->while_;
+    free_expr(while_stmt->condition);
+    free_stmt_block(&while_stmt->block);
     break;
   }
   case STMT_FUNCTION:
   {
-    // free(stmt->while_.block.block);
+    FunctionStmt* function = &stmt->function;
+    free_stmt_block(&function->block);
     break;
   }
-  default:
+  case STMT_ARRAY:
   {
+    ArrayStmt* array = &stmt->array;
+    for (int i = 0; i < array->item_count; i++)
+    {
+      free_expr(array->items[i]);
+    }
+    free(array->items);
+    break;
   }
-    // and block/body
+  case STMT_ASSIGN:
+  {
+    AssignStmt* assign = &stmt->assign;
+    free_expr(assign->value);
+    free_expr(assign->target);
+    break;
+  }
+  case STMT_EXPRESSION:
+  {
+    ExpressionStmt* expr = &stmt->expr;
+    free_expr(expr->expr);
+    break;
+  }
+  case STMT_RETURN:
+  {
+    ReturnStmt* return_stmt = &stmt->return_;
+    if (return_stmt->value)
+    {
+      free_expr(return_stmt->value);
+    }
+    break;
+  }
+  case STMT_VARIABLE:
+  {
+    VariableStmt* variable_stmt = &stmt->variable;
+    if (variable_stmt->value)
+    {
+
+      free_expr(variable_stmt->value);
+    }
+    break;
+  }
+  case STMT_STRUCT:
+  case STMT_EXTERN:
+  case STMT_MACRO:
+  {
+    break;
+  }
   }
 }
 void free_stmts(Parser* parser)
@@ -902,4 +1035,11 @@ void free_stmts(Parser* parser)
   }
   free(parser->stmts);
   free((void*)parser->arena->memory);
+}
+void free_parser(Parser* parser)
+{
+  free_stmts(parser);
+  free(parser->symbols);
+  free((void*)parser->arena->memory);
+  free((void*)parser->scanner->arena->memory);
 }
