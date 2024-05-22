@@ -46,19 +46,11 @@ public class Scanner {
 		    this.index--;
 		    return;
 		}
-		case '\"', '{', '[',
-		']', '}', '*', ';',
-		'<', '>', '(', ')',
-		'!', '%', '.', '#',
-		'^', ',', '&', '|',
-		'-', '+', '=' ->{
-		    return;
-		}
-		case '\n'->{
-		    this.line++;
-		}
+        // Just continue skipping
+		case ' ', '\t', '\r' ->{}
+		case '\n'-> this.line++;
 		default -> {
-		    // Just continue skipping
+            return;
 		}
 	    }
 	    index++;
@@ -182,7 +174,7 @@ public class Scanner {
     }
 
     private Token createToken(TokenType tokenType, String literal){
-        return new Token(tokenType, this.line, literal);
+        return new Token(tokenType, literal);
     }
 
     private boolean matchNext(char toMatch){

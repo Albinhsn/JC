@@ -8,6 +8,7 @@ import se.liu.albhe576.project.backend.Symbol;
 import se.liu.albhe576.project.backend.IntermediateList;
 import se.liu.albhe576.project.backend.CompileException;
 import se.liu.albhe576.project.backend.Compiler;
+import se.liu.albhe576.project.backend.CallingConvention;
 
 /**
  * Expression for any function call (including calls to external functions)
@@ -19,9 +20,9 @@ import se.liu.albhe576.project.backend.Compiler;
  */
 public class CallExpression extends Expression
 {
-   private final Token name;
+   private final String name;
    private final List<Expression> args;
-   public CallExpression(Token name, List<Expression> args, int line, String file){
+   public CallExpression(String name, List<Expression> args, int line, String file){
        super(line, file);
        this.name = name;
        this.args = args;
@@ -31,17 +32,16 @@ public class CallExpression extends Expression
     public void compile(SymbolTable symbolTable, IntermediateList intermediates) throws CompileException{
 
        // Does the function already exist?
-       String functionName = name.literal();
-       if(!symbolTable.functionExists(functionName)){
-           Compiler.panic(String.format("Trying to call undeclared function %s", functionName), line, file);
+       if(!symbolTable.functionExists(this.name)){
+           Compiler.panic(String.format("Trying to call undeclared function %s", this.name), line, file);
        }
 
-       Function function                    = symbolTable.getFunction(functionName);
-       List<StructureField> functionArguments  = function.getArguments();
+       Function function                        = symbolTable.getFunction(this.name);
+       List<StructureField> functionArguments   = function.getArguments();
 
         // correct number of arguments? (or varargs)
        if(!function.isVarArgs() && args.size() > functionArguments.size()){
-            Compiler.panic(String.format("Function parameter mismatch expected %d got %d when calling %s", functionArguments.size(), args.size(), name.literal()), line, file);
+            Compiler.panic(String.format("Function parameter mismatch expected %d got %d when calling %s", functionArguments.size(), args.size(), name), line, file);
        }
 
        // Compile every argument and store the value on the stack
@@ -74,6 +74,6 @@ public class CallExpression extends Expression
             }
         }
 
-       intermediates.createCall(symbolTable, function.getFunctionSymbol(functionName, generalCount, floatingPointCount, stackSpace));
+       intermediates.createCall(symbolTable, function.getFunctionSymbol(this.name, generalCount, floatingPointCount, stackSpace));
     }
 }

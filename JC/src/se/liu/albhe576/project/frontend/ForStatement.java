@@ -32,10 +32,15 @@ public class ForStatement extends Statement
 
         // Compile condition
         intermediates.insertLabel(conditionLabel);
-        condition.compile(symbolTable, intermediates);
+        IntermediateList conditionIntermediates = new IntermediateList();
+        condition.compile(symbolTable, conditionIntermediates);
 
-        // check if we jump
-        intermediates.createJumpCondition(mergeLabel, false);
+        intermediates.addAll(conditionIntermediates);
+        if(!conditionIntermediates.isEmpty()){
+            // check if we jump
+            intermediates.createJumpCondition(mergeLabel, false);
+        }
+
 
         // Compile body
         for(Statement statement : body){

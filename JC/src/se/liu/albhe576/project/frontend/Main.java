@@ -55,6 +55,7 @@ public class Main {
         try{
             parser.parse();
             SymbolTable symbolTable     = new SymbolTable(parser.getStructures(), parser.getFunctions());
+
             CodeGenerator codeGenerator = new IntelCodeGenerator<>(symbolTable, new Linux64BitCallingConvention());
             Compiler compiler           = new Compiler(symbolTable, codeGenerator, fileHandler);
             compiler.compile("out.asm");

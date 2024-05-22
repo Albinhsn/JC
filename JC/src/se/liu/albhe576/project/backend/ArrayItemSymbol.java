@@ -8,8 +8,13 @@ package se.liu.albhe576.project.backend;
  * @see Symbol
  * @see ArrayDataType
  */
-public class ArrayItemSymbol extends VariableSymbol{
+public class ArrayItemSymbol extends Symbol{
+    private final int offset;
+    public int getOffset(){
+        return this.offset;
+    }
     public ArrayItemSymbol(String name, DataType type, int offset) {
-        super(name, type, offset);
+        super(name, type);
+        this.offset = offset;
     }
 }

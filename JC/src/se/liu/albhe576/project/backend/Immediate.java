@@ -1,8 +1,9 @@
 package se.liu.albhe576.project.backend;
 
 /**
- * This could (or should?) just be inherited by a IntImmediate and a StringImmediate rather then a generic one
+ * Represents an immediate value in x86 (or some other ISA).
  * @param <T> the type of immediate, should only be an int or a string
+ * @see Operand
  */
 public class Immediate<T> extends Operand{
     private final T immediate;

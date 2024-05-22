@@ -21,6 +21,7 @@ public class CastExpression extends Expression
     public void compile(SymbolTable symbolTable, IntermediateList intermediates) throws CompileException{
         expression.compile(symbolTable, intermediates);
         Symbol result = intermediates.getLastResult();
+
         if(result.getType().isPointer() && type.isPointer()){
             // Cast is just a token intermediate whose result is of the correct type.
             // Casting a pointer to another is just changing the result

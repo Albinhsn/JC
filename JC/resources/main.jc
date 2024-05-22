@@ -1,22 +1,7 @@
 
-#extern void * malloc(int size)
-#extern void  free(void * ptr)
-#extern void  printf(...)
-#extern float sqrt(float x)
-
-
-// #include "resources/foo.jc"
-#include "resources/tests.jc"
-
-// grid.grid[0].x = 0
-// and and mod tests
-
-struct B{
-    byte * b;
-}
 
 int main(){
-    run_tests();
+    FILE file = fopen("test.ppm", "w");
 }
 
 

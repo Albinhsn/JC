@@ -17,6 +17,9 @@ public class IntermediateList implements Iterable<Intermediate>{
         return intermediates.iterator();
     }
 
+    public boolean isEmpty(){
+        return intermediates.isEmpty();
+    }
     public int size(){
         return intermediates.size();
     }
@@ -99,8 +102,10 @@ public class IntermediateList implements Iterable<Intermediate>{
         String immediateString = String.valueOf(immediate);
         this.intermediates.add(new Intermediate(IntermediateOperation.IMUL, target, new ImmediateSymbol(immediateString, DataType.getLong(), immediateString), symbolTable.generateSymbol(DataType.getLong())));
     }
-    public void createLoadPointer(SymbolTable symbolTable, Symbol pointer) {
-       this.intermediates.add(new Intermediate(IntermediateOperation.LOAD_POINTER, pointer, null, symbolTable.generateSymbol(pointer.type.getPointerFromType())));
+    public Symbol createLoadPointer(SymbolTable symbolTable, Symbol pointer) {
+       Symbol loadedPointer = symbolTable.generateSymbol(pointer.type.getPointerFromType());
+       this.intermediates.add(new Intermediate(IntermediateOperation.LOAD_POINTER, pointer, null, loadedPointer));
+       return loadedPointer;
     }
     public void createLoadMemberPointer(SymbolTable symbolTable, MemberSymbol pointer, DataType memberType) {
         this.intermediates.add(new Intermediate(IntermediateOperation.LOAD_MEMBER_POINTER, pointer, null, symbolTable.generateSymbol(memberType.getPointerFromType())));

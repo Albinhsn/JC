@@ -33,16 +33,24 @@ public class TemporaryVariableStack {
         return this.temporaryStack.peek();
     }
 
-    public int push(DataType type){
-        int offset;
+    private int getOffset(){
         if(this.temporaryStack.isEmpty()){
-            offset = -symbolTable.getLocalVariableStackSize(functionName);
-        }else{
-            offset = this.temporaryStack.peek().offset();
+            return -symbolTable.getLocalVariableStackSize(functionName);
         }
-        offset -= SymbolTable.getStructureSize(symbolTable.getStructures(), type);
-        this.maxOffset = Math.min(this.maxOffset, offset);
-        this.temporaryStack.push(new TemporaryVariable(offset, type));
+        return this.temporaryStack.peek().offset();
+    }
+    private void push(int offset, DataType structType){
+        this.maxOffset  = Math.min(this.maxOffset, offset);
+        this.temporaryStack.push(new TemporaryVariable(offset, structType));
+    }
+    public int pushStruct(int size, DataType structType){
+        int offset      = getOffset() - size;
+        this.push(offset, structType);
+        return offset;
+    }
+    public int push(DataType type){
+        int offset = getOffset() - SymbolTable.getStructureSize(symbolTable.getStructures(), type);
+        this.push(offset, type);
         return offset;
     }
 }

@@ -15,7 +15,7 @@ public class IntelInstructionList extends InstructionList{
 	this.instructions.add(new IntelInstruction(CALL, new Immediate<>(name)));
     }
     public void createReturn(){
-	this.instructions.add(new IntelInstruction(RET));
+        this.instructions.add(new IntelInstruction(RET));
     }
     public void createIntegerDivision(){
 	this.addInstruction(XOR, RDX, RDX);
@@ -37,7 +37,7 @@ public class IntelInstructionList extends InstructionList{
 	this.instructions.add(new IntelInstruction(op, dest, new Address<>(source)));
     }
     public void addInstruction(Operation op, Register destRegister, Operand source){
-	Address<?> dest     = destRegister == null ? null : new Address<>(destRegister);
+	Address<?, ?> dest     = destRegister == null ? null : new Address<>(destRegister);
 	this.instructions.add(new IntelInstruction(op, dest, source));
     }
     public void addInstruction(Operation op, Register dest, Register source){
@@ -67,7 +67,7 @@ public class IntelInstructionList extends InstructionList{
 	addInstruction(moveOp, Address.getEffectiveAddress(PRIMARY_GENERAL_REGISTER), PRIMARY_SSE_REGISTER);
     }
 
-    public void createMove(DataType destinationType, Address<?> destination, Operand source){
+    public void createMove(DataType destinationType, Address<?, ?> destination, Operand source){
 	addInstruction(getMoveOpFromType(destinationType), destination, source);
     }
     public void createMoveIntoPrimary(DataType destinationType, Operand source) throws CompileException {
@@ -80,7 +80,7 @@ public class IntelInstructionList extends InstructionList{
     public void deallocateStackSpace(int space){
 	addInstruction(ADD, RSP, new Immediate<>(space));
     }
-    public void createLoadEffectiveAddress(Register destination, Address<?> source){
+    public void createLoadEffectiveAddress(Register destination, Address<?, ?> source){
 	addInstruction(LEA, destination, source);
     }
     public void createSignExtend(Register dest, Operand source){

@@ -48,8 +48,8 @@ public class VariableStatement extends Statement
                 lastSymbol = intermediates.createConvert(symbolTable, lastSymbol, type);
             }
 
-            intermediates.createLoadPointer(symbolTable, variable);
-            intermediates.createAssign(lastSymbol, variable);
+            Symbol loadedVariable = intermediates.createLoadPointer(symbolTable, variable);
+            intermediates.createAssign(lastSymbol, loadedVariable);
         }
     }
 }

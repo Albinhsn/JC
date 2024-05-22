@@ -10,17 +10,17 @@ import se.liu.albhe576.project.backend.Compiler;
  */
 public class VariableExpression extends Expression
 {
-    private final Token token;
-    public VariableExpression(Token token, int line, String file){
+    private final String variable;
+    public VariableExpression(String variable, int line, String file){
         super(line, file);
-        this.token = token;
+        this.variable = variable;
     }
 
     @Override
     public void compile(SymbolTable symbolTable, IntermediateList intermediates) {
-        VariableSymbol symbol = symbolTable.findSymbol(token.literal());
+        VariableSymbol symbol = symbolTable.findSymbol(variable);
         if(symbol == null){
-            Compiler.panic(String.format("Can't find symbol %s", token.literal()), line, file);
+            Compiler.panic(String.format("Can't find symbol %s", variable), line, file);
         }
         assert symbol != null;
         intermediates.createLoad(symbolTable, symbol);

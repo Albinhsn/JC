@@ -14,7 +14,6 @@ public class FunctionSymbol extends Symbol{
     private final int floatingPointCount;
     private final int stackSpace;
     private final List<StructureField> arguments;
-
     public int getStackSpace(){
 	return this.stackSpace;
     }

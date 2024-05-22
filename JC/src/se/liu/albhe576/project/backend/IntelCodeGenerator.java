@@ -98,6 +98,8 @@ public class IntelCodeGenerator<T extends CallingConvention> implements CodeGene
 
             // Create the epilogue and emit return (might be redundant if the last one is already a return)
             instructions.addEpilogue();
+            // add a token 0 into
+            instructions.addInstruction(MOV, new Address<>(PRIMARY_GENERAL_REGISTER), new Immediate<>(0));
             instructions.createReturn();
 
             // Handle stack alignment
@@ -237,7 +239,7 @@ public class IntelCodeGenerator<T extends CallingConvention> implements CodeGene
         // pop the pointer of the value into secondary register
         // take the value the pointer points to into primary
         popTemporaryIntoSecondary(instructions, temporaryStack);
-        Address<?> secondaryGeneralEffective = Address.getEffectiveAddress(SECONDARY_GENERAL_REGISTER);
+        Address<?, ?> secondaryGeneralEffective = Address.getEffectiveAddress(SECONDARY_GENERAL_REGISTER);
         instructions.createMoveIntoPrimary(target, secondaryGeneralEffective);
 
         // if it's foo++ we store the temporary before the postfix
@@ -246,7 +248,7 @@ public class IntelCodeGenerator<T extends CallingConvention> implements CodeGene
         }
 
         // pointer arithmetic is an add with the size of the underlying struct and not an
-        Address<?> primary = new Address<>(getPrimaryRegisterFromDataType(target));
+        Address<?, ?> primary = new Address<>(getPrimaryRegisterFromDataType(target));
         if(target.isPointer()){
             int pointerSize = symbolTable.getStructureSize(target.getTypeFromPointer());
             instructions.addInstruction(pointerOp, primary, new Immediate<>(pointerSize));
@@ -391,12 +393,12 @@ public class IntelCodeGenerator<T extends CallingConvention> implements CodeGene
 
             // calculate its position
             int stackPosition = (stackSpace - argumentSize) - argumentSize * i;
-            Address<?> stackAddress = Address.getEffectiveAddress(RSP,stackPosition);
+            Address<?, ?> stackAddress = Address.getEffectiveAddress(RSP,stackPosition);
 
             // figure out what type it is and do the corresponding move
             if(temporaryVariable.type().isFloatingPoint()){
                 floatingPointCount--;
-                Address<?> primary = new Address<>(PRIMARY_SSE_REGISTER);
+                Address<?, ?> primary = new Address<>(PRIMARY_SSE_REGISTER);
                 boolean temporaryIsFloat = temporaryVariable.type().isFloat();
 
                 // should be via the stack
@@ -406,15 +408,13 @@ public class IntelCodeGenerator<T extends CallingConvention> implements CodeGene
                     }
                     instructions.createMove(DataType.getDouble(), stackAddress, primary);
                 // since sse differentiates between float and double in vector registers we need to convert a float to a double if needed
-                }else if(temporaryIsFloat){
-                    instructions.addInstruction(CVTSS2SD, new Address<>(floatingPointRegisters[floatingPointCount]), PRIMARY_SSE_REGISTER);
-                } else{
+                }else{
                     instructions.createMove(DataType.getDouble(), new Address<>(floatingPointRegisters[floatingPointCount]), primary);
                 }
             }else{
                 // move it either to the correct register or onto the stack via the primary register
                 generalCount--;
-                Address<?> primary = new Address<>(PRIMARY_GENERAL_REGISTER);
+                Address<?, ?> primary = new Address<>(PRIMARY_GENERAL_REGISTER);
                 if(generalCount >= generalRegisters.length){
                     instructions.createMove(temporaryVariable.type(), stackAddress, primary);
                 }else{
@@ -443,12 +443,34 @@ public class IntelCodeGenerator<T extends CallingConvention> implements CodeGene
             instructions.addInstruction(allocateArgumentStackSpaceIndex, new IntelInstruction(SUB, new Address<>(RSP), new Immediate<>(stackSize)));
         }
 
+        DataType returnType = intermediate.result().type;
         // add the return value (if any) to the stack
-        if(!intermediate.result().type.isVoid()){
-            addTemporary(instructions, temporaryStack, intermediate.result().type);
+        if(!returnType.isVoid()){
+            // when we return a struct from a function and it doesn't get saved on the stack i.e
+            // foo(bar()) where bar return a struct
+            // it might overwrite the stack memory where the pointer to the struct is
+            // so to avoid it we hack in a temporary that includes both a pointer to the struct and the struct itself
+            if(returnType.isStructure()){
+                // Pop the temporary
+                // allocate the stack space for the pointer and the struct
+                int pointerSize = 8;
+                int structSize = symbolTable.getStructureSize(returnType);
+                int stackSpace  =  structSize + pointerSize;
+
+                // move the struct there
+                // store the new pointer as a temporary as an allocation with the struct itself
+                int offset = temporaryStack.pushStruct(stackSpace, intermediate.result().type);
+                instructions.createLoadEffectiveAddress(RDI, new Address<>(RBP, true, offset + pointerSize));
+                instructions.createMove(DataType.getLong(), new Address<>(RBP, true, offset), new Address<>(RDI));
+                instructions.createMove(DataType.getLong(), new Address<>(RSI), new Address<>(PRIMARY_GENERAL_REGISTER));
+                instructions.createMoveStringByte(structSize);
+
+            }else{
+                addTemporary(instructions, temporaryStack, intermediate.result().type);
+            }
         }
     }
-    private Address<?> getImmediate(ImmediateSymbol immediateSymbol, DataType result){
+    private Address<?, ?> getImmediate(ImmediateSymbol immediateSymbol, DataType result){
         // immediates are either a constant (string and float) or just a label/integer immediate
         if(result.isString() || result.isFloatingPoint()) {
             Constant constant = symbolTable.getConstants().get(immediateSymbol.getValue());
@@ -460,7 +482,7 @@ public class IntelCodeGenerator<T extends CallingConvention> implements CodeGene
 
         // get the immediate
         DataType result                     = intermediate.result().type;
-        Address<?> immediate                = getImmediate((ImmediateSymbol) intermediate.operand1(), result);
+        Address<?, ?> immediate                = getImmediate((ImmediateSymbol) intermediate.operand1(), result);
 
         // move it into the primary and store it as a temporary
         instructions.createMoveIntoPrimary(result, immediate);
@@ -471,7 +493,7 @@ public class IntelCodeGenerator<T extends CallingConvention> implements CodeGene
         DataType result         = intermediate.result().type;
 
         // Loads a variable from the stack, get the effective address to the variable and then load either it or a pointer to it
-        Address<?> source = Address.getEffectiveAddress(RBP, variable.getOffset());
+        Address<?, ?> source = Address.getEffectiveAddress(RBP, variable.getOffset());
         if(variable.type.isStructure() || intermediate.op() == IntermediateOperation.LOAD_POINTER){
             instructions.createLoadEffectiveAddress(getPrimaryRegisterFromDataType(result), source);
         }else{
@@ -486,7 +508,7 @@ public class IntelCodeGenerator<T extends CallingConvention> implements CodeGene
 
         // get the address to the item
         // and move the item into the correct address
-        Address<?> stackAddress = Address.getEffectiveAddress(RBP, arraySymbol.getOffset());
+        Address<?, ?> stackAddress = Address.getEffectiveAddress(RBP, arraySymbol.getOffset());
         if(itemType.isStructure()){
             // Structs are moved via the instructions "rep movsb" which moves a n number of bytes from rdi into rsi
             // where rdi and rsi are pointers
@@ -550,29 +572,22 @@ public class IntelCodeGenerator<T extends CallingConvention> implements CodeGene
         popTemporaryIntoPrimary(instructions, temporaryStack);
         popTemporaryIntoSecondary(instructions, temporaryStack);
 
-        // figure out what size the indexed value needs to be increased by (i.e the size of the type)
+        // figure out what size the indexed value needs to be increased by (i.e. the size of the type)
         int size = symbolTable.getStructureSize(intermediate.operand1().type.getTypeFromPointer());
-        instructions.addInstruction(IMUL, PRIMARY_GENERAL_REGISTER, new Immediate<>(size));
-        instructions.addInstruction(ADD, PRIMARY_GENERAL_REGISTER, SECONDARY_GENERAL_REGISTER);
-
-        // this gets called by REFERENCE_INDEX as well which stores the pointer and not the value it points to
-        // if we have INDEX we get the value in question
-        if(intermediate.op() == IntermediateOperation.INDEX){
+        // this creates an effctive address like [rcx + 8 * rax], with rcx being the pointer and rax the index value
+        Address<?, ?> source = Address.getEffectiveAddress(SECONDARY_GENERAL_REGISTER, size, PRIMARY_GENERAL_REGISTER);
+        if(intermediate.op() != IntermediateOperation.INDEX || target.isStructure()){
+            instructions.createLoadEffectiveAddress(PRIMARY_GENERAL_REGISTER, source);
+        }else{
             Register destination = getPrimaryRegisterFromDataType(target);
-            Address<?> source = Address.getEffectiveAddress(PRIMARY_GENERAL_REGISTER);
-            if(target.isStructure()){
-                instructions.createLoadEffectiveAddress(destination, source);
-            }else{
-                instructions.createMove(target, new Address<>(destination), source);
-            }
+            instructions.createMove(target, new Address<>(destination), source);
         }
-
         addTemporary(instructions, temporaryStack, target);
     }
     private void createLoadMember(IntelInstructionList instructions, TemporaryVariableStack temporaryStack, Intermediate intermediate) throws CompileException {
         DataType result             = intermediate.result().type;
         MemberSymbol member         = (MemberSymbol) intermediate.operand1();
-        Address<?> memberAddress    = Address.getEffectiveAddress(PRIMARY_GENERAL_REGISTER, member.getOffset());
+        Address<?, ?> memberAddress    = Address.getEffectiveAddress(PRIMARY_GENERAL_REGISTER, member.getOffset());
 
         // pop the pointer to the struct and then load the value (or pointer to it) into the primary register
         popTemporaryIntoPrimary(instructions, temporaryStack);

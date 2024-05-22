@@ -68,6 +68,7 @@ public class Compiler {
             String log = String.format("intermediates for %s: %d", functionEntry.getKey(), function.size());
             for(Intermediate intermediate : function){
                 this.logger.severe(intermediate.toString());
+                System.out.println(intermediate);
             }
             this.logger.info(log);
         }

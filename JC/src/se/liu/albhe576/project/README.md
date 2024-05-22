@@ -1,1 +1,3 @@
 ## ToDo
+
+type check casts?

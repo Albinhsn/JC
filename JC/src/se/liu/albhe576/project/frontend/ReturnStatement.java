@@ -7,6 +7,7 @@ import se.liu.albhe576.project.backend.DataTypes;
 import se.liu.albhe576.project.backend.IntermediateList;
 import se.liu.albhe576.project.backend.Symbol;
 import se.liu.albhe576.project.backend.SymbolTable;
+import se.liu.albhe576.project.backend.Function;
 
 /**
  * The statement for function return values in the language

@@ -46,9 +46,12 @@ import java.util.logging.Logger;
  * @see Statement
  * @see Token
  */
+
 public class Parser {
     @FunctionalInterface
-    private interface Rule{ Expression apply(Expression expression, boolean canAssign, int line) throws CompileException;}
+    private interface Rule{
+        Expression apply(Expression expression, boolean canAssign, int line) throws CompileException;
+    }
     private record ParseFunction(Rule prefixRule, Rule infixRule, Precedence precedence) { }
     private final EnumMap<TokenType, ParseFunction> parseFunctions = new EnumMap<>(Map.ofEntries(
         Map.entry(TokenType.TOKEN_LEFT_BRACKET, new ParseFunction(null, this::parseIndex, Precedence.CALL)),
@@ -101,7 +104,7 @@ public class Parser {
             for(Token token : this.defined.get(this.current.literal())){
                 this.definedQueue.addFirst(token);
             }
-            this.current = this.definedQueue.pop();
+            this.current = this.definedQueue.removeLast();
         }
     }
     private void parseSizeOf() throws CompileException {
@@ -116,7 +119,7 @@ public class Parser {
             Compiler.panic("Expected ')' after sizeof", this.scanner.getLine(), this.fileName);
         }
         int size = SymbolTable.getStructureSize(this.structures, DataType.getDataTypeFromToken(type));
-        this.previous = new Token(TokenType.TOKEN_INT_LITERAL, this.scanner.getLine(), String.valueOf(size));
+        this.previous = new Token(TokenType.TOKEN_INT_LITERAL, String.valueOf(size));
     }
 
     private void advance() throws CompileException{
@@ -125,6 +128,7 @@ public class Parser {
             current = this.definedQueue.pop();
         }else{
             current = scanner.parseToken();
+            System.out.println(current.type());
             this.tokenCount++;
         }
 
@@ -161,11 +165,17 @@ public class Parser {
         }
         return type;
     }
+    private void panic(String msg, int line){
+        Compiler.panic(msg, line, this.fileName);
+    }
+    private void panic(String msg){
+        Compiler.panic(msg, this.scanner.getLine(), this.fileName);
+    }
 
     private DataType parseType() throws CompileException{
         DataType dataType = DataType.getDataTypeFromToken(this.current);
         if(dataType.isStructure() && !this.structures.containsKey(dataType.getName())){
-            Compiler.panic(String.format("Can't declare struct field of non existing type '%s'", dataType.getName()), this.scanner.getLine(), this.fileName);
+            panic(String.format("Can't declare struct field of non existing type '%s'", dataType.getName()));
         }
         advance();
         return this.parsePointerType(dataType);
@@ -174,7 +184,7 @@ public class Parser {
     private StructureField parseStructField() throws CompileException{
         DataType dataType = this.parseType();
         if(!matchType(TokenType.TOKEN_IDENTIFIER)){
-            Compiler.panic(String.format("Expected identifier as argument but got %s", this.current.type()), this.current.line(), this.fileName);
+            Compiler.panic(String.format("Expected identifier as argument but got %s", this.current.type()), this.scanner.getLine(), this.fileName);
         }
         return new StructureField(this.previous.literal(), dataType);
     }
@@ -188,7 +198,7 @@ public class Parser {
         //      type name;
         //  } // the last ; as in C isn't neccessary here
         TokenType currentType   = this.current.type();
-        int currentLine         = this.current.line();
+        int currentLine         = this.scanner.getLine();
 
         // parse the struct name
         if(!matchType(TokenType.TOKEN_IDENTIFIER)){
@@ -198,7 +208,7 @@ public class Parser {
         // check if the struct is already declared
         if(this.structures.containsKey(name.literal())){
             Structure structure = this.structures.get(name.literal());
-            Compiler.panic(String.format("Can't declare struct '%s' which is already declared from file %s", name.literal(), structure.getFilename()), this.current.line(), this.fileName);
+            Compiler.panic(String.format("Can't declare struct '%s' which is already declared from file %s", name.literal(), structure.getFilename()), this.scanner.getLine(), this.fileName);
         }
 
         if(!matchType(TokenType.TOKEN_LEFT_BRACE)){
@@ -210,7 +220,7 @@ public class Parser {
         while(!matchType(TokenType.TOKEN_RIGHT_BRACE)){
             fields.add(this.parseStructField());
             if(!matchType(TokenType.TOKEN_SEMICOLON)){
-                Compiler.panic(String.format("Expected semicolon after struct field but got %s", this.current.type()), this.current.line(), this.fileName);
+                panic(String.format("Expected semicolon after struct field but got %s", this.current.type()));
             }
         }
 
@@ -219,11 +229,11 @@ public class Parser {
 
     private void consume(TokenType type, String msg) throws CompileException{
         if(!matchType(type)){
-            Compiler.panic(msg, this.current.line(), this.fileName);
+            panic(msg);
         }
     }
     private Expression parseLiteral(Expression expression, boolean canAssign, int line) {
-        return new LiteralExpression(this.previous, this.previous.line(), this.fileName);
+        return new LiteralExpression(this.previous, line, this.fileName);
     }
 
     private ParseFunction getEmptyParseFunction(){
@@ -236,26 +246,27 @@ public class Parser {
 
         // this is the main function for parsing expressions
         // this should be called when starting to parse an expression
+        int line = this.scanner.getLine();
         advance();
 
         // look for a prefix rule
         ParseFunction prefix = this.getParseFunction(this.previous.type());
         if(prefix.prefixRule == null){
-            Compiler.panic(String.format("Expected expression but got %s %s", this.previous.literal(), precedence), this.current.line(), this.fileName);
+            panic(String.format("Expected expression but got %s %s", this.previous.literal(), precedence));
         }
 
         final int precedenceOrdinal = precedence.ordinal();
         final boolean canAssign =  precedenceOrdinal <= Precedence.ASSIGNMENT.ordinal();
 
         // parse the prefix
-        expression                  = prefix.prefixRule.apply(expression, canAssign, this.previous.line());
+        expression                  = prefix.prefixRule.apply(expression, canAssign, line);
         ParseFunction currentRule   = getParseFunction(this.current.type());
 
         // as long as the current rule has bigger or the same precedence as the current rule
         // we continue to call the infix rule
         while(precedenceOrdinal <= currentRule.precedence.ordinal()){
             advance();
-            expression = currentRule.infixRule.apply(expression, canAssign, this.previous.line());
+            expression = currentRule.infixRule.apply(expression, canAssign, line);
             currentRule = getParseFunction(this.current.type());
         }
 
@@ -282,7 +293,8 @@ public class Parser {
     private Expression parseEmptyExpression() throws CompileException {return parseExpr(null, Precedence.ASSIGNMENT);}
 
     private Statement parseExpressionStatement() throws CompileException {
-        int line = this.current.line();
+        int line = this.scanner.getLine();
+
         // parse the expression
         Expression expression = parseExpr(null, Precedence.OR);
 
@@ -302,30 +314,43 @@ public class Parser {
     }
 
     private Statement parseReturnStatement() throws CompileException{
+        int line = this.scanner.getLine();
         this.advance();
         // Check if it's an empty "return;"
         if(matchType(TokenType.TOKEN_SEMICOLON)){
-            return new ReturnStatement(null, this.previous.line(), this.fileName);
+            return new ReturnStatement(null, line, this.fileName);
         }
         // otherwise we parse the statement
-        Statement out = new ReturnStatement(this.parseEmptyExpression(), this.previous.line(), this.fileName);
+        Statement out = new ReturnStatement(this.parseEmptyExpression(), line, this.fileName);
         consume(TokenType.TOKEN_SEMICOLON, String.format("Expected ';' after return stmt %s", out));
         return out;
     }
+    private Statement getEmptyExpressionStatement(int line){
+        return new ExpressionStatement(null, line, this.fileName);
+    }
     private Statement parseForStatement() throws CompileException {
-
+        int line = this.scanner.getLine();
         this.advance();
-        int line = this.previous.line();
         consume(TokenType.TOKEN_LEFT_PAREN, "Expected '(' after for");
 
         // parse the initializer, condition and update statements
         Statement init = parseStatement();
 
-        Statement condition = parseExpressionStatement();
-        consume(TokenType.TOKEN_SEMICOLON, String.format("Expected ';' after condition stmt %s", condition));
+        Statement condition;
+        if(!matchType(TokenType.TOKEN_SEMICOLON)){
+            condition = parseExpressionStatement();
+            consume(TokenType.TOKEN_SEMICOLON, String.format("Expected ';' after condition stmt %s", condition));
+        }else{
+            condition = getEmptyExpressionStatement(line);
+        }
 
-        Statement update = parseExpressionStatement();
-        consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ')' after loop control variables");
+        Statement update;
+        if(!matchType(TokenType.TOKEN_RIGHT_PAREN)){
+            update = parseExpressionStatement();
+            consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ')' after loop control variables");
+        }else{
+            update = getEmptyExpressionStatement(line);
+        }
         consume(TokenType.TOKEN_LEFT_BRACE, "Expected '{' in for loop");
 
         // parse the body block
@@ -334,8 +359,8 @@ public class Parser {
 
     }
     private Statement parseWhileStatement() throws CompileException {
+        int line = this.scanner.getLine();
         this.advance();
-        int line = this.previous.line();
 
         // match (condition){
         consume(TokenType.TOKEN_LEFT_PAREN, "expected '(' after while");
@@ -405,7 +430,7 @@ public class Parser {
     }
 
     private Statement parseVariableDeclaration(DataType type) throws CompileException {
-        int line = this.current.line();
+        int line = this.scanner.getLine();
 
         // so we have parsed the type of the variable and now parse its name
         consume(TokenType.TOKEN_IDENTIFIER, String.format("Expected identifier after variable type but got %s", this.current.type()));
@@ -423,7 +448,7 @@ public class Parser {
             case TOKEN_SEMICOLON -> {return new VariableStatement(type, name, null, line, this.fileName);}
             default -> {
                 if(this.previous.type() != TokenType.TOKEN_LEFT_BRACKET){
-                    Compiler.panic("Expected '[', '=', '(' or ';' after variable name", this.previous.line(), this.fileName);
+                    panic("Expected '[', '=', '(' or ';' after variable name");
                 }
                 return this.parseArray(name, type, line);
             }
@@ -466,7 +491,7 @@ public class Parser {
             case TOKEN_IF       -> {return parseIfStatement();}
             case TOKEN_RETURN   -> {return parseReturnStatement();}
             default -> {
-                // parse a varaible declaration
+                // parse a variable declaration
                 if(isVariableType(this.current.type()) || this.structures.containsKey(this.current.literal())){
                     DataType type = parseType();
                     return parseVariableDeclaration(type);
@@ -483,8 +508,6 @@ public class Parser {
 
         }
     }
-
-
     private void parseInclude() throws CompileException {
 
         // an include is just #include "filename.jc"
@@ -496,6 +519,7 @@ public class Parser {
             return;
         }
 
+
         // otherwise add it
         this.included.add(fileName);
         // try to parse it or panic if we can't
@@ -503,8 +527,8 @@ public class Parser {
         try{
             s = Files.readString(Path.of(fileName));
         }catch(IOException ignored){
-            this.logger.severe(String.format("Failed to read from include '%s' included at %s:%d", fileName, this.fileName,this.current.line()));
-            Compiler.panic(String.format("Failed to read from include %s", fileName), this.current.line(), this.fileName);
+            logger.severe(String.format("Failed to read from include '%s' included at %s:%d", fileName, this.fileName,this.scanner.getLine()));
+            panic(String.format("Failed to read from include %s", fileName));
         }
 
         // otherwise try to parse the file
@@ -520,7 +544,7 @@ public class Parser {
     private void parseDefine() throws CompileException {
 
         // defines a macro #define name expr
-        int line = this.previous.line();
+        int line = this.scanner.getLine();
         consume(TokenType.TOKEN_IDENTIFIER, "Expected name of macro!");
 
         // We define macros as a sequence of tokens defined on the same line
@@ -550,16 +574,17 @@ public class Parser {
         consume(TokenType.TOKEN_IDENTIFIER, "Expected identifier for function name after #extern");
         String funcName = this.previous.literal();
 
-        // and parse it's arguments, we allow varargs (variable arguments?) for external functions
+        // and parse its arguments, we allow varargs (variable arguments?) for external functions
         // in order to support calling things like printf
+        int line = this.scanner.getLine();
         consume(TokenType.TOKEN_LEFT_PAREN, "Expected ( for function args after function name in extern");
         if(matchType(TokenType.TOKEN_ELLIPSIS)){
-            this.functions.put(funcName, new Function(null, type, null, this.fileName, this.previous.line(), true));
+            this.functions.put(funcName, new Function(null, type, null, this.fileName, line, true));
             consume(TokenType.TOKEN_RIGHT_PAREN, "Expected ) after function args in extern");
         }else{
             // if there isn't varargs try to parse it's arguments
             List<StructureField> arguments = this.parseArguments();
-            this.functions.put(funcName, new Function(arguments, type, null, this.fileName, this.previous.line(), false));
+            this.functions.put(funcName, new Function(arguments, type, null, this.fileName, line, false));
         }
     }
     private void parseFunction() throws CompileException {
@@ -628,17 +653,17 @@ public class Parser {
         return new DotExpression(expression, this.previous.literal(), line, this.fileName);
     }
 
-    private Expression parseRightSideOfBinary(Token op, int line) throws CompileException{
+    private Expression parseRightSideOfBinary(Token op) throws CompileException{
         ParseFunction rule = this.parseFunctions.get(op.type());
         return parseExpr(null, Precedence.values()[rule.precedence.ordinal() + 1]);
     }
     private Expression parseComparison(Expression left, boolean canAssign, int line) throws CompileException{
         Token op = this.previous;
-        return new ComparisonExpression(left, parseRightSideOfBinary(this.previous, line), op, line, this.fileName);
+        return new ComparisonExpression(left, parseRightSideOfBinary(this.previous), op, line, this.fileName);
     }
 
     private Expression parseBinary(Expression expression, boolean canAssign, int line) throws CompileException{
-        return new BinaryExpression(expression, this.previous, parseRightSideOfBinary(this.previous, this.previous.line()), this.previous.line(), this.fileName);
+        return new BinaryExpression(expression, this.previous, parseRightSideOfBinary(this.previous), line, this.fileName);
     }
     private Expression parseDereference(Expression expression, boolean canAssign, int line) throws CompileException{
         Token op = this.previous;
@@ -664,13 +689,14 @@ public class Parser {
         consume(endToken, errorMsg);
         return args;
     }
-    private Expression parseCall(Token variable) throws CompileException {
+    private Expression parseCall(String variable) throws CompileException {
+        int line = this.scanner.getLine();
         List<Expression> arguments = this.parseList(TokenType.TOKEN_RIGHT_PAREN, "Expect right paren after args");
-        return new CallExpression(variable, arguments, this.previous.line(), this.fileName);
+        return new CallExpression(variable, arguments, line, this.fileName);
     }
 
     private Expression parseVariable(Expression expression, boolean canAssign, int line) throws CompileException{
-        Token variable = this.previous;
+        String variable = this.previous.literal();
         if(matchType(TokenType.TOKEN_LEFT_PAREN)){
             return this.parseCall(variable);
         }
@@ -683,15 +709,16 @@ public class Parser {
     }
 
     private List<Expression> parseArrayItems(int size) throws CompileException{
+        int line = this.scanner.getLine();
         List<Expression> items = this.parseList(TokenType.TOKEN_RIGHT_BRACKET, String.format("Unexpected token %s, expected ']' or ','", this.current));
         if(size < items.size()){
-            Compiler.panic(String.format("Array declaration has excess element! Expected %d got %d", size, items.size()), this.current.line(), this.fileName);
+            panic(String.format("Array declaration has excess element! Expected %d got %d", size, items.size()), line);
         }
        return items;
     }
 
     private Expression parseIndex(Expression expression, boolean canAssign, int line) throws CompileException{
-        Expression out = new IndexExpression(expression, this.parseEmptyExpression(), this.previous.line(), this.fileName);
+        Expression out = new IndexExpression(expression, this.parseEmptyExpression(), line, this.fileName);
         consume(TokenType.TOKEN_RIGHT_BRACKET, "Expected ']' after index");
         return out;
     }
