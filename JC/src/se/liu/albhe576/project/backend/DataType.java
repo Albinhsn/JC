@@ -70,11 +70,6 @@ public class DataType {
         return new DataType(name, type, depth - 1);
     }
     public DataType getPointerFromType(){
-        if(this.type == DataTypes.ARRAY){
-            ArrayDataType arrayDataType = (ArrayDataType) this;
-            DataType itemType = arrayDataType.getItemType();
-            return new DataType(itemType.name, itemType.type, 1);
-        }
         return new DataType(name, type, depth + 1);
     }
     public static DataType getInt(){return new DataType("int", DataTypes.INT, 0);}

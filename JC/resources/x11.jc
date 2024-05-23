@@ -472,6 +472,42 @@ int x11_draw_text(x11_window * window, string s, int s_length, int x, int y){
   return 1;
 }
 
+int x11_draw_text_bytes(x11_window * window, byte * b, int s_length, int x, int y){
+
+  byte * req = malloc(1024);
+  write_i32_to_bytes(window.window_id, &req[4]);
+  write_i32_to_bytes(window.gc_id, &req[8]);
+
+  write_i16_to_bytes(x, &req[12]);
+  write_i16_to_bytes(y, &req[14]);
+
+  int count = (4-(s_length % 4)) % 4;
+  int packets = ((count + s_length) >> 2) + 4;
+
+  int fst = (packets << 16) | (s_length << 8) | X11_OP_REQ_IMAGE_TEXT8;
+  write_i32_to_bytes(fst, req);
+
+  for(int i = 0; i < s_length; i++){
+    req[16 + i] = b[i];
+  }
+
+
+  int write_count = 4 * packets;
+  for(int i = 16 + s_length; i < write_count; i++){
+    req[i] = 0;
+  }
+
+
+  int written = write(window.fd, req, write_count);
+  free(req);
+
+  if(written != write_count){
+    printf("Failed to write when writing text! %d out of %d\n", written, write_count);
+    return -1;
+  }
+  return 1;
+}
+
 void init_req(x11_connection_req_t * req){
   req.order = 108; // 'l' in ascii
   req.pad1 = 0;

@@ -36,7 +36,5 @@ int main(int argc, char** argv)
 
   free_parser(&parser);
 
-
-
   return 0;
 }

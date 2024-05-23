@@ -1,5 +1,6 @@
 #include "resources/x11.jc"
 
+#extern int sprintf(...)
 #define LEFT 0
 #define UP 1
 #define RIGHT 2
@@ -58,6 +59,13 @@ int draw_grid(x11_window * window, Grid * grid){
 
   int screen_height = 400;
   int screen_width  = 400;
+
+  byte score_string[32];
+  for(int i = 0; i < 32; i++){
+    score_string[i] = 0;
+  }
+  int len = sprintf(&score_string[0], "SCORE: %d", grid.length - 1);
+  x11_draw_text_bytes(window, &score_string[0], len, screen_width / 2 -  16, 40);
 
   int block_width = screen_width / grid.width;
   int block_height = screen_height / grid.height;

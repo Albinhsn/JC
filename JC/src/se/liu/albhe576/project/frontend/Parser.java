@@ -19,14 +19,6 @@ import java.util.logging.Logger;
  * It consumes tokens given by the scanner and transform them into an abstract syntax tree.
  * It uses advance, matchType and consume as it primary functions to get a new token and continue parsing
  * <p>
- * The parser supports single line macros (without arguments) which just hijacks the token stream if it finds an identifier that's been defined and inserts the tokens in the macro
- * It also supports #include statements which tries to open a given filename and parses that before continuing with it's current file.
- * <p>
- * It's a pratt parser which defines a precedence level, functions for prefix and postfix for a TokenType in order to solve the problem of precedence.
- * <p>
- * The pre and post fix functions are defined to determine what type of expression to be parsed when there is ambiguity.
- * So that when for an example we encounter a "-", which can be either a unary expression (prefix) such as "2 * (-5)" or a binary expression like "2 - 5" (postfix)
- * <p>
  * In order to solve precedence we define a precedence level for each token. So to solve that 1 + 2 * 3 -> 1 + (2 * 3) it will look something like this
  * We first encounter the token for "1" which has no prefix rule and we continue
  * Then we get a "+", we parse the postfix rule which is a binary expression

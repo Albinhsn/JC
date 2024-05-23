@@ -32,4 +32,4 @@ test.*
 main
 out.*
 test
-
+log.log

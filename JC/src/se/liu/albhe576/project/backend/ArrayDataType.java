@@ -14,6 +14,9 @@ public class ArrayDataType extends DataType{
         return new ArrayDataType(type.name, DataTypes.ARRAY, type, 0);
     }
 
+    @Override public DataType getPointerFromType(){
+        return new DataType(itemType.name, itemType.type, 1);
+    }
     public ArrayDataType(String name, DataTypes type, DataType itemType, int depth){
         super(name, type, depth);
         this.itemType = itemType;

@@ -24,8 +24,8 @@ import java.util.logging.Logger;
 public class Main {
 
     public static void main(String[] args) {
-        if(args.length == 0){
-            System.out.println("Need filename!");
+        if(args.length <= 1){
+            System.out.println("Need input filename and output filename!");
             return;
         }
         FileHandler fileHandler;
@@ -58,7 +58,7 @@ public class Main {
 
             CodeGenerator codeGenerator = new IntelCodeGenerator<>(symbolTable, new Linux64BitCallingConvention());
             Compiler compiler           = new Compiler(symbolTable, codeGenerator, fileHandler);
-            compiler.compile("out.asm");
+            compiler.compile(args[1]);
         }catch (CompileException | IOException e){
             mainLogger.severe(e.getMessage());
             System.out.printf("Failed to compiled due to:\n\"%s\"\npls send bug report with sample code :)", e.getMessage());
